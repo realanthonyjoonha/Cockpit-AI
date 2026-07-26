@@ -5,6 +5,21 @@
 
 ---
 
+## Before you start (machine prerequisites)
+
+Install these **on the Mac** first (Cockpit scripts do **not** install them):
+
+| Need | Check |
+|------|--------|
+| **Git** | `git --version` |
+| **Node 18+** (includes npm) | `node -v` · `npm -v` |
+| **Python 3** | `python3 --version` (usually preinstalled on macOS) |
+| **Grok Build / CLI** authenticated | `grok --version` |
+
+Cockpit then installs **its own** npm deps + wires **`cockpit-research` MCP** via the steps below.
+
+---
+
 ## Order (do not skip)
 
 ### 1. Install Grok
@@ -20,14 +35,17 @@ grok --version
 ### 2. Clone this repo
 
 ```bash
-git clone <REPO_URL>
-cd <repo-folder>
+git clone https://github.com/realanthonyjoonha/Cockpit-AI.git
+# or: git clone git@github.com:realanthonyjoonha/Cockpit-AI.git
+cd Cockpit-AI
+# folder name can be anything: git clone <url> my-folder && cd my-folder
 ```
 
 ### 3. Bootstrap the product shell
 
 ```bash
 ./scripts/bootstrap.sh
+# optional one-shot MCP: ./scripts/bootstrap.sh --with-mcp
 ```
 
 Expect **doctor PASS**.  
