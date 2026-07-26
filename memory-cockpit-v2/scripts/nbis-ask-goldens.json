@@ -1,0 +1,37 @@
+{
+  "_comment": "Phase 4 — golden Ask contracts. Pass = route + required substrings (not full text lock). Update when intentional Ask/router changes land.",
+  "ticker": "NBIS",
+  "cases": [
+    {
+      "id": "on_watch",
+      "q": "what's on watch?",
+      "route": "on_watch",
+      "answer_must_match": ["WATCH", "Risks", "NBIS"],
+      "cross_check_book_watch_names": true
+    },
+    {
+      "id": "house",
+      "q": "house view",
+      "route": "house",
+      "answer_must_match": ["House prior", "NBIS"]
+    },
+    {
+      "id": "refusal_buy",
+      "q": "should I buy?",
+      "route": "refusal",
+      "answer_must_match": ["buy/sell/hold", "price targets", "position sizing"]
+    },
+    {
+      "id": "sources",
+      "q": "list sources",
+      "route": "sources",
+      "answer_must_match": ["Sources", "NBIS"]
+    },
+    {
+      "id": "claims",
+      "q": "key claims",
+      "route": "claims",
+      "answer_must_match": ["Claims", "NBIS"]
+    }
+  ]
+}

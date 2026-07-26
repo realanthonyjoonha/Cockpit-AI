@@ -1,0 +1,135 @@
+================================================================================
+  RESEARCH ENGINE ARCHITECTURE — dual-path flow (decision-support only)
+  As-of: 2026-07-21  ·  cockpit ALWAYS part of a full project iteration
+================================================================================
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                     WHAT THE USER RECEIVES                              │
+  │              engine + instructions  (may start empty)                   │
+  │         full iteration always ENDS with a cockpit + company desk(s)     │
+  └───────────────────────────────┬─────────────────────────────────────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │   What is already true?   │
+                    └─────────────┬─────────────┘
+                                  │
+              ┌───────────────────┼───────────────────┐
+              ▼                                       ▼
+   ┌──────────────────────┐              ┌──────────────────────────┐
+   │  PATH A              │              │  PATH B                  │
+   │  NO COCKPIT YET      │              │  COCKPIT ALREADY RUNNING │
+   │  (cold start / first │              │  + ≥1 company desk live  │
+   │   full iteration)    │              │  (add another company)   │
+   └──────────┬───────────┘              └────────────┬─────────────┘
+              │                                       │
+              ▼                                       ▼
+   ╔══════════════════════════════════════════════════════════════════════╗
+   ║  SHARED: RESEARCH LOOP (Part 1) — same on both paths                 ║
+   ║  files → compile → verify → human house/risks → pack ready           ║
+   ╚══════════════════════════════════════════════════════════════════════╝
+              │                                       │
+              ▼                                       ▼
+   ┌──────────────────────┐              ┌──────────────────────────┐
+   │  UI LOOP — variant   │              │  UI LOOP — variant       │
+   │  FROM SCRATCH        │              │  ADD COMPANY             │
+   │  (build first glass) │              │  (extend running glass)  │
+   └──────────┬───────────┘              └────────────┬─────────────┘
+              │                                       │
+              ▼                                       ▼
+   ┌──────────────────────┐              ┌──────────────────────────┐
+   │  · stand up cockpit  │              │  · do NOT rebuild shell  │
+   │    app shell         │              │  · Part 1 pack already   │
+   │  · first thin desk   │              │    green for NEW ticker  │
+   │  · COMPILE BOOK +    │              │  · add desk routes/API   │
+   │    contract + smoke  │              │  · switcher entry        │
+   │  · desk switcher     │              │  · extend smoke          │
+   │    baseline          │              │  · leave other desks     │
+   │                      │              │    untouched             │
+   └──────────┬───────────┘              └────────────┬─────────────┘
+              │                                       │
+              ▼                                       ▼
+   ┌──────────────────────┐              ┌──────────────────────────┐
+   │  PATH A END STATE    │              │  PATH B END STATE        │
+   │                      │              │                          │
+   │  · first company book│              │  · new company book      │
+   │  · first cockpit +   │              │  · new thin desk on      │
+   │    first thin desk   │              │    EXISTING cockpit      │
+   │  · COMPILE BOOK works│              │  · switcher has +1 desk  │
+   │  · smoke green desk1 │              │  · smoke green all desks │
+   └──────────────────────┘              └──────────────────────────┘
+
+
+================================================================================
+  TWO LOOPS (do not mix instructions)
+================================================================================
+
+  ┌─ RESEARCH LOOP (Part 1) ─────────────────────────────────────────────┐
+  │  Always. Same steps Path A and Path B.                               │
+  │                                                                      │
+  │     research files (paths + claim format)                            │
+  │              │                                                       │
+  │              ▼                                                       │
+  │     ./ont compile TICKER                                             │
+  │              │                                                       │
+  │              ▼                                                       │
+  │     ./ont verify TICKER                                              │
+  │         exit 1 ──► fix checks ──► recompile ──► verify again         │
+  │         exit 0 ──► structural PASS                                   │
+  │              │                                                       │
+  │              ▼                                                       │
+  │     HUMAN: HOUSE confirm|FORMING · RISKS accept|edit                 │
+  │              │                                                       │
+  │              ▼                                                       │
+  │     verify [--require-confirmed] [--require-risks-accepted]          │
+  │              │                                                       │
+  │              ▼                                                       │
+  │     pack ready  ──►  hand off to UI loop (A or B)                    │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  ┌─ UI / UX LOOP (Part 2 · cockpit website only) ───────────────────────┐
+  │  Always eventually (full iteration includes cockpit).                │
+  │  Instructions DIFFER by start state:                                 │
+  │                                                                      │
+  │     UI-A  FROM SCRATCH          UI-B  COCKPIT ALREADY RUNNING        │
+  │     ~~~~~~~~~~~~~~~~~~          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~       │
+  │     bootstrap app shell         keep shell                           │
+  │     first desk + contract       add desk only                        │
+  │     first smoke baseline        extend smoke                         │
+  │     first switcher              add switcher chip                    │
+  │                                                                      │
+  │  SHARED UI LAW (both): thin rooms, COMPILE BOOK, REFRESH,            │
+  │  thin_desk_contract, fail-closed smoke, decision-support only.       │
+  │  Spec: plans/THIN-DESK-CONTRACT.md                                   │
+  └──────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  CHEAT SHEET
+================================================================================
+
+  PATH A — no cockpit yet (first full iteration)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    empty / cold
+      → RESEARCH LOOP for ticker #1 until pack verify-green
+      → UI-A: build cockpit + first thin desk + smoke
+      → END: book + first glass desk
+
+  PATH B — cockpit already running (add company)
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    glass live (e.g. MEMORY | NEBIUS)
+      → RESEARCH LOOP for NEW ticker until pack verify-green
+      → UI-B: add desk only (no shell rewrite) + smoke
+      → END: book + new desk on same cockpit
+
+
+================================================================================
+  DESIGN LAW
+================================================================================
+
+  Research reliability = specs + formats + compile/verify loop (fail-closed).
+  UI reliability       = thin-desk contract + smoke; two playbooks (A vs B).
+  Thin-desk chrome parity = plans/2026-07-21-thin-desk-ui-reliability-loop.md
+  House CONFIRM / risk ACCEPT stay human.
+  Full project iteration always delivers a cockpit; start state chooses UI-A or UI-B.
+
+================================================================================

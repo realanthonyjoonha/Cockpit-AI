@@ -1,0 +1,224 @@
+================================================================================
+  NOW vs AFTER PATH 1 + PATH 2
+  Research OS / cockpit product map
+  As-of: 2026-07-22  ·  decision-support only (no buy/sell/PT/sizing)
+================================================================================
+
+Related:
+  ARCHITECTURE-FLOW.txt     Path A/B + two loops (research vs UI)
+  NEW-DESK-PLAYBOOK.md      Add company checklist
+  THIN-DESK-CONTRACT.md     Thin desk law
+  PARKED-loop-as-goal.md    Loop packaging (parked)
+
+Private GitHub snapshot: realanthonyjoonha/cockpit-research-os
+
+
+================================================================================
+  1. BIG PICTURE
+================================================================================
+
+----- NOW (what actually exists) ----------------------------------------------
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                     YOU (this Mac)                               │
+  │                                                                  │
+  │   research-wiki ──compile──► ontology pack ──read──► COCKPIT    │
+  │   (files by hand)            (MU/NBIS/MSFT)         │            │
+  │                                                      │            │
+  │              ┌───────────────────────────────────────┼──────┐   │
+  │              │  MEMORY (specialist)                  │      │   │
+  │              │  NEBIUS  ─┐                           ▼      │   │
+  │              │  MSFT    ─┴─ shared thin rooms        glass  │   │
+  │              │            overview risks house              │   │
+  │              │            sources ask update                │   │
+  │              │            COMPILE BOOK · REFRESH            │   │
+  │              │            Ask = deterministic pack Q&A      │   │
+  │              └──────────────────────────────────────────────┘   │
+  │                                                                  │
+  │  Writes: mostly hand-edit files (or NBIS propose legacy)         │
+  │  Agents: not productized on glass                                │
+  │  Cold start: tribal knowledge (works for you, not packaged)      │
+  │  Add company: playbook exists, still mirror server modules       │
+  └─────────────────────────────────────────────────────────────────┘
+
+          Friend / empty machine ──►  ???  (clone repo, paths, hope)
+
+
+----- AFTER Path 1 + Path 2 (target product) ----------------------------------
+
+  ┌──────────────────────── PATH 2 ────────────────────────┐
+  │  Empty machine / friend                                 │
+  │    init scripts + playbook                              │
+  │         │                                               │
+  │         ▼                                               │
+  │  vault + ontology + first thin desk + smoke green       │
+  │         │                                               │
+  │         ▼  Path B                                       │
+  │  add company N (factory + registry + Part 1 pack)       │
+  └─────────────────────────┬───────────────────────────────┘
+                            │
+                            ▼
+  ┌──────────────────────── PATH 1 ────────────────────────┐
+  │  LIVE COCKPIT (same glass, more operable)               │
+  │                                                         │
+  │   Allowlisted edits          Pack-grounded agents       │
+  │   · house (explicit save)    · on-demand desk agent     │
+  │   · risks add/edit/retire    · risk register brief      │
+  │   · (curated claim pins?)    · daily brief              │
+  │           │                  · catalyst brief (if clean)│
+  │           ▼                           │                 │
+  │      files / proposals                │                 │
+  │           │                           ▼                 │
+  │           └──► COMPILE + VERIFY ◄── read pack only      │
+  │                      │                                  │
+  │                      ▼                                  │
+  │              glass stays honest                         │
+  └─────────────────────────────────────────────────────────┘
+
+
+================================================================================
+  2. USER JOURNEY
+================================================================================
+
+  Step              NOW                              AFTER P1 + P2
+  ────────────────  ───────────────────────────────  ────────────────────────────
+  First install     Manual, Anthony-only             Path 2: scripted cold start
+  Open glass        Memory / NBIS / MSFT             Same (+ desks via Path B)
+  Read book         Rooms + Ask + BookStrip          Same (reliable core kept)
+  Change house/     Edit markdown in vault           Path 1: allowlisted UX
+    risks                                            → files → compile/verify
+  Briefs / watch    Open rooms or Ask chips          Path 1: pack-grounded agents
+  Add company       Research + copy server +         Path 2: Part 1 → factory
+                    registry                         → registry → smoke
+  Friend joins      Private repo + path pain         Repo + Path 2 bootstrap
+                                                     + clear Path 1 surface
+
+
+================================================================================
+  3. SYSTEM MAP
+================================================================================
+
+----- NOW — read-strong, write-weak, bootstrap-implicit -----------------------
+
+          ┌──────────────┐
+          │   Human      │
+          │  research    │
+          └──────┬───────┘
+                 │ hand files
+                 ▼
+          ┌──────────────┐     ┌─────────────┐
+          │ research-wiki│────►│  ontology   │
+          │              │     │  compile    │
+          └──────┬───────┘     │  verify     │
+                 │             └──────┬──────┘
+                 │ vault read         │ pack JSON
+                 ▼                    ▼
+          ┌─────────────────────────────────┐
+          │           COCKPIT               │
+          │  READ ████████████░░  strong    │
+          │  WRITE ██░░░░░░░░░░░  thin      │
+          │  AGENTS ░░░░░░░░░░░░  almost 0  │
+          │  INIT  ░░░░░░░░░░░░  not prod   │
+          └─────────────────────────────────┘
+
+
+----- AFTER — both paths filled in --------------------------------------------
+
+    PATH 2                         PATH 1
+    ┌─────────────┐                ┌─────────────┐
+    │ init /      │                │ allowlist   │
+    │ factory /   │                │ edits       │
+    │ add desk    │                │ + agents    │
+    └──────┬──────┘                └──────┬──────┘
+           │                              │
+           ▼                              ▼
+    ┌─────────────────────────────────────────────┐
+    │                 COCKPIT                      │
+    │  READ  ████████████  (unchanged law)         │
+    │  WRITE ████████░░░░  curated, tested         │
+    │  AGENTS ██████░░░░░  pack-grounded briefs    │
+    │  INIT  ████████░░░░  reproducible            │
+    └─────────────────────────────────────────────┘
+           ▲
+           │ always
+    files → compile → verify → glass
+    (two loops still separate)
+
+
+================================================================================
+  4. WHAT STAYS THE SAME (non-negotiable spine)
+================================================================================
+
+  graded research files
+        → ./ont compile
+        → ./ont verify
+        → pack
+        → glass (shared thin chrome + contract + smoke)
+
+  Keep forever:
+    · Decision-support only — no PT / buy / sell / sizing
+    · Deterministic pack Ask as core — agents add on top, don't replace truth
+    · Thin chrome shared — no forked Overview per ticker
+    · Human house CONFIRM — explicit, not silent
+    · Research loop vs UI loop — do not mix instructions in one change
+
+
+================================================================================
+  5. PATH OWNERSHIP (friend collab)
+================================================================================
+
+  Path 1 — Operate (default: Anthony)
+    Allowlist → house/risk mutations → pack-grounded agents
+    Dogfood live NBIS/MSFT; trust bar is personal
+
+  Path 2 — Bootstrap & scale (default: friend)
+    Thin server factory → cold-start playbook/scripts → Path B add company
+    Less need for investment priors
+
+  Shared laws: private repo, thin-desk contract, verify/smoke gates, no silent house
+
+
+================================================================================
+  6. ONE-FRAME SUMMARY
+================================================================================
+
+  NOW
+    “I have a reliable dual-book glass on my Mac.
+     I mostly read; I write by editing files.
+     Standing this up elsewhere is tribal.”
+
+  AFTER PATH 1 + 2
+    “Anyone on the private repo can cold-start (P2),
+     add companies without forking UI (P2),
+     and operate house/risks + briefs on glass (P1)
+     without the book becoming a lying chatbot.”
+
+
+================================================================================
+  7. MVP “DONE” (not full vision)
+================================================================================
+
+  Path 1 MVP
+    · Allowlist v0 written and binding
+    · House edit (explicit save) + risk mutations → files → compile/verify
+    · Tests for each mutation class
+    · 2–3 agents: on-demand + risk brief + daily brief (pack only; refusal on advice)
+    · Catalyst brief only if pack catalysts clean; else honest GAP
+
+  Path 2 MVP
+    · Thin server factory (no 500-line desk copy)
+    · Cold-start playbook + init scripts
+    · Smoke/verify green on that path
+    · Path B: add desk via registry + factory after Part 1 green
+
+  Explicit non-goals (unless unparked later)
+    · LLM free-write of the book into store
+    · Memory ↔ thin parity
+    · Second git repo / research-os as SoR
+    · Auto-compile on every file save
+    · Public packaging / Docker product
+
+
+================================================================================
+  end
+================================================================================

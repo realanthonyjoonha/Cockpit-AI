@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Convenience launcher — run from anywhere:
+#   ~/Trading/ontology/ont ask MU "what is on watch?"
+#   ~/Trading/ontology/ont repl MU
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+export PYTHONPATH="$ROOT"
+cd "$ROOT"
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  help|-h|--help)
+    echo "ont — ontology CLI"
+    echo "  ont ask MU <question...>   Answer from pack only (no LLM)"
+    echo "  ont repl MU                Interactive ask loop"
+    echo "  ont retrieve MU            Full pack dump (includes source catalog)"
+    echo "  ont source MU list         Long research MD catalog"
+    echo "  ont source MU get <id>     Open a long file (meta/outline/section/search)"
+    echo "  ont agent MU <question>    Agent context block (ontology → LLM/Grok)"
+    echo "  ont compile MU             Rebuild pack from research-wiki"
+    echo "  ont verify MSFT            Part 1 structural gate (fail-closed)"
+    echo "  ont verify MSFT --require-confirmed --require-risks-accepted"
+    echo "  ont test                   Run unit tests + gates"
+    echo ""
+    echo "Examples:"
+    echo "  ont agent MU 'is my thesis intact?'"
+    echo "  ont ask MU what is on watch"
+    echo "  ont ask MU list research sources"
+    echo "  ont source MU list"
+    echo "  ont source MU get memory-report-ib-master --outline"
+    echo "  ont source MU get memory-report-earnings-master --search 'gross margin'"
+    echo "  ont source MU get memory-report-ib-master --section 'Micron'"
+    echo "  ont verify MSFT --json"
+    ;;
+  agent)
+    focus="${1:-MU}"; shift || true
+    exec python3 -m api.cli agent "$focus" "$@"
+    ;;
+  ask)
+    focus="${1:-MU}"; shift || true
+    exec python3 -m api.cli ask "$focus" "$@"
+    ;;
+  repl)
+    focus="${1:-MU}"
+    exec python3 -m api.cli ask "$focus" --repl
+    ;;
+  retrieve)
+    focus="${1:-MU}"; shift || true
+    exec python3 -m api.cli retrieve "$focus" "$@"
+    ;;
+  source)
+    # ont source MU list | ont source MU get <id> [--outline ...]
+    exec python3 -m api.cli source "$@"
+    ;;
+  compile)
+    focus="${1:-MU}"
+    exec python3 -m api.cli compile "$focus"
+    ;;
+  verify)
+    # ont verify MSFT [--require-confirmed] [--require-risks-accepted] [--json]
+    exec python3 -m api.cli verify "$@"
+    ;;
+  test)
+    exec make test
+    ;;
+  *)
+    echo "Unknown command: $cmd (try: ont help)" >&2
+    exit 1
+    ;;
+esac

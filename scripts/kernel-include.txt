@@ -1,0 +1,15 @@
+# rsync filter for export-kernel.sh (from monorepo root)
+# + include · - exclude · order matters (first match wins in some modes;
+#   we use --files-from style via explicit includes in the script instead)
+
+# This file is documentation of intent; export-kernel.sh owns the copy list.
+AGENTS.md
+COLD-START.md
+README.md
+SETUP-GROK-COCKPIT.md
+.gitignore
+.grok/
+scripts/
+memory-cockpit-v2/
+ontology/
+examples/

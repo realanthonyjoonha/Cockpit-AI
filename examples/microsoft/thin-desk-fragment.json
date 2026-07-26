@@ -1,0 +1,28 @@
+{
+  "slug": "msft",
+  "ticker": "MSFT",
+  "id": "microsoft",
+  "label": "MICROSOFT",
+  "mark": "M",
+  "house_file": "house-view-microsoft.md",
+  "profile": {
+    "displayName": "Microsoft Corporation",
+    "entitySlug": "microsoft",
+    "rawDir": "raw/microsoft-research",
+    "risksSource": "raw/microsoft-research/08-risks-catalysts.md",
+    "risksGenerated": "raw/microsoft-research/risks",
+    "sourcePrimaryRe": "microsoft|msft|azure",
+    "stanceExtended": true,
+    "houseTitleDefault": "House View — Microsoft (MSFT)",
+    "neverGeneratedNote": "SoR is raw/microsoft-research/08-risks-catalysts.md (not generated risks/*.md)",
+    "ask": {
+      "houseConflictNeedles": ["sca", "backlog", "earnings", "rpo", "capex"],
+      "claimRouteNeedles": ["rpo", "backlog", "azure", "capex", "openai", "cloud", "ppe"],
+      "claimTopicNeedles": ["azure", "rpo", "backlog", "capex", "openai", "cloud", "ppe"],
+      "claimTopicRe": "azure|cloud|rpo|capex|ppe|openai|revenue|\\$[\\d,.]+|intelligent cloud",
+      "sourcePrimaryRe": "microsoft|msft|azure",
+      "companyQuestionNeedles": ["what is microsoft", "who is microsoft", "company", "summary", "what is msft"]
+    }
+  },
+  "_comment": "EXAMPLE ONLY — merge into kernel thin-desks.json desks[] via install-example-msft.sh"
+}

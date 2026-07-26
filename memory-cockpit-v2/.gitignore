@@ -1,0 +1,8 @@
+node_modules/
+dist/
+# login credentials + session secret — machine-local, never commit
+.access.json
+.session-secret
+
+# supervised-server logs (launchd)
+logs/

@@ -1,0 +1,37 @@
+{
+  "_comment": "MSFT Ask goldens — route + required substrings (not full text lock). Mirror of nbis-ask-goldens.json. Update when intentional Ask/router or pack label changes land.",
+  "ticker": "MSFT",
+  "cases": [
+    {
+      "id": "on_watch",
+      "q": "what's on watch?",
+      "route": "on_watch",
+      "answer_must_match": ["WATCH", "Risks", "MSFT"],
+      "cross_check_book_watch_names": true
+    },
+    {
+      "id": "house",
+      "q": "house view",
+      "route": "house",
+      "answer_must_match": ["House prior", "MSFT", "CONFIRMED"]
+    },
+    {
+      "id": "refusal_buy",
+      "q": "should I buy?",
+      "route": "refusal",
+      "answer_must_match": ["buy/sell/hold", "price targets", "position sizing"]
+    },
+    {
+      "id": "sources",
+      "q": "list sources",
+      "route": "sources",
+      "answer_must_match": ["Sources", "MSFT"]
+    },
+    {
+      "id": "claims",
+      "q": "key claims",
+      "route": "claims",
+      "answer_must_match": ["Claims", "MSFT"]
+    }
+  ]
+}

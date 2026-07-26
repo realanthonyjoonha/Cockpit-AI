@@ -1,0 +1,147 @@
+
+━━━ MIGRATION DRY-RUN (nothing written) ━━━
+vault: /Users/anthonyha/Trading/research-wiki
+extracted monitors: 59 (monitors.md §Memory/DRAM + §AI-trade/macro + §NVIDIA + inline markers on #memory pages, figures/ excluded)
+master tells: №1→price-cycle ⭐ · №2→memory-per-token ⭐ · №3→capex-rollover ⭐ encoded as starred rows; №4 (STMicro) + №5 (Trn3) off-spine per §6.
+
+── planned files (17) ──
+  cockpit/risks/positioning-unwind.md  (2256b)
+  cockpit/risks/policy-loosening.md  (2130b)
+  cockpit/risks/price-cycle.md  (2339b)
+  cockpit/risks/memory-per-token.md  (2019b)
+  cockpit/risks/capex-rollover.md  (1772b)
+  cockpit/risks/cxmt-supply.md  (1583b)
+  cockpit/risks/eng-detours.md  (1628b)
+  cockpit/risks/valuation-rerating.md  (1734b)
+  cockpit/risks/oligopoly-discipline.md  (2030b)
+  cockpit/risks/air-pocket-2027.md  (2104b)
+  cockpit/risks/ai-trade-contagion.md  (1582b)
+  cockpit/risks/etf-tail-sleeve.md  (1829b)
+  cockpit/series/_registry.md  (1838b)
+  cockpit/desks/korea.md  (560b)
+  cockpit/desks/ai-demand.md  (706b)
+  cockpit/desks/supply-hbm.md  (699b)
+  cockpit/desks/scenarios.md  (455b)
+
+── risk register as migrated ──
+  §3.1  positioning-unwind   WATCH  A               8 tripwires (3 canonical + 5 nested)
+  §3.2  policy-loosening     WATCH  B               5 tripwires (3 canonical + 2 nested)
+  §3.3  price-cycle          INTACT A               8 tripwires (3 canonical + 5 nested)
+  §3.4  memory-per-token     INTACT A          HV   3 tripwires (3 canonical + 0 nested)
+  §3.5  capex-rollover       INTACT A          HV   3 tripwires (3 canonical + 0 nested)
+  §3.6  cxmt-supply          INTACT B               1 tripwires (1 canonical + 0 nested)
+  §3.7  eng-detours          INTACT A          HV   3 tripwires (3 canonical + 0 nested)
+  §3.8  valuation-rerating   INTACT B          HV   3 tripwires (3 canonical + 0 nested)
+  §3.9  oligopoly-discipline INTACT B               3 tripwires (3 canonical + 0 nested)
+  §3.10  air-pocket-2027      INTACT B               4 tripwires (4 canonical + 0 nested)
+  §3.11  ai-trade-contagion   INTACT B               2 tripwires (2 canonical + 0 nested)
+  §3.12  etf-tail-sleeve      INTACT C — VERIFY HV   4 tripwires (4 canonical + 0 nested)
+
+── houseview: anchors (every §6 risk ↔ the house-view line it guards) ──
+  positioning-unwind   "Stage: mid-stage — not early, not late; meaningful room left." — flows can force a violent dra…
+  policy-loosening     "Why it lasts: memory fabs take years to build and cannot catch up with demand anytime soon." —…
+  price-cycle          "Regime: memory has structurally de-cycled — cyclical → structural business; the shortage is he…
+  memory-per-token     "The live risk is specifically edge / 'good-enough' on-device bending memory-content-per-chip, …
+  capex-rollover       "Step-back triggers: … (3) the health of the overall AI trade — especially hyperscaler capex-to…
+  cxmt-supply          "Why it lasts: memory fabs take years to build and cannot catch up with demand anytime soon." —…
+  eng-detours          "Step-back triggers: … (2) engineering breakthroughs to cheaper / alternative memory (efficienc…
+  valuation-rerating   "Step-back triggers: (1) valuations…" — and the DRAFT view it rests on: "~7× fwd vs the AI comp…
+  oligopoly-discipline "Regime: memory has structurally de-cycled — cyclical → structural business." — de-cycling hold…
+  air-pocket-2027      "Horizon: shortage persists at least to 2030, and I suspect a lot longer." — the one fault line…
+  ai-trade-contagion   "(3) the health of the overall AI trade" — the contagion channel of trigger №3: if the complex …
+  etf-tail-sleeve      "The ETF's lower-tier tail-sleeve (small Nanya / Winbond / GigaDevice / Macronix-type weights) …
+
+── merges (extracted → canonical row) — 46 ──
+  monitors.md §Memory / DRAM             → price-cycle / Contract DRAM ASP QoQ + inventory days ⭐
+  monitors.md §Memory / DRAM             → memory-per-token / Compression deployed West ⭐
+  monitors.md §Memory / DRAM             → memory-per-token / DRAM bit-demand growth
+  monitors.md §Memory / DRAM             → price-cycle / HBM-vs-commodity price spread
+  monitors.md §Memory / DRAM             → cxmt-supply / CXMT output + DDR5 OEM qual + HBM progress
+  monitors.md §Memory / DRAM             → eng-detours / Any detour at scale
+  monitors.md §NVIDIA ✓                  → ai-trade-contagion / NVDA gross margin + $/rack workload-split
+  monitors.md §NVIDIA ✓                  → ai-trade-contagion / Non-CUDA inference share
+  monitors.md §AI-trade / macro          → capex-rollover / Capex-to-OCF + bond pace ⭐
+  monitors.md §AI-trade / macro          → capex-rollover / Capex guides
+  monitors.md §AI-trade / macro          → capex-rollover / TSMC CoWoS wpm + capex
+  entities/cxmt                          → policy-loosening / MATCH Act / EUV access
+  entities/ddr5                          → air-pocket-2027 / 2027 net commodity-bit adds
+  entities/ddr5                          → cxmt-supply / CXMT output + DDR5 OEM qual + HBM progress
+  entities/hbm                           → oligopoly-discipline / HBM wafer-share vs bit-share gap
+  entities/hbm                           → price-cycle / HBM-vs-commodity price spread
+  entities/hbm                           → oligopoly-discipline / HBM4/4E share shifts among the three
+  entities/hbm                           → air-pocket-2027 / 2027 net commodity-bit adds
+  entities/memory-oligopoly              → oligopoly-discipline / Capital intensity vs the glut band
+  entities/memory-oligopoly              → air-pocket-2027 / 2027 net commodity-bit adds
+  entities/memory-oligopoly              → capex-rollover / Capex guides
+  entities/memory-oligopoly              → cxmt-supply / CXMT output + DDR5 OEM qual + HBM progress
+  entities/micron                        → policy-loosening / CHIPS plumbing
+  entities/micron                        → oligopoly-discipline / HBM4/4E share shifts among the three
+  entities/micron                        → capex-rollover / Capex guides
+  entities/micron                        → price-cycle / Margin-peak signature
+  entities/roundhill-dram-etf            → etf-tail-sleeve / Wrapper mechanics
+  entities/roundhill-dram-etf            → capex-rollover / Capex guides
+  entities/roundhill-dram-etf            → air-pocket-2027 / 2027 net commodity-bit adds
+  entities/roundhill-dram-etf            → etf-tail-sleeve / Wrapper mechanics
+  entities/samsung-electronics           → oligopoly-discipline / HBM4/4E share shifts among the three
+  entities/samsung-electronics           → air-pocket-2027 / 2027 net commodity-bit adds
+  entities/samsung-electronics           → oligopoly-discipline / HBM4/4E share shifts among the three
+  entities/samsung-electronics           → capex-rollover / Capex guides
+  entities/sk-hynix                      → oligopoly-discipline / HBM4/4E share shifts among the three
+  entities/sk-hynix                      → oligopoly-discipline / Capital intensity vs the glut band
+  entities/sk-hynix                      → price-cycle / HBM-vs-commodity price spread
+  entities/sk-hynix                      → capex-rollover / Capex guides
+  concepts/memory-fund-positioning       → positioning-unwind / BofA FMS crowding rank
+  concepts/memory-microeconomics         → oligopoly-discipline / HBM wafer-share vs bit-share gap
+  concepts/memory-microeconomics         → capex-rollover / Capex-to-OCF + bond pace ⭐
+  concepts/memory-microeconomics         → price-cycle / Contract DRAM ASP QoQ + inventory days ⭐
+  concepts/memory-microeconomics         → air-pocket-2027 / Non-AI bit-demand stall
+  concepts/memory-policy-risk            → policy-loosening / BIS Entity-List action on CXMT
+  concepts/memory-policy-risk            → policy-loosening / CHIPS plumbing
+  concepts/memory-policy-risk            → policy-loosening / CHIPS plumbing
+
+── _unmapped (1) — needs Anthony, never silently binned ──
+  [entities/sk-hynix] F-1 effectiveness; SOX inclusion timing.
+
+── full example: cockpit/risks/positioning-unwind.md ──
+---
+type: risk
+id: positioning-unwind
+name: "Positioning unwind"
+status: WATCH
+grade: A
+order: 1
+houseview: "\"Stage: mid-stage — not early, not late; meaningful room left.\" — flows can force a violent drawdown straight through an intact mid-stage thesis."
+hv: false
+summary: "crowding record · <1 day-to-cover · swap-amplified"
+category: fund-micro
+series: [retail-flow-hynix, retail-flow-samsung, lev-etf-flow, price-dram-etf]
+pages: [memory-fund-positioning, roundhill-dram-etf, watchlist]
+updated: 2026-07-03
+---
+**The risk:** the most crowded trade on record, mid-unwind. BofA FMS ranks memory **#1 crowded (80%)**; short interest <1 day-to-cover — **no cushion** on a break; the DRAM ETF is swap-amplified; Burry disclosed a MU short 7/3. A positioning-risk flag — *not* a thesis rebuttal: flows can force a violent drawdown through an intact mid-stage thesis.
+
+## Tripwires
+| Signal | Tripwire → | State | As-of |
+|---|---|---|---|
+| BofA FMS crowding rank | stays #1 while the unwind accelerates | WATCH | 2026-06-30 |
+| Short-interest days-to-cover | <1 day = no cushion on any break | WATCH | 2026-06-30 |
+| KR retail net-buy (Hynix / Samsung / KODEX-lev) | sustained record inflows = froth confirm | building | — |
+| Q2 13Fs | (~Aug 14) — does long-only trimming accelerate + new-initiations decelerate? | — | 2026-07-03 |
+| Front-month puts shifting from hedging to outright directional | — | — | 2026-07-03 |
+| Discretionary | (non-10b5-1) sales | — | 2026-07-03 |
+| Sustained DRAM redemptions | (flow reversing — not yet as of 7/3); the RAM 2× trajectory; NAV premium/discount | — | 2026-07-03 |
+| The first bulge-bracket Sell downgrade | (first crack in a one-sided tape); PT cuts | — | 2026-07-03 |
+
+*Nested by the 2026-07-03 migration from [[monitors]] + [[memory-fund-positioning]]. Rows are yours to edit — sync never writes this file.*
+
+## History
+- 2026-07-03 — [note] Burry MU short disclosure folded in; retail-flow instruments registered.
+- 2026-07-03 — [open] Risk opened at WATCH from the fund-positioning deep-dive (FMS most-crowded print + sub-1-day cover).
+
+## Research
+Anchors: [[memory-fund-positioning]] · [[roundhill-dram-etf]] · [[watchlist]]
+
+*(free-form from here down — renders as the research body on the risk page)*
+
+── dry-run: no files written, no backup made ──
+house-view.md mtime unchanged: true

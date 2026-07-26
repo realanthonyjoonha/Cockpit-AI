@@ -1,0 +1,109 @@
+{
+  "note": "Reference snapshot of required shape + must-have claims. Compile may add more. Human can edit.",
+  "focus": {
+    "type": "company",
+    "id": "micron",
+    "ticker": "MU"
+  },
+  "house_prior": {
+    "play": "Memory / DRAM super-cycle",
+    "status": "CONFIRMED"
+  },
+  "claims": [
+    {
+      "id": "micron:claim:0",
+      "text": "Spot $449.38 at ~$505B market cap, ~7.9x forward EPS vs semi peers at 25-35x",
+      "as_of": "2026-04-21",
+      "grade": "A",
+      "source_id": "memory-supercycle-initiation",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:1",
+      "text": "Q2 FY26: revenue $23.86B (+196% YoY), 75% non-GAAP GM, $12.20 non-GAAP EPS \u2014 obliterated the guide",
+      "as_of": "2026-03-18",
+      "grade": "A",
+      "source_id": "memory-supercycle-initiation",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:2",
+      "text": "Q3 FY26: revenue $41.46B (+~346% YoY, ~16% beat), non-GAAP EPS $25.11 (+24% beat, 7th straight beat), non-GAAP GM ~84.6%, op margin ~81.2%",
+      "as_of": "2026-06-24",
+      "grade": "A",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:3",
+      "text": "Q4 FY26 guide: revenue $50.0B \u00b11.0B (~15% above cons), non-GAAP GM ~86%, non-GAAP EPS $31 \u00b11 \u2192 ~$124 annualized run-rate",
+      "as_of": "2026-06-24",
+      "grade": "A",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:4",
+      "text": "DRAM $31.3B (~76% of rev), ASP +low-60s% QoQ; NAND $9.9B (~24%), ASP +mid-single-digit% QoQ \u2014 the beat was price, not volume",
+      "as_of": "2026-06-24",
+      "grade": "B",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:5",
+      "text": "Profitability inversion confirmed by CEO Mehrotra: \"non-HBM DRAM margins ... have become exceptionally robust and in periods exceeded HBM margins\"; at Q2 FY26 the all-non-HBM MCBU ran 79% GM vs HBM-heavy CMBU 74%",
+      "as_of": "2026-03-18",
+      "grade": "A",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:6",
+      "text": "Supply wall, Mehrotra: \"no line of sight on when supply will catch demand; new fabs won't deliver meaningful output until fiscal 2028\"",
+      "as_of": "2026-06-24",
+      "grade": "A",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:7",
+      "text": "16 strategic customer agreements: ~$100B minimum revenue commitments, $22B upfront customer cash, ~20% of DRAM / ~1/3 of NAND volume \u2014 \"a fundamental transformation of our business model\"",
+      "as_of": "2026-06-24",
+      "grade": "A",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:8",
+      "text": "Sole LPDRAM supplier to NVIDIA data-center GPUs; LP5X SOCAMM2 shipping in volume; 256GB DDR5 RDIMM (1-gamma) sampling \u2014 a second sole-sourced data-center socket beyond HBM",
+      "as_of": "2026-06-24",
+      "grade": "A",
+      "source_id": "calibration-event-micron-q3",
+      "about_id": "micron"
+    },
+    {
+      "id": "micron:claim:9",
+      "text": "Exited Crucial consumer DRAM business, removing ~25% of global consumer DRAM capacity as wafers redirect to HBM/enterprise",
+      "as_of": "2025-12-03",
+      "grade": "A",
+      "source_id": "memory-supercycle-initiation",
+      "about_id": "micron"
+    }
+  ],
+  "must_have_claim_substrings": [
+    "41.46",
+    "25.11",
+    "50.0",
+    "100B",
+    "supply will catch demand"
+  ],
+  "gaps": [
+    "2 key-fact bullets did not match strict claim pattern"
+  ],
+  "object": {
+    "id": "micron",
+    "ticker": "MU",
+    "name": "Micron Technology"
+  }
+}

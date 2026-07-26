@@ -1,0 +1,30 @@
+# Ontology v0.1 — action types
+version: "0.1"
+
+actions:
+  retrieve:
+    kind: read
+    allowed: true
+    description: Return ContextPack for focus + intent
+
+  compile:
+    kind: job
+    allowed: true
+    description: Deterministic rebuild of store from authoring inputs
+
+  append_research_log:
+    kind: write
+    allowed: optional
+    description: Append-only research log entry; does not mutate house-view
+    status: not_implemented
+
+  add_gap:
+    kind: write
+    allowed: optional
+    description: Record an explicit unknown on a focus
+    status: not_implemented
+
+  save_house_view:
+    kind: write
+    allowed: false
+    description: Forbidden under CONTRACT v0.1

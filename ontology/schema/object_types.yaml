@@ -1,0 +1,47 @@
+# Ontology v0.1 — object types (see CONTRACT.md)
+version: "0.1"
+
+types:
+  Company:
+    description: Issuer or firm under coverage
+    id_pattern: kebab-case slug (e.g. micron)
+    required_properties: [name, ticker, aliases, summary, stance, updated]
+    notes: stance entries are advantaged/exposed/contested lines, not ratings
+
+  Claim:
+    description: Single load-bearing fact
+    required_properties: [text, as_of, grade, source_id, about_id]
+    grade_enum: [A, B, C]
+    notes: Ungraded or undated text is not a Claim
+
+  Source:
+    description: Research source or primary document distillate
+    required_properties: [id]
+    optional_properties: [title, path, url]
+
+  Risk:
+    description: Named risk with tripwires
+    required_properties: [id, name, status, summary]
+    optional_properties: [tripwires, series, houseview_trigger, updated]
+
+  Series:
+    description: Time series snapshot for retrieve
+    required_properties: [id]
+    optional_properties: [latest, as_of, unit, n_points]
+
+  Catalyst:
+    description: Dated event
+    required_properties: [when, event]
+    optional_properties: [why, about_ids]
+
+  HouseViewPlay:
+    description: Anthony's opinion block (read-only into ontology)
+    required_properties: [play, status, view_excerpt]
+    optional_properties: [date]
+    status_enum: [CONFIRMED, FORMING, DRAFT]
+    notes: Never written by ontology jobs or agents under CONTRACT v0.1
+
+  Theme:
+    description: Thesis or mechanism concept
+    required_properties: [id, name]
+    optional_properties: [summary]

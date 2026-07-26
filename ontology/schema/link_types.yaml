@@ -1,0 +1,38 @@
+# Ontology v0.1 — link types
+version: "0.1"
+
+links:
+  HOUSE_STANCE_ON:
+    from: HouseViewPlay
+    to: [Company, Theme]
+    description: User conviction attaches to company or theme
+
+  CLAIM_ABOUT:
+    from: Claim
+    to: [Company, Theme, Product]
+    description: Claim concerns this object
+
+  SUPPORTED_BY:
+    from: Claim
+    to: Source
+    description: Claim evidence pointer
+
+  RISK_ON:
+    from: Risk
+    to: [Company, Theme]
+    description: Risk applies to this focus
+
+  MONITORS:
+    from: Risk
+    to: Series
+    description: Series watched for tripwires
+
+  CATALYST_FOR:
+    from: Catalyst
+    to: Company
+    description: Event relevant to company
+
+  IN_THEME:
+    from: Company
+    to: Theme
+    description: Company participates in theme

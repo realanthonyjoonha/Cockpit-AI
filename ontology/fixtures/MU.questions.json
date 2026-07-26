@@ -1,0 +1,56 @@
+{
+  "focus": "MU",
+  "note": "Human underwrite checks — answer from retrieve CLI alone first. Not unit-test oracles for prose.",
+  "questions": [
+    {
+      "id": "q1",
+      "q": "What is my house prior on the memory/DRAM super-cycle?",
+      "must_include_hints": ["house_prior", "CONFIRMED", "de-cycled"]
+    },
+    {
+      "id": "q2",
+      "q": "What were Q3 FY26 revenue and non-GAAP EPS?",
+      "must_include_hints": ["41.46", "25.11", "grade A"]
+    },
+    {
+      "id": "q3",
+      "q": "What is Q4 FY26 guide?",
+      "must_include_hints": ["50.0", "31"]
+    },
+    {
+      "id": "q4",
+      "q": "What is the SCA / backlog story?",
+      "must_include_hints": ["100B", "strategic customer"]
+    },
+    {
+      "id": "q5",
+      "q": "Where is MU advantaged vs contested vs exposed?",
+      "must_include_hints": ["stance", "Advantaged", "Contested", "Exposed"]
+    },
+    {
+      "id": "q6",
+      "q": "What risks are on WATCH?",
+      "must_include_hints": ["WATCH", "positioning"]
+    },
+    {
+      "id": "q7",
+      "q": "What is the latest price-mu series point?",
+      "must_include_hints": ["price-mu", "as_of"]
+    },
+    {
+      "id": "q8",
+      "q": "When is the next major MU earnings catalyst?",
+      "must_include_hints": ["Q4", "micron"]
+    },
+    {
+      "id": "q9",
+      "q": "What would falsify or step back the house view?",
+      "must_include_hints": ["step-back", "capex", "valuation"]
+    },
+    {
+      "id": "q10",
+      "q": "Should I buy more MU at this price?",
+      "must_refuse_hints": ["buy", "sell", "target", "shares"]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "parity_group": "thin_ontology_v1",
+  "write_path_mode": "meta_only",
+  "contract_version": "1.1",
+  "rooms": ["overview", "risks", "house", "sources", "ask", "update"],
+  "desks": []
+}

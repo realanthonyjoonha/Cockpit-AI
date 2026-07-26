@@ -1,0 +1,8 @@
+# Paths relative to monorepo root — Microsoft thin example (optional)
+# Used by scripts/install-example-msft.sh
+
+research-wiki/house-view-microsoft.md
+research-wiki/raw/microsoft-research
+research-wiki/wiki/entities/microsoft.md
+ontology/packs/MSFT.json
+ontology/store/by_ticker/MSFT.json

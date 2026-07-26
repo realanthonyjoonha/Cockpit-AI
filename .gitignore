@@ -1,0 +1,44 @@
+# Dependencies / build
+node_modules/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Secrets — never commit
+.access.json
+.session-secret
+**/.session-secret
+**/.access.json
+.env
+.env.*
+*.pem
+memory-cockpit-v2/.session-secret
+
+# Local company books if someone scaffolds by mistake before push (keep product empty)
+# (Do not force-ignore raw/ entirely — empty scaffold dirs may exist)
+
+# Friend/local dogfood leftovers
+cockpit-kernel-fresh/
+
+# Machine-local Grok MCP pin (absolute paths; rewritten by install-grok-mcp / OPEN GROK)
+.grok/config.toml
+
+# OS / editor
+.DS_Store
+.obsidian/
+*.swp
+*~
+
+# Logs & local runtime
+*.log
+logs/
+cockpit/.sync-state.json
+cockpit/.sync.lock
+memory-cockpit-v2/logs/
+
+# Optional local noise
+.DS_Store

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Memory Cockpit v2 — CP3 Report + Quiz</title>
+<style>
+  :root { --bg:#0E1014; --card:#151922; --head:#1A1F2A; --hair:#1F2531; --border:#232937;
+    --text:#E7EAF1; --sec:#98A2B3; --dim:#7C8698; --acc:#7B87E8; --accs:#AEB7E8;
+    --ok:#46C482; --wt:#DFAF4E; --mono:ui-monospace,"SF Mono",Menlo,monospace; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; padding:32px 20px 80px; }
+  .wrap { max-width:880px; margin:0 auto; }
+  h1 { font-size:20px; letter-spacing:.04em; } h1 .no { color:var(--acc); font-family:var(--mono); }
+  h2 { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#DDE2EC; border-bottom:1px solid var(--border); padding-bottom:6px; margin-top:34px; }
+  h2 .no { color:var(--acc); font-family:var(--mono); margin-right:8px; }
+  p, li { color:var(--sec); font-size:13px; } strong { color:var(--accs); } em { color:var(--text); }
+  code, .mono { font-family:var(--mono); font-size:12px; color:var(--text); background:#12151C; padding:1px 5px; border-radius:4px; }
+  pre { background:#12151C; border:1px solid var(--hair); border-radius:8px; padding:12px 14px; overflow-x:auto; font-size:11.5px; line-height:1.55; color:var(--sec); }
+  pre .k { color:var(--acc); } pre .v { color:var(--ok); }
+  table { width:100%; border-collapse:collapse; font-size:12px; margin:10px 0; }
+  th { text-align:left; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); padding:7px 10px; border-bottom:1px solid var(--border); background:var(--head); }
+  td { padding:7px 10px; border-bottom:1px solid var(--hair); vertical-align:top; color:var(--sec); }
+  td:first-child { font-family:var(--mono); color:var(--text); white-space:nowrap; }
+  .ok { color:var(--ok); font-weight:700; } .wt { color:var(--wt); }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:11px; padding:16px 20px; margin:14px 0; }
+  details { background:var(--card); border:1px solid var(--border); border-radius:9px; margin:10px 0; padding:12px 16px; }
+  summary { cursor:pointer; color:var(--text); font-size:13px; font-weight:600; }
+  summary .qn { color:var(--acc); font-family:var(--mono); margin-right:8px; }
+  details p { margin:10px 0 2px; padding-left:26px; }
+  .chip { display:inline-block; border:1.5px solid var(--ok); color:var(--ok); border-radius:6px; padding:2px 10px; font:700 10px var(--mono); letter-spacing:.08em; margin-left:8px; vertical-align:3px; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1><span class="no">MC-2026-B</span> Memory Cockpit v2 — final report<span class="chip">§11 a–l PASSED</span></h1>
+<p>Built 2026-07-03 against <code>15a-memory-cockpit-build-plan.md</code>. Vault is the brain, terminal is the engine, the site is a pure readout. v2 runs on <code>127.0.0.1:4681</code>; your v1 on 4680 is untouched until you say cut over.</p>
+
+<h2><span class="no">1</span>The schema — what lives where, and how you edit it</h2>
+<div class="card">
+<p>Everything mutable lives in the vault. The app repo holds zero data.</p>
+<pre>
+research-wiki/
+  house-view.md                 <span class="k">NEVER written by anything — read-only render + REV source</span>
+  wiki/catalysts.md             yours; sync only rolls concretely-dated past events to ## Resolved
+  wiki/log.md                   research + sync, one stream (sync appends ONE line per changed run)
+  cockpit/
+    risks/&lt;id&gt;.md ×12           <span class="k">HUMAN-OWNED — sync never writes these.</span> Edit → reload → register follows
+    desks/&lt;id&gt;.md ×4            same. Add a desk = add a file (zero code)
+    series/_registry.md         id · label · unit · source · risk · kind(line|flow|parked)
+    series/*.csv                sync-owned accumulators (date,value[,chg])
+    headlines.csv               rolling 30d, URL-deduped, §-refs + topics
+    sync.js · lint.js · updaters/ · lib/fm.js   the engine (zero npm deps)
+    .sync-state.json · .sync.lock               machine sidecar — safe to delete
+</pre>
+<p>A risk file's anatomy (all of it drives the page — <em>zero app-side state</em>):</p>
+<pre>
+<span class="k">status:</span> INTACT|WATCH|FIRED   <span class="k">grade:</span> A|B|C (free text like "C — VERIFY" ok)
+<span class="k">order:</span> N  → §3.N everywhere   <span class="k">hv:</span> true → HV badge + STATED group
+<span class="k">houseview:</span> "the line it guards" → the GUARDS banner   <span class="k">summary:</span> the register-row text
+<span class="k">series:</span> [ids] → B INSTRUMENTS   <span class="k">pages:</span> [slugs] → D RESEARCH rendered inline
+## Tripwires   | Signal | Tripwire → | State | As-of |   trailing ⭐ = master tell
+## History     - YYYY-MM-DD — [kind] text   (append-only, newest first)
+## Research    free-form; renders as the research body
+</pre>
+<p>Bad frontmatter or a broken table degrades to warnings on the page — never a crash. <code>node cockpit/lint.js</code> validates everything (currently 0 errors / 0 warnings).</p>
+</div>
+
+<h2><span class="no">2</span>How sync works, and how you run it</h2>
+<div class="card">
+<p><strong>Auto:</strong> opening the site with data older than <strong>20h</strong> spawns exactly one background run (lockfile mutex + 15-min retry damper — proven with a rewound clock). No cron, ever.</p>
+<p><strong>Manual:</strong> <code>node cockpit/sync.js</code> · <code>--dry-run</code> (fetches, writes nothing) · <code>--only id,id</code> · <code>--force</code> (ignore per-updater freshness).</p>
+<p><strong>Contract, proven live:</strong> per-updater try/catch (one death never stops the rest — fault-injection test) · diff-before-write idempotence (a forced re-run changed only genuinely-new headlines) · series append-only · one <code>[sync]</code> line to <code>wiki/log.md</code> per changed run · concurrent run exits code 2.</p>
+<table>
+<tr><th>updater</th><th>feeds</th><th>fresh-for</th><th>note</th></tr>
+<tr><td>nasdaq-prices</td><td>price-mu · price-dram-etf</td><td>2h</td><td>Nasdaq primary, Yahoo fallback (T-Mobile 429s)</td></tr>
+<tr><td>naver-prices</td><td>price-sk-hynix · price-samsung</td><td>2h</td><td>Samsung 005930 is new in v2</td></tr>
+<tr><td>trendforce-spot</td><td>dram-spot-ddr5/ddr4</td><td>2h</td><td>1 pt/day + published session move; no free history exists</td></tr>
+<tr><td>fred-import-price</td><td>semi-import-price</td><td>20h</td><td>empty-value→null guard (the fake-0-spike scar)</td></tr>
+<tr><td>edgar-micron-capex / edgar-ai-capex</td><td>micron-capex · ai-capex</td><td>20h</td><td>YTD-differenced; Amazon tag-switch + smaller-positive dedupe</td></tr>
+<tr><td>mu-pe</td><td>mu-pe</td><td>20h</td><td>close ÷ EDGAR TTM diluted EPS — crude, labeled; 5y backfilled (1,254 pts, 22.05× today)</td></tr>
+<tr><td>naver-retail-flow</td><td>retail-flow ×2 · lev-etf-flow</td><td>2h</td><td><strong>semantics verified</strong> (see §3) + two standing drift assertions</td></tr>
+<tr><td>headlines-rss</td><td>headlines.csv</td><td>1h</td><td>5 EN + 3 KO Google News feeds; keyword §-refs + desk topics</td></tr>
+<tr><td>catalysts</td><td>wiki/catalysts.md</td><td>20h</td><td>merge-only; rolls concrete past dates; fuzzy dates untouched</td></tr>
+<tr><td>korea-exports</td><td>korea-chip-exports</td><td>—</td><td>parked; wakes if COCKPIT_DATAGOKR_KEY ever exists</td></tr>
+</table>
+</div>
+
+<h2><span class="no">3</span>The retail-flow verification (§12) — closed</h2>
+<div class="card">
+<p>Naver's <code>individualPureBuyQuant</code> is <strong>signed net shares</strong>. Proof: (a) foreigner + institution + individual net to ~0 daily; (b) |individual| ≤ session volume; (c) shares × close cross-checked against <strong>published prints for 2026-07-02</strong> — Hynix computed ₩4,386B vs 파이낸셜뉴스 "4조5930억원" (−4.7%, close-valuation crudeness), Samsung ₩1,988B vs "2조228억원" (−1.7%).</p>
+<p>The "impossible ₩4.4T day" that flagged this was <em>real</em>: record retail dip-buying on the −14.57% crash (biggest Hynix drop since 2008). The v1-accrued CSVs were already correct; the transform ships unchanged. Two standing assertions now guard semantic drift: |net shares| ≤ volume, and the three-category netting residual ≤ 30% — breach logs and skips, never writes.</p>
+</div>
+
+<h2><span class="no">4</span>What changed vs v1</h2>
+<div class="card">
+<table>
+<tr><th>v1</th><th>v2</th></tr>
+<tr><td>Claude gateway + .env token + ASK/ingest/proposals</td><td><strong>Gone.</strong> No credentials anywhere; boots with an empty environment; CSP unchanged-strict</td></tr>
+<tr><td>d3 graph view</td><td><strong>Deleted</strong> (you never used it)</td></tr>
+<tr><td>factors.json app-side state (61 extracted monitors)</td><td><strong>12 curated risk FILES in the vault</strong>, ~59 monitors nested as tripwires, house-view-anchored, human-owned</td></tr>
+<tr><td>hardcoded series registry in server/series.js</td><td><code>cockpit/series/_registry.md</code> — sync and site parse the same table</td></tr>
+<tr><td>fetch-series.js monolith, manual refresh button</td><td>11 contract updaters + orchestrator; auto-freshen on open (>20h), mutexed</td></tr>
+<tr><td>Koyfin-blue sidebar app</td><td>Night-Desk dark hybrid (tab D replicated): icon rail, ⌘K, §-numbered anatomy</td></tr>
+<tr><td>—</td><td>New: Samsung prices · MU trailing P/E · risks/desk/analysts/reports/catalysts/log/house/companies pages · headline §-refs · master tells wired</td></tr>
+</table>
+<p>Ported per the §8 manifest (edits = tokens + the preset row + flow zero-line only): TVChart wholesale, BuildingState, fmt/KRW-B helpers, every hardened fetcher, symlink-safe path guards.</p>
+</div>
+
+<h2><span class="no">5</span>§11 acceptance — the proofs</h2>
+<div class="card">
+<table>
+<tr><th>item</th><th>result</th></tr>
+<tr><td>a</td><td class="ok">boots with env -i; renders only from vault; graph greps empty</td></tr>
+<tr><td>b</td><td class="ok">12 files, 1:1 house-view anchors; live-edit test: edit → register changed → revert byte-identical; _unmapped = 1 item (sk-hynix F-1/SOX, shown at CP1)</td></tr>
+<tr><td>c</td><td class="ok">CP2 side-by-side — approved ("I like the right one more")</td></tr>
+<tr><td>d</td><td class="ok">1M·3M·6M·1Y·5Y·All on every chart; zoom/pan/crosshair = the v1 code you verified, ported; Data keeps all 14 series</td></tr>
+<tr><td>e</td><td class="ok">verified on three shapes: positioning (line+3 flows), valuation (2 lines incl. mu-pe), detours (0 instruments)</td></tr>
+<tr><td>f</td><td class="ok">fresh-populate · second-run-writes-nothing · dry-run-writes-nothing (find -newer) · fault-injection isolation · [sync] log line · mutex exit-2 · 21h-rewind → exactly one spawn</td></tr>
+<tr><td>g</td><td class="ok">Samsung + mu-pe live; §-refs render; 3 flows accrue + baseline-render on §3.1 and Data; ₩ verified vs two published prints; assertions active</td></tr>
+<tr><td>h</td><td class="ok">credential greps empty; no .env; house-view.md mtime Jun 30 17:06 unchanged through migration + every sync + full app sessions</td></tr>
+<tr><td>i</td><td class="ok">two grep hits reviewed — both chart-color data labels from the mock ("green buy / red sell"), not calls</td></tr>
+<tr><td>j</td><td class="ok">implementation-notes.md current; this report; quiz below</td></tr>
+<tr><td>k</td><td class="ok">10 rail icons; §2.0 tiles → entity pages; ⌘K finds risks/series/desks/reports/pages (tested)</td></tr>
+<tr><td>l</td><td class="ok">desk live-edit test (added price-mu → page followed → reverted); Baker card with stated-vs-house delta; shelf lists + serves all 9</td></tr>
+</table>
+<p class="wt">Deliberately not done: §9.4 cutover — it stops the v1 app you use daily. On your go: I stop v1, move v2 to 4680, rename the old dir to <code>memory-cockpit-v1</code>, and point launch.json at v2.</p>
+</div>
+
+<h2><span class="no">6</span>The quiz — pass this and we cut over</h2>
+<p>Answers are under each question (click to reveal). No trick questions — this is the "can I drive it cold" check your spec asked for.</p>
+
+<details><summary><span class="qn">Q1</span>Spot looks stale at 9am. What are the two ways a sync happens, and what stops a double-run?</summary>
+<p>1) Open the site — if the last run is >20h old it self-freshens in the background. 2) <code>node cockpit/sync.js</code> in the terminal (add <code>--force</code> to ignore per-updater freshness). The lockfile (<code>cockpit/.sync.lock</code>) makes a concurrent run exit immediately; a crashed lock goes stale after 10 minutes.</p></details>
+
+<details><summary><span class="qn">Q2</span>You want to escalate positioning-unwind to FIRED after an ugly session. What do you touch, and what does the app do?</summary>
+<p>Edit <code>cockpit/risks/positioning-unwind.md</code>: set <code>status: FIRED</code>, add a dated <code>- 2026-07-XX — [status] …</code> line under ## History. Reload — the register re-sorts (FIRED leads), sigils/chips flip red, the stance strip stays wired. Sync never touches that file; only you do.</p></details>
+
+<details><summary><span class="qn">Q3</span>Where does the GUARDS banner text on a risk page come from, and which five risks carry the HV badge?</summary>
+<p>The <code>houseview:</code> frontmatter field — your verbatim house-view line. The five <code>hv: true</code> risks: valuation-rerating (trigger №1) · eng-detours (№2) · memory-per-token (№2's live form + the hinge) · capex-rollover (№3) · etf-tail-sleeve (the expression caveat).</p></details>
+
+<details><summary><span class="qn">Q4</span>You add a new series CSV. What single file makes it exist for both sync and the site?</summary>
+<p><code>cockpit/series/_registry.md</code> — one table row (id · label · unit · source · risk · kind). kind <code>flow</code> renders zero-centered baselines; <code>parked</code> shelves it in Data §3.0. Risks that should chart it list the id in their own <code>series:</code>.</p></details>
+
+<details><summary><span class="qn">Q5</span>Why can a ₩4T single-day retail net-buy print be REAL, and what guards the series if Naver changes the field's meaning?</summary>
+<p>Because the field is net <em>shares</em> and Hynix is a ~₩1,765T company — on the 07-02 crash retail absorbed what foreigners/institutions dumped (published print: ₩4,593B; our shares×close: ₩4,386B). Two standing assertions: |net shares| ≤ session volume, and foreigner+institution+individual must net to ≈0 (residual ≤30% of the largest). A breach logs and skips the row — never writes.</p></details>
+
+<details><summary><span class="qn">Q6</span>What is the ONLY file the system will never write, and what's the one non-cockpit file sync may edit?</summary>
+<p><code>house-view.md</code> — never, by anything (name-blocked in every write path, mtime-verified). Sync's single non-cockpit target is <code>wiki/catalysts.md</code> (merge-only date rolls) plus its one-line append to <code>wiki/log.md</code>.</p></details>
+
+<details><summary><span class="qn">Q7</span>You want a fifth desk for HBM4 qualification tracking. Total code changes required?</summary>
+<p>Zero. <code>cockpit/desks/hbm4-qual.md</code> with <code>{type: desk, id, name, series: [], topics: [], pages: [], entities: []}</code> + intro prose. It appears in the switcher, filters headlines by its topics, charts its series, renders its pages. (<code>tells: true</code> would add the ⭐ block.)</p></details>
+
+<details><summary><span class="qn">Q8</span>mu-pe reads 22×. What exactly is that number, and why should you treat it as texture?</summary>
+<p>Last MU close ÷ trailing-4-quarter diluted EPS from EDGAR (YTD-differenced). It's labeled <em>crude TTM</em>: close-date alignment, no forward estimates, loss quarters gap the series. It instruments trigger №1's <em>direction</em> (multiple expanding while EPS flat) — decision-support texture, not a valuation model.</p></details>
+
+<details><summary><span class="qn">Q9</span>Sync says "trendforce-spot: ✗ ... — continuing". What happened to the other updaters and the log?</summary>
+<p>They all ran (per-updater try/catch). If any of them changed something, ONE [sync] line still lands in wiki/log.md and includes <code>failed: trendforce-spot (…)</code>. The failure is also in <code>.sync-state.json</code> as lastError; the spot series just doesn't get today's point.</p></details>
+
+<details><summary><span class="qn">Q10</span>Cutover day: the three commands/changes, and the rollback?</summary>
+<p>Stop v1 → start v2 with <code>PORT=4680</code> → rename <code>memory-cockpit</code> → <code>memory-cockpit-v1</code> and point launch.json's cockpit entry at v2. Rollback = reverse it; the vault needs nothing (v2 never migrated it away from v1 — v1 still reads the same CSVs, minus the new files it ignores). Backup from CP1 sits in <code>~/Trading/vault-backups/</code>.</p></details>
+
+<p style="margin-top:28px" class="dim">— Built by Claude (Fable 5) per 15a. Deviations + judgment calls: <code>memory-cockpit-v2/implementation-notes.md</code>.</p>
+</div></body>
+</html>
