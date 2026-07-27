@@ -119,18 +119,36 @@ decision_support_only: true
 ## Footer
 
 Saved from `/cockpit-research`. Promote to entity claims or risks only via explicit propose/ACCEPT.  
-After save: **COMPILE BOOK** on glass (or `./ont compile TICKER`) so this file appears under **Sources / Provenance**.
+Agent will compile this ticker after save so the note can appear under **Sources / Provenance**.
 ```
 
 4. Keep body substantial (**≥ 500 characters** of real content) so catalog tools that skip tiny files still see it.  
-5. Reply with:
-   - absolute or repo-relative **path**
-   - reminder: **COMPILE BOOK** / `./ont compile {TICKER}` then open `#/{slug}/sources`  
-   - ontology store is **not** updated until compile  
+5. **Compile pack for this ticker (default after save yes)**  
+   From monorepo root (set env sequentially if needed):
 
-### F — Optional compile reminder only
+   ```bash
+   export COCKPIT_REPO="<monorepo root>"
+   export COCKPIT_VAULT="$COCKPIT_REPO/research-wiki"
+   export ONTOLOGY_WIKI="$COCKPIT_VAULT"
+   export ONTOLOGY_STORE="$COCKPIT_REPO/ontology/store/by_ticker"
+   cd "$COCKPIT_REPO/ontology" && ./ont compile TICKER
+   ```
 
-Do **not** run `./ont compile` unless the user asks. Tell them to COMPILE BOOK on glass.
+   Optional: `./ont verify TICKER` and report exit code (do not invent green).  
+   - Compile **fails** → keep the saved file; show error; Sources not updated until compile succeeds.  
+   - Compile **ok** → note is in pack sources; tell user `#/{slug}/sources` (REFRESH glass if already open).  
+
+6. Reply with: **path** · compile ok/fail · Sources link · note is not house SoR (non-primary source).
+
+### F — Compile policy
+
+| User said | Write? | Compile? |
+|-----------|--------|----------|
+| **yes / save** (after report) | Yes | **Yes** (`./ont compile TICKER` only) |
+| **save without compile** (explicit) | Yes | No — remind COMPILE BOOK later |
+| **no** | No | No |
+
+Do **not** compile on research alone (no save). Do **not** compile other tickers.
 
 ---
 
@@ -142,7 +160,7 @@ Do **not** run `./ont compile` unless the user asks. Tell them to COMPILE BOOK o
 
 **After C always:** ask save yes/no.  
 
-**After E:** path + COMPILE BOOK → Sources.
+**After E (yes):** path + compile result + Sources link (REFRESH glass if needed).
 
 ---
 

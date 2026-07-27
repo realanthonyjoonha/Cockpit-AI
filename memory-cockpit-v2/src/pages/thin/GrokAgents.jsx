@@ -7,7 +7,7 @@ import { api, apiPost } from '../../api.js';
 /** Offline fallback — keep aligned with server/openGrok.js GROK_AGENTS */
 const FALLBACK_ALL = [
   { action: 'daily', label: 'Daily brief', hint: 'What moved + house + pack WATCH', needs_desk: true, variants: ['desk', 'house'], default_for: ['desk'] },
-  { action: 'research', label: 'Research', hint: 'Load house+risks; your question; optional vault save', needs_desk: true, variants: ['desk'] },
+  { action: 'research', label: 'Research', hint: 'Load house+risks; your question; optional save+compile', needs_desk: true, variants: ['desk'] },
   { action: 'daily-save', label: 'Daily brief + save', hint: 'Same + vault brief file', needs_desk: true, variants: ['desk'] },
   { action: 'risk-check', label: 'Risk check', hint: 'DD a risk vs tripwires', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'], default_for: ['risk'] },
   { action: 'risk-add', label: 'Add risk', hint: 'Research + propose NEW risk', needs_desk: true, variants: ['desk', 'register'], default_for: ['register'] },

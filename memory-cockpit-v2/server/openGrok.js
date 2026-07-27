@@ -39,7 +39,7 @@ export const GROK_AGENTS = [
   {
     action: 'research',
     label: 'Research',
-    hint: 'Load house+risks; ask what to research; optional vault save',
+    hint: 'Load house+risks; your question; optional save+compile',
     needs_desk: true,
     variants: ['desk'],
   },
