@@ -113,7 +113,9 @@ Wrong spelling shows **Desk not found** (not a silent blank START).
 - Not auto buy/sell advice  
 - Not “full desk” until **you** research + compile + ACCEPT  
 
-Deeper docs: `COLD-START.md` · `SETUP-GROK-COCKPIT.md` · `AGENTS.md`
+Deeper docs: `COLD-START.md` · `SETUP-GROK-COCKPIT.md` · `AGENTS.md`  
+
+**Add your own agents (like Research):** `docs/AGENT-AUTHORING.md` · paste prompt in `FRIEND-AGENT-PROMPT.md`
 
 ---
 
