@@ -11,7 +11,7 @@ Show the **cockpit command menu** and wait for a choice (or desk + action).
 | `/cockpit-desks` | List thin desks via MCP |
 | `/cockpit-new-desk [TICKER] [--light]` | Underwrite **new** desk — deep parallel research default (START CTA) |
 | `/cockpit-daily [desk] [--save]` | Daily brief: what moved + house + pack; optional vault save |
-| `/cockpit-research [desk] [focus]` | General research for a live desk (Overview AGENTS → Research) |
+| `/cockpit-research [desk] [question?]` | Load house+risks; research **only** what user asks (Overview AGENTS → Research) |
 | `/cockpit-risk-check [desk] [risk]` | Risk DD: direction vs tripwires (no status write) |
 | `/cockpit-risk-add [desk] [idea]` | Research + propose NEW risk (glass ACCEPT) |
 | `/cockpit-risk-tripwires [desk] [risk]` | Research tripwires; user cull; propose set_tripwires |
