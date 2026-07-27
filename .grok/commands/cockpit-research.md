@@ -1,73 +1,158 @@
 ---
-description: Load house + risks context for a desk; research only what the user asks
+description: Load house + risks; research only what user asks; optional vault save after they like it
 argument-hint: "[desk] [optional research question]"
 ---
 
-Parse `$ARGUMENTS`: **desk** (slug/ticker) + optional **research question / focus** (free text after desk).  
+Parse `$ARGUMENTS`: **desk** (slug/ticker) + optional **research question** (free text after desk).  
 If desk missing, `list_desks` then ask once for desk.
 
-**Job:** Ground Grok in **this desk’s book** (house + risk register + pack), then research **only what the user wants**.  
-Do **not** freestyle a multi-axis investigation without their input.
+**Job:** Ground in **this desk’s book**, research **only what the user asks**, then **ask whether to save** the report into the vault (never auto-save).
 
 ## Hard rules
 
 1. Decision-support only — no buy/sell/hold, PT, or sizing.  
-2. **Do not invent** pack claims or WATCH titles — copy from pack.  
-3. **No research search until the user has stated what to research** (in args or a follow-up message).  
+2. Do **not** invent pack claims or WATCH titles — copy from pack.  
+3. **No web research** until the user has stated what to research.  
 4. Soft press → **[soft]**. Missing → **GAP**.  
-5. **No vault writes** unless user explicitly asks to propose (then propose tools only).  
-6. Default: chat only.
+5. **Never save** unless the user clearly says yes after reading the report.  
+6. Save path only under the desk research factory (below). **Never** write house, risks SoR, or `ontology/store/`.  
+7. Saved notes are **research notes** (secondary), not house SoR and not auto Key facts.
 
 ## Efficiency
 
-- Book: `get_pack_snapshot` + `get_house_view` (≤2) after desk resolved.  
-- Search only **after** a clear user question; then ≤4–6 search/browse.  
-- Cap ≤8 tools once research is authorized.
+- Book: `get_pack_snapshot` + `get_house_view` (≤2).  
+- Search only after a clear user question; ≤4–6 search/browse.  
+- Cap ≤8 tools for research (+ 1 write if save).
+
+---
 
 ## Steps
 
-### A — Load book context (always, first)
+### A — Load book context (always first)
 
 1. Resolve desk; confirm via MCP `list_desks` if needed.  
-2. `get_pack_snapshot(desk)` — house_prior, WATCH/FIRED, claims, gaps, risk names.  
+2. `get_pack_snapshot(desk)` — house_prior, WATCH/FIRED, claims, gaps.  
 3. `get_house_view(desk)` — stance, exposed, flip triggers.  
-4. Briefly confirm in chat that context is loaded (one short block: stance line, WATCH list, house status). **Do not** start web research yet unless step B is already satisfied.
+4. Short “context loaded” blurb. **Do not** search yet unless B is already satisfied.
 
-### B — User prompt required
+### B — User research question required
 
-**If args already include a research question** (anything after the desk token that is not empty fluff): proceed to C.
-
-**If no research question yet:**  
-- **Stop.** Ask once, clearly, e.g.  
+- If args already include a real question after desk → go to C.  
+- Else **stop** and ask:  
   `Context loaded for {DESK}. What do you want researched?`  
-- Wait for their answer. **Do not** invent default axes (growth/competition/etc.) or run search while waiting.
+- **Do not** invent default research axes or run search while waiting.
 
 ### C — Research (only after B)
 
-1. Investigate **their** question only (primary: filings/IR; secondary press **[soft]**).  
+1. Investigate **their** question only (primary filings/IR first; press **[soft]**).  
 2. Map findings → existing Rn / house lever / flip trigger / **not in book**.  
-3. GAP where evidence missing.  
-4. Suggest optional next steps (risk-check, propose) — do not auto-run.
+3. Deliver the full report in chat (header, findings, map, GAPs, optional next).
 
-## Output
+### D — Offer save (only after C, when they have read the report)
 
-**After A (no question yet):** short “context ready” + ask for research question.  
+After the report, **always ask once**:
 
-**After C:**  
-1. Restate their question  
-2. Book anchors used (stance / relevant WATCH)  
-3. Findings (primary first)  
-4. Map to book  
-5. GAPs  
-6. Suggested next (optional)
+> Want to **save** this research into the vault for **{DESK}** so it can show under Sources after COMPILE BOOK? (yes/no)
+
+- **No / skip** → stop. Chat-only.  
+- **Yes** → go to E.  
+- Do **not** save because they said “thanks” or “good” alone — need a clear **yes / save**.
+
+### E — Save to vault (only on clear yes)
+
+1. Resolve `slug` from desk (e.g. tsm).  
+2. Ensure directory exists:  
+   `research-wiki/raw/{slug}-research/`  
+3. Write **one new file** (never overwrite house/08-risks):
+
+**Path (binding):**
+
+```text
+research-wiki/raw/{slug}-research/agent-research-YYYY-MM-DD-HHMM.md
+```
+
+Use UTC date/time. If file exists, append `-2`, `-3`, …  
+
+**Must be at the top level of `raw/{slug}-research/`** (not a nested subfolder) so pack `source_globs` like `raw/{slug}-research/*.md` pick it up.
+
+**File template:**
+
+```markdown
+---
+type: agent-research
+desk: {slug}
+ticker: {TICKER}
+as_of: YYYY-MM-DD
+question: "{user question, one line}"
+status: note
+decision_support_only: true
+---
+
+# Agent research — {TICKER} · {as_of}
+
+> **Note** — agent research session. Not house SoR. Not auto-CONFIRMED. Decision-support only.
+
+## Question
+
+{user question}
+
+## Book anchors (at time of research)
+
+- House status: …
+- Stance (short): …
+- WATCH: …
+
+## Findings
+
+{report body — primary first; mark [soft] where needed}
+
+## Map to book
+
+| Finding | Rn / house / not in book |
+|---------|---------------------------|
+| … | … |
+
+## Gaps
+
+- …
+
+## Footer
+
+Saved from `/cockpit-research`. Promote to entity claims or risks only via explicit propose/ACCEPT.  
+After save: **COMPILE BOOK** on glass (or `./ont compile TICKER`) so this file appears under **Sources / Provenance**.
+```
+
+4. Keep body substantial (**≥ 500 characters** of real content) so catalog tools that skip tiny files still see it.  
+5. Reply with:
+   - absolute or repo-relative **path**
+   - reminder: **COMPILE BOOK** / `./ont compile {TICKER}` then open `#/{slug}/sources`  
+   - ontology store is **not** updated until compile  
+
+### F — Optional compile reminder only
+
+Do **not** run `./ont compile` unless the user asks. Tell them to COMPILE BOOK on glass.
+
+---
+
+## Output shapes
+
+**After A (no question):** context ready + ask what to research.  
+
+**After C:** full research report.  
+
+**After C always:** ask save yes/no.  
+
+**After E:** path + COMPILE BOOK → Sources.
+
+---
 
 ## Vs other agents
 
-| Agent | Use when |
-|-------|----------|
-| `/cockpit-daily` | Unprompted daybook “what moved” |
-| `/cockpit-steelman` | House vs WATCH alignment only |
-| `/cockpit-new-desk` | New company underwrite |
-| `/cockpit-research` | **User-directed** research with book context loaded |
+| Agent | When |
+|-------|------|
+| `/cockpit-daily` | Unprompted daybook |
+| `/cockpit-steelman` | House vs WATCH only |
+| `/cockpit-new-desk` | New company |
+| `/cockpit-research` | User-directed research + optional vault save |
 
 Footer: decision-support only; not book SoR until glass ACCEPT on any propose.
