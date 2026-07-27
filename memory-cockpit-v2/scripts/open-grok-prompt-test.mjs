@@ -82,5 +82,36 @@ try {
   fail('daily regression', e);
 }
 
+try {
+  const p = buildInitialPrompt({ action: 'research', desk: 'tsm' });
+  if (p !== '/cockpit-research tsm') throw new Error(p);
+  ok('research + desk → /cockpit-research tsm');
+} catch (e) {
+  fail('research prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'research')) {
+    throw new Error('research missing from desk variant');
+  }
+  if (desk.default_action !== 'daily') {
+    throw new Error(`desk default should stay daily, got ${desk.default_action}`);
+  }
+  ok('desk variant includes research; default still daily');
+} catch (e) {
+  fail('desk research catalog', e);
+}
+
+try {
+  const start = listGrokAgents({ variant: 'start' });
+  if (start.agents.some((a) => a.action === 'research')) {
+    throw new Error('research leaked into start variant');
+  }
+  ok('start variant excludes research');
+} catch (e) {
+  fail('start isolation research', e);
+}
+
 console.log(failed ? `\nFAIL ${failed} check(s)\n` : '\nPASS all open-grok-prompt checks\n');
 process.exit(failed ? 1 : 0);

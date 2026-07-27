@@ -37,6 +37,13 @@ export const GROK_AGENTS = [
     default_for: ['desk'],
   },
   {
+    action: 'research',
+    label: 'Research',
+    hint: 'General research for this ticker vs pack/house',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
     action: 'daily-save',
     label: 'Daily brief + save',
     hint: 'Same + write cockpit/briefs/daily/{desk}/YYYY-MM-DD.md',
@@ -225,6 +232,8 @@ export function buildInitialPrompt(opts = {}) {
       return tickerArg ? `/cockpit-new-desk ${tickerArg}` : '/cockpit-new-desk';
     case 'daily':
       return withDesk('/cockpit-daily');
+    case 'research':
+      return withDesk('/cockpit-research');
     case 'daily-save':
       return desk ? `/cockpit-daily ${desk} --save` : '/cockpit-daily --save';
     case 'risk-check':

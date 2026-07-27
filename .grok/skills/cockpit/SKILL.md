@@ -21,6 +21,7 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-desks` | List thin desks |
 | `/cockpit-new-desk [TICKER]` | Underwrite **new** desk — **deep parallel research default** (START → Build next company; `--light` opt-out) |
 | `/cockpit-daily` | Daily brief: **what moved** + house + pack; optional `--save` |
+| `/cockpit-research [desk]` | General research for a **live** desk (Overview AGENTS → Research) |
 | `/cockpit-risk-check` | Risk DD: direction vs tripwires (no status write) |
 | `/cockpit-risk-add` | Research + propose NEW risk (glass ACCEPT) |
 | `/cockpit-risk-tripwires` | Tripwire research + user cull → propose |
