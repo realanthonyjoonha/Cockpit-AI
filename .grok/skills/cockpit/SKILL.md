@@ -22,6 +22,7 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-new-desk [TICKER]` | Underwrite **new** desk — **deep parallel research default** (START → Build next company; `--light` opt-out) |
 | `/cockpit-daily` | Daily brief: **what moved** + house + pack; optional `--save` |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research after user question; **ask to save** → write note + **`./ont compile`** so Sources updates |
+| `/cockpit-coverage [desk] [scope?]` | Coverage / initiating-style note from pack+house; optional save+compile → Sources |
 | `/cockpit-risk-check` | Risk DD: direction vs tripwires (no status write) |
 | `/cockpit-risk-add` | Research + propose NEW risk (glass ACCEPT) |
 | `/cockpit-risk-tripwires` | Tripwire research + user cull → propose |

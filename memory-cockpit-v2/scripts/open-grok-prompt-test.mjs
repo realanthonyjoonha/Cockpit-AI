@@ -113,5 +113,36 @@ try {
   fail('start isolation research', e);
 }
 
+try {
+  const p = buildInitialPrompt({ action: 'coverage', desk: 'tsm' });
+  if (p !== '/cockpit-coverage tsm') throw new Error(p);
+  ok('coverage + desk → /cockpit-coverage tsm');
+} catch (e) {
+  fail('coverage prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'coverage')) {
+    throw new Error('coverage missing from desk variant');
+  }
+  if (desk.default_action !== 'daily') {
+    throw new Error(`desk default should stay daily, got ${desk.default_action}`);
+  }
+  ok('desk variant includes coverage; default still daily');
+} catch (e) {
+  fail('desk coverage catalog', e);
+}
+
+try {
+  const start = listGrokAgents({ variant: 'start' });
+  if (start.agents.some((a) => a.action === 'coverage')) {
+    throw new Error('coverage leaked into start variant');
+  }
+  ok('start variant excludes coverage');
+} catch (e) {
+  fail('start isolation coverage', e);
+}
+
 console.log(failed ? `\nFAIL ${failed} check(s)\n` : '\nPASS all open-grok-prompt checks\n');
 process.exit(failed ? 1 : 0);

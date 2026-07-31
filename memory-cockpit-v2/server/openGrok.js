@@ -44,6 +44,13 @@ export const GROK_AGENTS = [
     variants: ['desk'],
   },
   {
+    action: 'coverage',
+    label: 'Coverage',
+    hint: 'Initiating/update coverage note from pack+house; optional save+compile',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
     action: 'daily-save',
     label: 'Daily brief + save',
     hint: 'Same + write cockpit/briefs/daily/{desk}/YYYY-MM-DD.md',
@@ -234,6 +241,8 @@ export function buildInitialPrompt(opts = {}) {
       return withDesk('/cockpit-daily');
     case 'research':
       return withDesk('/cockpit-research');
+    case 'coverage':
+      return withDesk('/cockpit-coverage');
     case 'daily-save':
       return desk ? `/cockpit-daily ${desk} --save` : '/cockpit-daily --save';
     case 'risk-check':

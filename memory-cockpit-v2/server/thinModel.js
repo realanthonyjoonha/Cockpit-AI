@@ -830,8 +830,19 @@ export function createThinModel(profile) {
       const id = String(s.id || '').toLowerCase();
       const title = String(s.title || '').toLowerCase();
       const pathStr = String(s.path || '').toLowerCase();
-      // Agent research session notes are secondary (chat → optional vault save)
-      if (id.startsWith('agent-research') || pathStr.includes('agent-research-')) return false;
+      // Agent/session notes are secondary (chat → optional vault save)
+      if (
+        id.startsWith('agent-research')
+        || id.startsWith('coverage-')
+        || id.startsWith('comps-')
+        || id.startsWith('model-bridge-')
+        || id.startsWith('model-audit-')
+        || pathStr.includes('agent-research-')
+        || pathStr.includes('/coverage-')
+        || pathStr.includes('/comps-')
+        || pathStr.includes('/model-bridge-')
+        || pathStr.includes('/model-audit-')
+      ) return false;
       const blob = `${about.join(' ')} ${id} ${title} ${pathStr}`;
       return sourcePrimaryRe.test(blob);
     };

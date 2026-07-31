@@ -292,13 +292,15 @@ Paste the block in `FRIEND-AGENT-PROMPT.md` (same repo root) into a **fresh** Gr
 
 ---
 
-## 11. Reference: Research agent as the template
+## 11. Reference: Research + Coverage as templates
 
 Read in full:
 
 - `.grok/commands/cockpit-research.md`  
-- Catalog entry `research` in `openGrok.js`  
-- Fallback line in `GrokAgents.jsx`  
+- `.grok/commands/cockpit-coverage.md`  
+- Catalog entries `research` / `coverage` in `openGrok.js`  
+- Fallback lines in `GrokAgents.jsx`  
+- Roadmap: `docs/FINANCE-AGENT-PORTS.md` (Claude pattern ports)
 
 Flow to copy:
 
