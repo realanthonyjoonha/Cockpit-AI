@@ -9,12 +9,17 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ensureProjectCockpitMcp } from './cockpitMcpProject.js';
+import { writeStreetAgentSeed } from './streetAgentSeed.js';
 
 const SERVER_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_REPO = path.resolve(SERVER_ROOT, '..');
 
 /**
  * Glass agent menu catalog. Keep in sync with .grok/commands/cockpit*.md
+ * and src/pages/thin/GrokAgents.jsx FALLBACK_ALL.
+ *
+ * Desk list order = UX bands: Operate → Notes → Models → Book ops → Meta
+ * (see plans/2026-08-01-agents-menu-clarity.md).
  *
  * variants: where the action appears ('desk' | 'risk' | 'register' | 'house' | 'start')
  * default_for: surfaces where this is the default selection
@@ -28,39 +33,85 @@ export const GROK_AGENTS = [
     variants: ['start'],
     default_for: ['start'],
   },
+  // --- Band A: Operate ---
   {
     action: 'daily',
     label: 'Daily brief',
-    hint: 'What moved + house + pack WATCH',
+    hint: 'Daybook · what moved + calendar · short book-touch',
     needs_desk: true,
     variants: ['desk', 'house'],
     default_for: ['desk'],
   },
   {
+    action: 'daily-save',
+    label: 'Daily brief + save',
+    hint: 'Daybook + vault archive (not pack input)',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  // --- Band B: Notes ---
+  {
     action: 'research',
     label: 'Research',
-    hint: 'Load house+risks; your question; optional save+compile',
+    hint: 'One question · load house+risks · optional save',
     needs_desk: true,
     variants: ['desk'],
   },
   {
     action: 'coverage',
-    label: 'Coverage',
-    hint: 'Initiating/update coverage note from pack+house; optional save+compile',
+    label: 'Coverage note',
+    hint: 'Full init/update skeleton · optional save',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  // --- Band C: Models / finance templates ---
+  {
+    action: 'comps',
+    label: 'Comps',
+    hint: 'Peers you supply + pack subject · optional save',
     needs_desk: true,
     variants: ['desk'],
   },
   {
-    action: 'daily-save',
-    label: 'Daily brief + save',
-    hint: 'Same + write cockpit/briefs/daily/{desk}/YYYY-MM-DD.md',
+    action: 'ebitda-bridge',
+    label: 'EBITDA bridge',
+    hint: 'P&L → EBITDA stack · your lines · optional save',
     needs_desk: true,
     variants: ['desk'],
   },
+  {
+    action: 'model-bridge',
+    label: 'Model bridge',
+    hint: 'FCF / assumptions framework · not a PT · optional save',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'ebitda-quality',
+    label: 'EBITDA quality',
+    hint: 'Adj. vs reported audit · needs paste · optional save',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'model-audit',
+    label: 'Model audit',
+    hint: 'Check pasted/saved model vs pack · optional save',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'street',
+    label: 'Street agent',
+    hint: 'Street room · firm models + house/risk context · refresh or rebuild',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  // --- Band D: Book ops ---
   {
     action: 'risk-check',
     label: 'Risk check',
-    hint: 'DD a risk: direction vs tripwires (no status write)',
+    hint: 'DD one risk vs tripwires · no status write',
     needs_desk: true,
     needs_risk: true,
     variants: ['desk', 'risk', 'register'],
@@ -69,7 +120,7 @@ export const GROK_AGENTS = [
   {
     action: 'risk-add',
     label: 'Add risk',
-    hint: 'Research + propose NEW risk (glass ACCEPT)',
+    hint: 'Research + propose NEW risk · glass ACCEPT',
     needs_desk: true,
     variants: ['desk', 'register'],
     default_for: ['register'],
@@ -77,7 +128,7 @@ export const GROK_AGENTS = [
   {
     action: 'risk-tripwires',
     label: 'Risk tripwires',
-    hint: 'Research tripwires; user cull; propose set_tripwires',
+    hint: 'Research tripwires · propose set · glass ACCEPT',
     needs_desk: true,
     needs_risk: true,
     variants: ['desk', 'risk', 'register'],
@@ -111,6 +162,7 @@ export const GROK_AGENTS = [
     needs_desk: true,
     variants: ['desk', 'house'],
   },
+  // --- Band E: Meta ---
   {
     action: 'desks',
     label: 'List desks',
@@ -121,13 +173,18 @@ export const GROK_AGENTS = [
   {
     action: 'menu',
     label: 'Cockpit menu',
-    hint: '/cockpit — full slash menu',
+    hint: 'Full /cockpit slash menu',
     needs_desk: false,
     variants: ['desk', 'risk', 'register', 'house'],
   },
 ];
 
-const ALLOWED_ACTIONS = new Set(GROK_AGENTS.map((a) => a.action));
+// Catalog actions + legacy Street aliases (prompt still resolves; not shown in menus).
+const ALLOWED_ACTIONS = new Set([
+  ...GROK_AGENTS.map((a) => a.action),
+  'street-build',
+  'street-refresh',
+]);
 const ALLOWED_VARIANTS = new Set(['desk', 'risk', 'register', 'house', 'start']);
 
 /**
@@ -243,6 +300,36 @@ export function buildInitialPrompt(opts = {}) {
       return withDesk('/cockpit-research');
     case 'coverage':
       return withDesk('/cockpit-coverage');
+    case 'comps':
+      return withDesk('/cockpit-comps');
+    case 'model-bridge':
+      return withDesk('/cockpit-model-bridge');
+    case 'model-audit':
+      return withDesk('/cockpit-model-audit');
+    case 'ebitda-bridge':
+      return withDesk('/cockpit-ebitda-bridge');
+    case 'ebitda-quality':
+      return withDesk('/cockpit-ebitda-quality');
+    case 'street':
+    case 'street-build': // legacy alias → unified Street agent
+    case 'street-refresh': // legacy alias → unified Street agent
+    {
+      // Embed mode in slash args so agent gets PIPELINE even if seed file is missed.
+      // Glass REFRESH STREET sends mode=pipeline → /cockpit-street tsm pipeline
+      const rawMode = String(opts.mode || '').toLowerCase().trim();
+      let streetMode = 'chat';
+      if (rawMode === 'pipeline' || rawMode === 'refresh' || rawMode === 'rebuild') {
+        streetMode = 'pipeline';
+      } else if (rawMode === 'chat') {
+        streetMode = 'chat';
+      } else if (action === 'street-build' || action === 'street-refresh') {
+        streetMode = 'pipeline';
+      }
+      const parts = ['/cockpit-street'];
+      if (desk) parts.push(desk);
+      parts.push(streetMode);
+      return parts.join(' ');
+    }
     case 'daily-save':
       return desk ? `/cockpit-daily ${desk} --save` : '/cockpit-daily --save';
     case 'risk-check':
@@ -292,6 +379,21 @@ export function openGrokBuild(opts = {}) {
   const action = String(opts.action || 'daily').toLowerCase();
   const ticker = sanitizeTickerArg(opts.ticker);
   const initial = buildInitialPrompt(opts);
+
+  // Street room: write page + house + risk seed for the agent (read-only context pack).
+  // mode: pipeline (REFRESH STREET) | chat (OPEN GROK / agents menu default).
+  let street_seed = null;
+  if (action === 'street' || action === 'street-build' || action === 'street-refresh') {
+    try {
+      const seedMode = action === 'street-refresh' || action === 'street-build'
+        ? (opts.mode || 'pipeline')
+        : (opts.mode || 'chat');
+      street_seed = writeStreetAgentSeed(opts.desk || ticker || '', { mode: seedMode });
+    } catch (e) {
+      street_seed = { ok: false, error: e.message || String(e) };
+    }
+  }
+
   const cmd = `cd ${shellQuote(repo)} && ${shellQuote(grok)} ${shellQuote(initial)}`;
 
   const script = `tell application "Terminal"
@@ -315,9 +417,22 @@ end tell`;
       risk_id: opts.risk_id || null,
       risk_name: opts.risk_name || null,
       initial_prompt: initial,
+      street_seed: street_seed && street_seed.ok
+        ? {
+          path: street_seed.path,
+          bytes: street_seed.bytes,
+          ticker: street_seed.ticker,
+          mode: street_seed.mode || null,
+          firm_count: street_seed.firm_count,
+          street_available: street_seed.street_available,
+        }
+        : null,
+      street_seed_error: street_seed && !street_seed.ok ? (street_seed.error || 'seed failed') : null,
       mcp_project: mcpPin.ok ? mcpPin.path : null,
       mcp_project_error: mcpPin.ok ? null : mcpPin.error,
-      note: 'Opened Terminal → Grok Build (cwd=this monorepo; project MCP pin for cockpit-research).',
+      note: street_seed?.ok
+        ? `Opened Terminal → Grok Build with Street seed (${street_seed.mode || 'chat'} · page + house + risks). Agent: /cockpit-street.`
+        : 'Opened Terminal → Grok Build (cwd=this monorepo; project MCP pin for cockpit-research).',
       decision_support_only: true,
     };
   } catch (e) {

@@ -11,6 +11,11 @@ Decision-support only: no buy/sell/hold, price targets, or position sizing.
 
 → **[`FRIEND-START.md`](./FRIEND-START.md)** (Grok → clone → bootstrap → glass → MCP → Build next company)
 
+## Already using Cockpit? Get new features (Street, daybook)
+
+→ **[`FRIEND-UPGRADE.md`](./FRIEND-UPGRADE.md)** · `./scripts/friend-upgrade.sh`  
+Keeps **your** desks and vault; updates glass + agents only.
+
 ---
 
 ## Quick run (already cloned)

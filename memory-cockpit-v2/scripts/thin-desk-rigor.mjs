@@ -176,13 +176,29 @@ async function layerSource() {
     return '';
   });
 
-  await check('desk wrappers are thin re-exports only', async () => {
+  await check('desk wrappers optional; if present thin re-exports only', async () => {
     const wrap = ['Overview', 'Risks', 'Risk', 'House', 'Sources', 'Ask', 'Empty', 'Update', 'BookStrip'];
+    const app = read('src/App.jsx') || '';
+    if (!app.includes('DeskRouter')) return 'App.jsx must route thin desks via DeskRouter';
     for (const d of DESKS) {
+      const present = [];
+      const missing = [];
       for (const name of wrap) {
         const src = read(`src/pages/${d.slug}/${name}.jsx`);
-        if (!src) return `missing ${d.slug}/${name}.jsx`;
-        if (!src.includes('../thin/')) return `${d.slug}/${name} not re-exporting thin`;
+        if (!src) {
+          missing.push(name);
+          continue;
+        }
+        present.push({ name, src });
+      }
+      if (present.length === 0) continue; // factory path — DeskRouter + thin/*
+      if (missing.length) {
+        return `${d.slug}: partial wrappers (missing ${missing.join(',')}) — full set or none`;
+      }
+      for (const { name, src } of present) {
+        if (!src.includes('../thin/') && !src.includes('pages/thin/')) {
+          return `${d.slug}/${name} not re-exporting thin`;
+        }
         const lines = src.split('\n').filter((l) => l.trim() && !l.trim().startsWith('//'));
         if (lines.length > 20) return `${d.slug}/${name} too fat (${lines.length} non-comment lines) — layout leak?`;
         if (src.includes('className="sect"') && name !== 'BookStrip') {

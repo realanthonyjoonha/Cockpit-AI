@@ -1,6 +1,6 @@
 # Finance agent ports (Claude patterns → Cockpit)
 
-**As-of:** 2026-07-31  
+**As-of:** 2026-08-01  
 Decision-support only. Port **patterns**, not proprietary Claude skill dumps. No buy/sell/PT/sizing as product SoR.
 
 ## Claude ecosystem (research notes)
@@ -17,12 +17,38 @@ Decision-support only. Port **patterns**, not proprietary Claude skill dumps. No
 | Agent | Status | Slash | Overview menu |
 |-------|--------|-------|----------------|
 | Research | **Shipped** | `/cockpit-research` | Research |
-| **Coverage** | **Shipped** | `/cockpit-coverage` | Coverage |
-| Comps | Planned | `/cockpit-comps` | — |
-| Model bridge | Planned | `/cockpit-model-bridge` | — |
-| Model audit | Planned | `/cockpit-model-audit` | — |
+| Coverage | **Shipped** | `/cockpit-coverage` | Coverage note |
+| Comps | **Shipped** | `/cockpit-comps` | Comps |
+| Model bridge | **Shipped** | `/cockpit-model-bridge` | Model bridge |
+| Model audit | **Shipped** | `/cockpit-model-audit` | Model audit |
 
-Shared ritual: load pack+house → require user input → report → ask save → yes → `raw/{slug}-research/<kind>-*.md` → `./ont compile` → Sources (non-primary).
+## EBITDA agents (Phase 1.5)
+
+| Agent | Status | Slash | Overview menu |
+|-------|--------|-------|----------------|
+| EBITDA bridge | **Shipped** | `/cockpit-ebitda-bridge` | EBITDA bridge |
+| EBITDA quality | **Shipped** | `/cockpit-ebitda-quality` | EBITDA quality |
+
+Shared ritual: load pack+house → require user input → report → ask save → yes → `raw/{slug}-research/<kind>-*.md` → `./ont compile` → Sources (non-primary).  
+EBITDA kinds: `ebitda-bridge-*.md`, `ebitda-quality-*.md` (non-primary denylist).
+
+## When to open which (Overview AGENTS)
+
+Desk dropdown order = **Operate → Notes → Models → Book ops → Meta**. Default stays **Daily brief**. All agents remain one select deep (no submenu / no finance page).
+
+| Situation | Open |
+|-----------|------|
+| What moved / what’s on WATCH today? | **Daily brief** |
+| One focused question | **Research** |
+| Full init/update memo skeleton | **Coverage note** |
+| Peer table (you have peers/metrics) | **Comps** |
+| P&L path into EBITDA | **EBITDA bridge** |
+| Simple FCF / assumptions framework | **Model bridge** |
+| Is adj. EBITDA honest? (need paste) | **EBITDA quality** |
+| Check a whole model paste | **Model audit** |
+| Change house / risks | Book ops (propose, risk-add, …) — not finance notes |
+
+Menu clarity plan: `memory-cockpit-v2/plans/2026-08-01-agents-menu-clarity.md`.
 
 ## Binding product law
 

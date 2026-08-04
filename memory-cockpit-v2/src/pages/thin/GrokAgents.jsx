@@ -4,21 +4,27 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api, apiPost } from '../../api.js';
 
-/** Offline fallback — keep aligned with server/openGrok.js GROK_AGENTS */
+/** Offline fallback — keep aligned with server/openGrok.js GROK_AGENTS (order = UX bands). */
 const FALLBACK_ALL = [
-  { action: 'daily', label: 'Daily brief', hint: 'What moved + house + pack WATCH', needs_desk: true, variants: ['desk', 'house'], default_for: ['desk'] },
-  { action: 'research', label: 'Research', hint: 'Load house+risks; your question; optional save+compile', needs_desk: true, variants: ['desk'] },
-  { action: 'coverage', label: 'Coverage', hint: 'Initiating/update coverage note; optional save+compile', needs_desk: true, variants: ['desk'] },
-  { action: 'daily-save', label: 'Daily brief + save', hint: 'Same + vault brief file', needs_desk: true, variants: ['desk'] },
-  { action: 'risk-check', label: 'Risk check', hint: 'DD a risk vs tripwires', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'], default_for: ['risk'] },
-  { action: 'risk-add', label: 'Add risk', hint: 'Research + propose NEW risk', needs_desk: true, variants: ['desk', 'register'], default_for: ['register'] },
-  { action: 'risk-tripwires', label: 'Risk tripwires', hint: 'Fill monitors with user cull', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'] },
+  { action: 'daily', label: 'Daily brief', hint: 'Daybook · what moved + calendar · short book-touch', needs_desk: true, variants: ['desk', 'house'], default_for: ['desk'] },
+  { action: 'daily-save', label: 'Daily brief + save', hint: 'Daybook + vault archive (not pack input)', needs_desk: true, variants: ['desk'] },
+  { action: 'research', label: 'Research', hint: 'One question · load house+risks · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'coverage', label: 'Coverage note', hint: 'Full init/update skeleton · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'comps', label: 'Comps', hint: 'Peers you supply + pack subject · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'ebitda-bridge', label: 'EBITDA bridge', hint: 'P&L → EBITDA stack · your lines · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'model-bridge', label: 'Model bridge', hint: 'FCF / assumptions framework · not a PT · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'ebitda-quality', label: 'EBITDA quality', hint: 'Adj. vs reported audit · needs paste · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'model-audit', label: 'Model audit', hint: 'Check pasted/saved model vs pack · optional save', needs_desk: true, variants: ['desk'] },
+  { action: 'street', label: 'Street agent', hint: 'Street room · firm models + house/risk context · refresh or rebuild', needs_desk: true, variants: ['desk'] },
+  { action: 'risk-check', label: 'Risk check', hint: 'DD one risk vs tripwires · no status write', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'], default_for: ['risk'] },
+  { action: 'risk-add', label: 'Add risk', hint: 'Research + propose NEW risk · glass ACCEPT', needs_desk: true, variants: ['desk', 'register'], default_for: ['register'] },
+  { action: 'risk-tripwires', label: 'Risk tripwires', hint: 'Research tripwires · propose set · glass ACCEPT', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'] },
   { action: 'steelman', label: 'Steelman', hint: 'House vs pack WATCH', needs_desk: true, variants: ['desk', 'house'] },
-  { action: 'match', label: 'Match WATCH', hint: 'House labels vs pack', needs_desk: true, variants: ['desk', 'house'] },
+  { action: 'match', label: 'Match WATCH', hint: 'House labels vs pack WATCH', needs_desk: true, variants: ['desk', 'house'] },
   { action: 'propose', label: 'Propose house', hint: 'Draft house edit → glass ACCEPT', needs_desk: true, variants: ['desk', 'house'], default_for: ['house'] },
   { action: 'pending', label: 'Pending proposals', hint: 'List pending house proposals', needs_desk: true, variants: ['desk', 'house'] },
-  { action: 'desks', label: 'List desks', hint: 'Registry', needs_desk: false, variants: ['desk'] },
-  { action: 'menu', label: 'Cockpit menu', hint: '/cockpit', needs_desk: false, variants: ['desk', 'risk', 'register', 'house'] },
+  { action: 'desks', label: 'List desks', hint: 'Thin desk registry', needs_desk: false, variants: ['desk'] },
+  { action: 'menu', label: 'Cockpit menu', hint: 'Full /cockpit slash menu', needs_desk: false, variants: ['desk', 'risk', 'register', 'house'] },
 ];
 
 const ALLOWED = new Set(['desk', 'risk', 'register', 'house']);

@@ -63,26 +63,31 @@ function readAllowlistedMarkdownFile(filePath) {
 const { loadPack } = await import(path.join(ROOT, 'server', 'pack.js'));
 const { readHouseMarkdown } = await import(path.join(ROOT, 'server', 'thinHouseSave.js'));
 const { buildHouseAssistContext } = await import(path.join(ROOT, 'server', 'assistContext.js'));
-const { loadThinDeskProfiles } = await import(path.join(ROOT, 'server', 'thinDeskProfiles.js'));
+const { getLiveThinDeskProfiles } = await import(path.join(ROOT, 'server', 'thinDeskProfiles.js'));
 
-const { registry: REG, bySlug: DESK_BUNDLES } = loadThinDeskProfiles();
-const PROFILES = Object.fromEntries(
-  Object.entries(DESK_BUNDLES).map(([slug, b]) => [slug, b.model]),
-);
+/**
+ * Live registry (mtime cache) — same source of truth as glass thin-desks.
+ * Do NOT freeze desks at process start; new rows in thin-desks.json appear on next tool call.
+ */
+function liveRegistry() {
+  return getLiveThinDeskProfiles();
+}
 
 function deskCatalogHint() {
+  const { registry: REG, registryPath, mtimeMs } = liveRegistry();
   const known = (REG.desks || []).map((d) => d.slug);
-  const regPath = path.join(ROOT, 'config', 'thin-desks.json');
   return (
     `known: ${known.length ? known.join(', ') : '(none)'}` +
-    ` · registry: ${regPath}` +
+    ` · registry: ${registryPath}` +
+    ` · registry_mtime_ms: ${mtimeMs}` +
     ` · monorepo: ${REPO_ROOT}` +
     ` · vault: ${process.env.COCKPIT_VAULT}` +
-    ` · (MCP serves ONE monorepo install — re-run scripts/install-grok-mcp.sh from the folder that has your desk)`
+    ` · (MCP reloads thin-desks.json on change; monorepo must be THIS install)`
   );
 }
 
 function resolveDesk(slugOrTicker) {
+  const { registry: REG, bySlug: DESK_BUNDLES } = liveRegistry();
   const q = String(slugOrTicker || '').trim().toLowerCase();
   if (!q) throw new Error(`desk required (slug or ticker). ${deskCatalogHint()}`);
   const bySlug = (REG.desks || []).find((d) => d.slug === q);
@@ -97,6 +102,15 @@ function resolveDesk(slugOrTicker) {
     if (!bundle) throw new Error(`no profile for ${byTicker.slug}`);
     return { desk: byTicker, profile: bundle.model };
   }
+  // aliases (e.g. tsmc → tsm)
+  for (const d of REG.desks || []) {
+    const aliases = Array.isArray(d.aliases) ? d.aliases : [];
+    if (aliases.some((a) => String(a).toLowerCase() === q)) {
+      const bundle = DESK_BUNDLES[d.slug];
+      if (!bundle) throw new Error(`no profile for ${d.slug}`);
+      return { desk: d, profile: bundle.model };
+    }
+  }
   throw new Error(`unknown desk "${q}" — ${deskCatalogHint()}`);
 }
 
@@ -108,8 +122,9 @@ function textResult(obj) {
 const server = new McpServer({ name: 'cockpit-research', version: '1.0.0' });
 
 server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS MCP monorepo install.', {}, async () => {
+  const { registry: REG, bySlug, registryPath, mtimeMs } = liveRegistry();
   const desks = (REG.desks || []).map((d) => {
-    const p = PROFILES[d.slug];
+    const p = bySlug[d.slug]?.model;
     return {
       slug: d.slug,
       ticker: d.ticker,
@@ -123,11 +138,13 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
     monorepo_root: REPO_ROOT,
     vault: process.env.COCKPIT_VAULT,
     ontology_store: process.env.ONTOLOGY_STORE,
-    registry: path.join(ROOT, 'config', 'thin-desks.json'),
+    registry: registryPath,
+    registry_mtime_ms: mtimeMs,
+    registry_live: true,
     host_hint: 'Primary: Grok Build. Optional later: Claude Code. Same tools either way.',
     note:
-      'Desks = config/thin-desks.json in monorepo_root only (not hardcoded). ' +
-      'If NVDA is missing, MCP is still pointed at the live monorepo — run ./scripts/install-grok-mcp.sh from cockpit-kernel (or the clone that has the desk). ' +
+      'Desks = config/thin-desks.json (re-read on file change — long Grok sessions pick up new desks). ' +
+      'If a desk is missing, confirm monorepo MCP pin (project .grok/config.toml) points at THIS clone. ' +
       'ACCEPT house/risks on glass only.',
   });
 });

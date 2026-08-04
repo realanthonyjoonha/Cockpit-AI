@@ -20,13 +20,22 @@ Decision-support only. No buy/sell/PT/sizing.
 2. House view (explicit save) → research-wiki/house-view-<slug>.md
 3. Pack config             → ontology/packs/TICKER.json
 4. Compile                 → COMPILE BOOK on glass (or ./ont compile TICKER)
-5. Thin glass              → rooms + book strip per THIN-DESK-CONTRACT.md
+5. Thin glass              → shared rooms + book strip per THIN-DESK-CONTRACT.md
+                             (Street room free with registry; EMPTY until first REFRESH STREET publish)
 ```
 
 **Binding contract:** `plans/THIN-DESK-CONTRACT.md`  
-Every thin desk **must** ship **COMPILE BOOK** + **REFRESH** + `meta.thin_desk_contract`. Smoke fails without them.
+Every thin desk **must** ship **COMPILE BOOK** + **REFRESH** (book) + **Street room** + `meta.thin_desk_contract`. Smoke fails without book controls.
 
-Memory’s Margins / Street / Leverage / Nowcast are **specialist instruments**, not the template.
+**Operate features that ship free (no per-ticker code):**
+
+| Feature | How new desk gets it |
+|---------|----------------------|
+| **Daybook daily** | `/cockpit-daily {slug}` — shared slash; day-first + short book-touch |
+| **Street** | Room in registry `rooms` · `#/{slug}/street` · **REFRESH STREET** + **OPEN GROK** · vault `cockpit/street/{TICKER}.json` |
+| Steelman / match / propose / risk-* | Shared agents + pack/house for the slug |
+
+Memory’s Margins / Leverage / Nowcast remain **specialist instruments**, not the template. **Thin Street is part of the template** (not Memory-only).
 
 ---
 
@@ -78,22 +87,26 @@ Obey **THIN-DESK-CONTRACT.md** + **THIN-DESK-UI-PARITY.md**. UI chrome is **shar
 No new per-ticker slash command or MCP tool for each company.
 
 - [ ] Desk resolves in MCP (`list_desks` / `get_house_view` / `get_pack_snapshot`)
-- [ ] `/cockpit-daily {slug}` works without code changes (book from pack+house)
-- [ ] Daily **search seeds** for the name come from registry (ticker + legal name + optional topics) — **not** a hand-edited nbis/msft-only table forever
-- [ ] Optional save lands at `research-wiki/cockpit/briefs/daily/{slug}/YYYY-MM-DD.md` only
+- [ ] **`/cockpit-daily {slug}`** works without code changes (**daybook**: what moved + calendar + short book-touch; not full register dump)
+- [ ] Daily search uses **ticker + legal name** from registry/profile (generic seeds OK; optional topics in profile)
+- [ ] Optional daily save lands at `research-wiki/cockpit/briefs/daily/{slug}/YYYY-MM-DD.md` only
+- [ ] **Street room** on rail: `#/{slug}/street` (shared `thin/Street.jsx`)
+- [ ] **REFRESH STREET** opens `/cockpit-street {slug} pipeline` + seed (house/risks read-only) + glass vault poll; writes only `cockpit/street/{TICKER}.json`
+- [ ] **OPEN GROK** on Street = chat mode with same seed
+- [ ] First Street publish may be EMPTY CTA until agent runs — not a missing room
 - [ ] `/cockpit-risk-check {slug}` + glass risk detail **PROPOSE status → ACCEPT** (shared `riskProposals.js`; SoR = profile `risksSource`)
 - [ ] `/cockpit-risk-add` + `/cockpit-risk-tripwires` work for the slug
-- [ ] After risk ACCEPT: COMPILE BOOK → REFRESH (pack only via compile) — see `WRITE-PATH-RISKS.md`
+- [ ] After risk ACCEPT: COMPILE BOOK → book REFRESH (pack only via compile) — see `WRITE-PATH-RISKS.md`
 - [ ] **Risk SoR contract (binding):** dossier has `## A)` risks with `### Rn —` + Status/Grade + tripwire table, then `## B)` (or equivalent). `add_risk` inserts **before** `## B)` — never EOF after catalysts.
 - [ ] Smoke after first `add_risk` ACCEPT: new Rn is before `## B)`; pack `tripwires.length` matches SoR table if non-empty; glass detail shows monitors
 - [ ] `/cockpit-steelman` · `/cockpit-match` · `/cockpit-propose` work for the slug
-- [ ] Briefs/daily are **not** ontology compile inputs
+- [ ] Briefs/daily are **not** ontology compile inputs; Street is **not** pack SoR
 
 ### E. Park until earned
-- [ ] Multi-series margins / Street catalogs / leverage gauges  
-- [ ] Catalysts page until pack catalysts are **name-clean** (NBIS pack still has MU noise)  
+- [ ] Multi-series margins / leverage gauges / Memory-style specialist instruments  
+- [ ] Catalysts page until pack catalysts are **name-clean**  
 - [ ] research-os config engine  
-- [ ] Per-name vault day feed (headlines/price series) — optional; daily uses search until then
+- [ ] Per-name vault day feed (headlines/price series) — optional; daybook uses search until then
 
 ---
 
@@ -133,5 +146,6 @@ cd ~/Trading/memory-cockpit-v2 && npm run smoke && npm run build
 3. Thin rail works; Memory desk unchanged  
 4. Smoke green  
 5. Agent path works: `./ont agent TICKER "…"`  
-6. Operate menu works for the slug (`/cockpit-daily` · steelman · match · propose) without new per-ticker code  
+6. Operate menu works for the slug (`/cockpit-daily` daybook · steelman · match · propose · Street REFRESH) without new per-ticker code  
+7. Street room present; EMPTY honest until first agent publish of complete firm models  
 

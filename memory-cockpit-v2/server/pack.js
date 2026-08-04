@@ -25,12 +25,13 @@ export function loadPack(ticker, opts = {}) {
   const force = opts.force === true;
   const hit = cache.get(id);
 
-  // Serve cache only if fresh AND file mtime unchanged (compile mid-TTL used to leave glass stale)
-  if (!force && hit && now - hit.at < 5000) {
+  // mtime is authoritative: compile must never leave glass on a stale pack mid-TTL.
+  // TTL only skips re-parse when the file is unchanged.
+  if (!force && hit) {
     try {
       if (hit.exists && fs.existsSync(packPath)) {
         const mtimeMs = fs.statSync(packPath).mtimeMs;
-        if (mtimeMs === hit.mtimeMs) {
+        if (mtimeMs === hit.mtimeMs && now - hit.at < 5000) {
           return {
             available: true,
             pack: hit.data,
@@ -38,14 +39,17 @@ export function loadPack(ticker, opts = {}) {
             mtimeMs: hit.mtimeMs,
           };
         }
+        // mtime changed or TTL expired → fall through to re-read
       } else if (!hit.exists && !fs.existsSync(packPath)) {
-        return {
-          available: false,
-          pack: null,
-          path: packPath,
-          reason: 'pack file missing',
-          mtimeMs: null,
-        };
+        if (now - hit.at < 5000) {
+          return {
+            available: false,
+            pack: null,
+            path: packPath,
+            reason: 'pack file missing',
+            mtimeMs: null,
+          };
+        }
       }
     } catch { /* fall through to reload */ }
   }

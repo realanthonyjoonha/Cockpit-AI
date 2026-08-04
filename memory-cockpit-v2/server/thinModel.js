@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { VAULT_DIR, renderMd, fm } from './vault.js';
 import { loadPack, clearPackCache } from './pack.js';
+import { getStreet, refreshStreet } from './thinStreet.js';
 import { liveUsEquity } from './quotes.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
 import { buildHouseAssistContext } from './assistContext.js';
@@ -117,7 +118,7 @@ export function createThinModel(profile) {
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'ask', 'update'],
+      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'ask', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
@@ -127,6 +128,8 @@ export function createThinModel(profile) {
         house_save: true,
         agent_context: true,
         house_proposals: true,
+        street: true,
+        street_refresh: true,
       },
       compile: {
         method: 'POST',
@@ -837,11 +840,15 @@ export function createThinModel(profile) {
         || id.startsWith('comps-')
         || id.startsWith('model-bridge-')
         || id.startsWith('model-audit-')
+        || id.startsWith('ebitda-bridge-')
+        || id.startsWith('ebitda-quality-')
         || pathStr.includes('agent-research-')
         || pathStr.includes('/coverage-')
         || pathStr.includes('/comps-')
         || pathStr.includes('/model-bridge-')
         || pathStr.includes('/model-audit-')
+        || pathStr.includes('/ebitda-bridge-')
+        || pathStr.includes('/ebitda-quality-')
       ) return false;
       const blob = `${about.join(' ')} ${id} ${title} ${pathStr}`;
       return sourcePrimaryRe.test(blob);
@@ -980,6 +987,8 @@ export function createThinModel(profile) {
     riskProposalReject,
     quote,
     sources,
+    street: () => getStreet(TICKER, { desk: deskId }),
+    streetRefresh: async (body = {}) => refreshStreet(TICKER, body || {}, { desk: deskId }),
     writeMeta,
   };
 }

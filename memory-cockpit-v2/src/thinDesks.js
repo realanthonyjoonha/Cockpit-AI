@@ -79,6 +79,7 @@ export function thinRail(desk) {
     ['⚠', `${L} Risks`, `#/${s}/risks`],
     ['§', `${L} House view`, `#/${s}/house`],
     ['⧉', `${L} Sources — pack catalog`, `#/${s}/sources`],
+    ['$', `${L} Street — published targets (not house)`, `#/${s}/street`],
     ['?', `${L} Ask — pack Q&A (deterministic)`, `#/${s}/ask`],
     ['✎', `${L} Update — write path (file → compile → refresh)`, `#/${s}/update`],
   ];

@@ -17,6 +17,7 @@ const SHARED = [
   'Risk.jsx',
   'House.jsx',
   'Sources.jsx',
+  'Street.jsx',
   'Ask.jsx',
   'Empty.jsx',
   'BookStrip.jsx',
@@ -70,21 +71,45 @@ for (const f of SHARED) {
   else ok(`${rel} no 12px margins`);
 }
 
-// Desk wrappers must import from thin/
+// Per-slug wrappers are OPTIONAL (factory path: App → DeskRouter + pages/thin/*).
+// If any wrapper exists for a desk, require the full set and thin re-exports only.
+// Do not fail on missing pages/{slug}/* — that was fighting Path 2 registry scaling.
 const WRAP = ['Overview', 'Risks', 'Risk', 'House', 'Sources', 'Ask', 'Empty', 'Update', 'BookStrip'];
+{
+  const app = read('src/App.jsx') || '';
+  if (!app.includes('DeskRouter') && !app.includes('pages/thin/DeskRouter')) {
+    bad('src/App.jsx', 'factory path requires DeskRouter (pages/thin) for thin desks');
+  } else {
+    ok('src/App.jsx uses DeskRouter / thin factory route');
+  }
+}
 for (const slug of THIN_DESKS) {
+  const present = [];
+  const missing = [];
   for (const name of WRAP) {
     const rel = `src/pages/${slug}/${name}.jsx`;
     const src = read(rel);
     if (!src) {
-      bad(rel, 'missing wrapper');
+      missing.push(name);
       continue;
     }
-    if (!src.includes('../thin/')) {
+    present.push({ name, rel, src });
+  }
+  if (present.length === 0) {
+    ok(`pages/${slug}/ — factory path (no per-slug wrappers; DeskRouter + thin/*)`);
+    continue;
+  }
+  if (missing.length > 0) {
+    bad(
+      `pages/${slug}/`,
+      `partial wrappers (${present.map((p) => p.name).join(',')}; missing ${missing.join(',')}) — full thin re-export set or none`,
+    );
+  }
+  for (const { name, rel, src } of present) {
+    if (!src.includes('../thin/') && !src.includes("pages/thin/")) {
       bad(rel, 'must re-export/use pages/thin/*');
       continue;
     }
-    // No full local layout chrome
     if (src.includes('className="sect"') && name !== 'BookStrip') {
       bad(rel, 'layout must not live in desk wrapper');
       continue;

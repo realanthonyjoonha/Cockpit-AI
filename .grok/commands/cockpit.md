@@ -10,9 +10,16 @@ Show the **cockpit command menu** and wait for a choice (or desk + action).
 |-------|----------------|
 | `/cockpit-desks` | List thin desks via MCP |
 | `/cockpit-new-desk [TICKER] [--light]` | Underwrite **new** desk — deep parallel research default (START CTA) |
-| `/cockpit-daily [desk] [--save]` | Daily brief: what moved + house + pack; optional vault save |
+| `/cockpit-daily [desk] [--save]` | Daybook daily: what moved + calendar + short book-touch; optional vault save |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research only what user asks; **ask to save** → write note + compile ticker → Sources |
 | `/cockpit-coverage [desk] [scope?]` | Structured coverage / init-style note (Overview AGENTS → Coverage); optional save+compile |
+| `/cockpit-comps [desk] [peers?]` | Peer comps table (user supplies peers/metrics); optional save+compile |
+| `/cockpit-model-bridge [desk]` | Assumptions + simple FCF bridge (no PT advice); optional save+compile |
+| `/cockpit-model-audit [desk]` | Audit pasted/saved model vs pack; optional save+compile |
+| `/cockpit-ebitda-bridge [desk]` | Revenue→EBITDA bridge (pack + your lines); optional save+compile |
+| `/cockpit-ebitda-quality [desk]` | Reported vs adj. EBITDA / adjustments quality; optional save+compile |
+| `/cockpit-street [desk]` | Street agent — page + house/risk context; refresh/rebuild/deepen (not house PT) |
+| `/cockpit-street-build` / `-refresh` | Legacy aliases → same as `/cockpit-street` |
 | `/cockpit-risk-check [desk] [risk]` | Risk DD: direction vs tripwires (no status write) |
 | `/cockpit-risk-add [desk] [idea]` | Research + propose NEW risk (glass ACCEPT) |
 | `/cockpit-risk-tripwires [desk] [risk]` | Research tripwires; user cull; propose set_tripwires |

@@ -166,6 +166,8 @@ case 'my-agent':
 
 In `memory-cockpit-v2/src/pages/thin/GrokAgents.jsx` → `FALLBACK_ALL`, add the **same** object (action, label, hint, variants, default_for).
 
+**Catalog order is UX:** desk list bands are Operate → Notes → Models → Book ops → Meta (`plans/2026-08-01-agents-menu-clarity.md`). Insert new desk agents in the right band; keep FALLBACK order identical to `GROK_AGENTS`.
+
 ### Step 5 — Docs
 
 - Row in `.grok/commands/cockpit.md`  
@@ -292,13 +294,18 @@ Paste the block in `FRIEND-AGENT-PROMPT.md` (same repo root) into a **fresh** Gr
 
 ---
 
-## 11. Reference: Research + Coverage as templates
+## 11. Reference: Research + Coverage + Phase 1 finance as templates
 
 Read in full:
 
 - `.grok/commands/cockpit-research.md`  
 - `.grok/commands/cockpit-coverage.md`  
-- Catalog entries `research` / `coverage` in `openGrok.js`  
+- `.grok/commands/cockpit-comps.md`  
+- `.grok/commands/cockpit-model-bridge.md`  
+- `.grok/commands/cockpit-model-audit.md`  
+- `.grok/commands/cockpit-ebitda-bridge.md`  
+- `.grok/commands/cockpit-ebitda-quality.md`  
+- Catalog entries `research` / `coverage` / `comps` / `model-bridge` / `model-audit` / `ebitda-bridge` / `ebitda-quality` in `openGrok.js`  
 - Fallback lines in `GrokAgents.jsx`  
 - Roadmap: `docs/FINANCE-AGENT-PORTS.md` (Claude pattern ports)
 

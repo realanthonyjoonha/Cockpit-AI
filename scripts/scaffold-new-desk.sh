@@ -171,7 +171,7 @@ pack = {
   "risks_source": "$RISKS_SRC",
   "source_globs": [
     "$RAW/*.md",
-    "wiki/entities/${SLUG}.md",
+    "wiki/entities/${SLUG}.md"
   ],
   "source_roots": ["$RAW"],
   "sources": [],

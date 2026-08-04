@@ -5,6 +5,7 @@ import ThinRisks from './Risks.jsx';
 import ThinRisk from './Risk.jsx';
 import ThinHouse from './House.jsx';
 import ThinSources from './Sources.jsx';
+import ThinStreet from './Street.jsx';
 import ThinAsk from './Ask.jsx';
 import UpdateMetaOnly from './UpdateMetaOnly.jsx';
 import ThinEmpty from './Empty.jsx';
@@ -24,6 +25,7 @@ export default function DeskRouter({ desk, route }) {
   if (sub.startsWith('risks')) return <ThinRisks desk={desk} />;
   if (sub.startsWith('house')) return <ThinHouse desk={desk} />;
   if (sub.startsWith('sources')) return <ThinSources desk={desk} />;
+  if (sub.startsWith('street')) return <ThinStreet desk={desk} />;
   if (sub.startsWith('ask')) return <ThinAsk desk={desk} />;
   if (sub.startsWith('update')) {
     return <UpdateMetaOnly desk={desk.slug} ticker={desk.ticker} label={desk.label} />;

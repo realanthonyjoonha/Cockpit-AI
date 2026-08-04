@@ -1,12 +1,16 @@
 // thinDeskProfiles.js — load thin desk model/ask profiles from config/thin-desks.json.
 // Desk N = research + pack + registry profile fields (no PROFILES map in thinDeskMount).
+// Live mtime cache: MCP + helpers re-read when thin-desks.json changes (same idea as glass).
 // Decision-support only. Fail closed on missing required paths.
-import { readFileSync } from 'fs';
+import { readFileSync, statSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const REG_PATH = path.join(ROOT, 'config', 'thin-desks.json');
+
+/** @type {{ mtimeMs: number, registry: object, registryPath: string, bySlug: object } | null} */
+let profilesLiveCache = null;
 
 function asRe(pattern, flags = 'i') {
   if (pattern instanceof RegExp) return pattern;
@@ -108,9 +112,44 @@ export function loadThinDeskProfiles() {
   return { registry, registryPath: REG_PATH, bySlug };
 }
 
+/**
+ * Registry + profiles with mtime cache (re-read thin-desks.json when it changes).
+ * Use this from MCP and long-lived processes — do not freeze desks at process start.
+ * @returns {{
+ *   mtimeMs: number,
+ *   registry: object,
+ *   registryPath: string,
+ *   bySlug: Record<string, { desk: object, model: object, ask: object }>,
+ * }}
+ */
+export function getLiveThinDeskProfiles() {
+  let mtimeMs = 0;
+  try {
+    mtimeMs = statSync(REG_PATH).mtimeMs;
+  } catch (e) {
+    throw new Error(`thin-desks.json unreadable: ${e.message || e}`);
+  }
+  if (profilesLiveCache && profilesLiveCache.mtimeMs === mtimeMs) {
+    return profilesLiveCache;
+  }
+  const loaded = loadThinDeskProfiles();
+  profilesLiveCache = {
+    mtimeMs,
+    registry: loaded.registry,
+    registryPath: loaded.registryPath,
+    bySlug: loaded.bySlug,
+  };
+  return profilesLiveCache;
+}
+
+/** Drop live cache (tests / explicit refresh). Next getLiveThinDeskProfiles re-reads disk. */
+export function clearThinDeskProfilesCache() {
+  profilesLiveCache = null;
+}
+
 /** @param {string} slug */
 export function getThinDeskBundle(slug) {
-  const { bySlug } = loadThinDeskProfiles();
+  const { bySlug } = getLiveThinDeskProfiles();
   const b = bySlug[slug];
   if (!b) {
     const known = Object.keys(bySlug);

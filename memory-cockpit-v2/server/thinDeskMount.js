@@ -214,6 +214,8 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/risks/proposals/:id/accept', j(withDesk((rt, req) => rt.model.riskProposalAccept(req.params.id))));
   app.post('/api/:slug/risks/proposals/:id/reject', j(withDesk((rt, req) => rt.model.riskProposalReject(req.params.id))));
   app.get('/api/:slug/sources', j(withDesk((rt) => rt.model.sources())));
+  app.get('/api/:slug/street', j(withDesk((rt) => rt.model.street())));
+  app.post('/api/:slug/street/refresh', ja(withDesk(async (rt, req) => rt.model.streetRefresh(req.body || {}))));
   app.get('/api/:slug/quote', ja(withDesk((rt) => rt.model.quote())));
   app.get('/api/:slug/book', j(withDesk((rt) => rt.model.book())));
   app.post('/api/:slug/book/refresh', j(withDesk((rt) => rt.model.refreshBook())));

@@ -102,6 +102,7 @@ app.post('/api/open-grok', (req, res) => {
       prompt: body.prompt,
       risk_id: body.risk_id || body.riskId,
       risk_name: body.risk_name || body.riskName,
+      mode: body.mode, // street: pipeline | chat
     });
     return res.json(out);
   } catch (e) {

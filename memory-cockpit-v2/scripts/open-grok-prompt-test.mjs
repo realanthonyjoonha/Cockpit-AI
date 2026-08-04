@@ -144,5 +144,116 @@ try {
   fail('start isolation coverage', e);
 }
 
+const phase1 = [
+  ['comps', '/cockpit-comps tsm'],
+  ['model-bridge', '/cockpit-model-bridge tsm'],
+  ['model-audit', '/cockpit-model-audit tsm'],
+  ['ebitda-bridge', '/cockpit-ebitda-bridge tsm'],
+  ['ebitda-quality', '/cockpit-ebitda-quality tsm'],
+];
+// street prompts tested separately (include mode suffix)
+const financeActions = ['comps', 'model-bridge', 'model-audit', 'ebitda-bridge', 'ebitda-quality', 'street'];
+for (const [action, expect] of phase1) {
+  try {
+    const p = buildInitialPrompt({ action, desk: 'tsm' });
+    if (p !== expect) throw new Error(p);
+    ok(`${action} → ${expect}`);
+  } catch (e) {
+    fail(`${action} prompt`, e);
+  }
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'street', desk: 'tsm', mode: 'pipeline' });
+  if (p !== '/cockpit-street tsm pipeline') throw new Error(p);
+  ok('street pipeline → /cockpit-street tsm pipeline');
+} catch (e) { fail('street pipeline prompt', e); }
+
+try {
+  const p = buildInitialPrompt({ action: 'street', desk: 'tsm', mode: 'chat' });
+  if (p !== '/cockpit-street tsm chat') throw new Error(p);
+  ok('street chat → /cockpit-street tsm chat');
+} catch (e) { fail('street chat prompt', e); }
+
+try {
+  const p = buildInitialPrompt({ action: 'street', desk: 'tsm' });
+  if (p !== '/cockpit-street tsm chat') throw new Error(p);
+  ok('street default → chat');
+} catch (e) { fail('street default prompt', e); }
+
+try {
+  const p = buildInitialPrompt({ action: 'street-build', desk: 'tsm' });
+  if (p !== '/cockpit-street tsm pipeline') throw new Error(p);
+  ok('street-build legacy → pipeline');
+} catch (e) { fail('street-build prompt', e); }
+
+try {
+  const p = buildInitialPrompt({ action: 'street-refresh', desk: 'tsm' });
+  if (p !== '/cockpit-street tsm pipeline') throw new Error(p);
+  ok('street-refresh legacy → pipeline');
+} catch (e) { fail('street-refresh prompt', e); }
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  for (const a of financeActions) {
+    if (!desk.agents.some((x) => x.action === a)) throw new Error(`missing ${a}`);
+  }
+  if (desk.default_action !== 'daily') throw new Error(`default ${desk.default_action}`);
+  ok('desk variant includes finance agents (comps/model/ebitda); default daily');
+} catch (e) {
+  fail('desk phase1 catalog', e);
+}
+
+try {
+  const start = listGrokAgents({ variant: 'start' });
+  for (const a of financeActions) {
+    if (start.agents.some((x) => x.action === a)) throw new Error(`${a} on start`);
+  }
+  ok('start excludes phase1 finance agents');
+} catch (e) {
+  fail('start isolation phase1', e);
+}
+
+// UX bands (2026-08-01 menu clarity): Operate → Notes → Models → Book ops
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  const acts = desk.agents.map((a) => a.action);
+  if (desk.default_action !== 'daily') throw new Error(`default ${desk.default_action}`);
+  if (acts[0] !== 'daily') throw new Error(`first should be daily, got ${acts[0]}`);
+
+  const idx = (a) => {
+    const i = acts.indexOf(a);
+    if (i < 0) throw new Error(`missing ${a}`);
+    return i;
+  };
+  if (!(idx('daily') < idx('daily-save'))) throw new Error('daily before daily-save');
+  if (!(idx('daily-save') < idx('research'))) throw new Error('operate before notes');
+  if (!(idx('research') < idx('coverage'))) throw new Error('research before coverage');
+  if (!(idx('coverage') < idx('comps'))) throw new Error('notes before models');
+  if (!(idx('comps') < idx('ebitda-bridge'))) throw new Error('comps before ebitda-bridge');
+  if (!(idx('ebitda-bridge') < idx('model-bridge'))) throw new Error('ebitda-bridge before model-bridge');
+  if (!(idx('model-bridge') < idx('ebitda-quality'))) throw new Error('model-bridge before ebitda-quality');
+  if (!(idx('ebitda-quality') < idx('model-audit'))) throw new Error('ebitda-quality before model-audit');
+  if (!(idx('model-audit') < idx('risk-check'))) throw new Error('models before book ops');
+  if (!(idx('pending') < idx('desks'))) throw new Error('book ops before meta');
+
+  for (const a of ['research', 'coverage', 'comps', 'model-bridge', 'model-audit', 'ebitda-bridge', 'ebitda-quality']) {
+    if (!acts.includes(a)) throw new Error(`missing finance/note ${a}`);
+  }
+  const cov = desk.agents.find((a) => a.action === 'coverage');
+  if (cov?.label !== 'Coverage note') throw new Error(`coverage label ${cov?.label}`);
+  ok('desk UX band order + coverage label + all finance present');
+} catch (e) {
+  fail('desk UX band order', e);
+}
+
+try {
+  const house = listGrokAgents({ variant: 'house' });
+  if (house.default_action !== 'propose') throw new Error(`house default ${house.default_action}`);
+  ok('house default still propose');
+} catch (e) {
+  fail('house default', e);
+}
+
 console.log(failed ? `\nFAIL ${failed} check(s)\n` : '\nPASS all open-grok-prompt checks\n');
 process.exit(failed ? 1 : 0);

@@ -17,10 +17,13 @@ A desk that ships without these items is **not** a thin desk — it is incomplet
 | Risks | Register + detail |
 | House | Confirmed house view (vault-first when present) |
 | Sources | Pack source catalog |
+| Street | Published third-party firm models (vault `cockpit/street/{TICKER}.json`; not house PT). Shared UI: **REFRESH STREET** (agent pipeline + vault poll) · **OPEN GROK** (chat). EMPTY until first publish |
 | Ask | Pack-only deterministic Q&A |
 | Update | Write path per `write_path_mode` (v1.1 default **meta_only**; pins = future optional) |
 
 Honest EMPTY only for rooms explicitly parked — never silent redirect to Overview.
+
+**Factory invariant:** Street is a **shared** room (`pages/thin/Street.jsx` + `thinStreet` APIs). New desks do **not** get a per-ticker Street fork — registry + `rooms` including `street` is enough.
 
 ---
 
@@ -52,6 +55,8 @@ For desk slug `D` and ticker `T`:
 - `POST /api/D/compile` (+ optional `GET …/compile` status)  
 - `GET/POST /api/D/ask`  
 - overview, risks, house, sources as implemented for NBIS  
+- `GET /api/D/street` — complete firm models or honest EMPTY / needs_rebuild  
+- `POST /api/D/street/refresh` — format-gated publish of Street vault (agent/body; not Nasdaq dump as SoR)  
 
 ---
 
@@ -79,11 +84,12 @@ Each thin desk `GET /api/<desk>/meta` **must** include:
     "desk": "nebius",
     "ticker": "NBIS",
     "parity_group": "thin_ontology_v1",
-    "rooms": ["overview", "risks", "house", "sources", "ask", "update"],
+    "rooms": ["overview", "risks", "house", "sources", "street", "ask", "update"],
     "capabilities": {
       "compile_book": true,
       "refresh_book": true,
       "pack_ask": true,
+      "street": true,
       "write_path": true,
       "write_path_mode": "meta_only"
     },

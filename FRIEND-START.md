@@ -3,6 +3,9 @@
 **You are installing an empty product shell** — not someone else’s stock books.  
 **Decision-support only** — no buy/sell/hold, price targets, or position sizing.
 
+**Already have Cockpit and just need new features (Street, daybook)?**  
+→ **[`FRIEND-UPGRADE.md`](./FRIEND-UPGRADE.md)** · one command: `./scripts/friend-upgrade.sh`
+
 ---
 
 ## Before you start (machine prerequisites)
