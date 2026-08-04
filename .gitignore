@@ -20,6 +20,21 @@ memory-cockpit-v2/.session-secret
 
 # Local company books if someone scaffolds by mistake before push (keep product empty)
 # (Do not force-ignore raw/ entirely — empty scaffold dirs may exist)
+# Privacy: never commit Anthony/friend research books into product SoR
+research-wiki/house-view-*.md
+research-wiki/raw/*
+!research-wiki/raw/.gitkeep
+research-wiki/wiki/entities/**
+research-wiki/wiki/sources/**
+research-wiki/cockpit/street/*.json
+research-wiki/cockpit/street/history/**
+research-wiki/cockpit/briefs/**
+research-wiki/cockpit/proposals/**
+ontology/packs/*.json
+!ontology/packs/.gitkeep
+ontology/store/by_ticker/*.json
+!ontology/store/by_ticker/.gitkeep
+memory-cockpit-v2/config/thin-desks.json.bak*
 
 # Friend/local dogfood leftovers
 cockpit-kernel-fresh/

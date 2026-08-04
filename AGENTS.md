@@ -50,6 +50,9 @@ memory-cockpit-v2/ →  website (glass) + API
 
 | If the user asks you to… | Open |
 |--------------------------|------|
+| Daily operate / which agent for what | **`OPERATE.md`** |
+| Ship platform to friends / dual-tree | **`RELEASE.md`** + `docs/PRODUCT-KERNEL-SOR.md` |
+| Glass desk dead but pack green | `memory-cockpit-v2/scripts/desk-health.mjs` |
 | “Where are we?” / continue after git pull | **`PROJECT-STATE.md`** |
 | Underwrite / “what’s on watch” / thesis | `ontology/AGENTS.md` then `./ont agent TICKER "…"` **or** Grok MCP `/cockpit-steelman` / `/cockpit-risk-check` |
 | Grok MCP / OPEN GROK / house or risk propose→accept | [`SETUP-GROK-COCKPIT.md`](./SETUP-GROK-COCKPIT.md) + [`memory-cockpit-v2/plans/AGENT-HOST-MCP.md`](./memory-cockpit-v2/plans/AGENT-HOST-MCP.md) + [`WRITE-PATH-RISKS.md`](./memory-cockpit-v2/plans/WRITE-PATH-RISKS.md) |

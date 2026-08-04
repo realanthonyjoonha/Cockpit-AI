@@ -90,6 +90,8 @@ FILES=(
   "memory-cockpit-v2/scripts/street-seed-mode-test.mjs"
   "memory-cockpit-v2/scripts/thin-street-test.mjs"
   "memory-cockpit-v2/scripts/street-schema-test.mjs"
+  "memory-cockpit-v2/scripts/desk-health.mjs"
+  "memory-cockpit-v2/scripts/thin-slug-resolve-test.mjs"
   "memory-cockpit-v2/scripts/mcp-cockpit-research.mjs"
   "memory-cockpit-v2/scripts/thin-desk-format-check.mjs"
   "memory-cockpit-v2/scripts/thin-desk-rigor.mjs"
@@ -99,6 +101,9 @@ FILES=(
   "memory-cockpit-v2/plans/THIN-DESK-CONTRACT.md"
   "memory-cockpit-v2/plans/NEW-DESK-PLAYBOOK.md"
   "memory-cockpit-v2/plans/2026-08-04-street-refresh-ontology.md"
+  "memory-cockpit-v2/plans/2026-08-04-desk-health-gate.md"
+  "OPERATE.md"
+  "RELEASE.md"
 )
 
 echo "sync-agent-surface"

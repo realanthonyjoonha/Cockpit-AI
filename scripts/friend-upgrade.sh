@@ -100,6 +100,57 @@ if [ -x "$ROOT/scripts/doctor.sh" ]; then
   echo
 fi
 
+# --- 5b. desk health (scar-tissue: registry ↔ resolve; NBIS class) ---
+echo "→ desk health (thin-slug-resolve + desk-health --all)"
+if [ -d "$ROOT/memory-cockpit-v2" ]; then
+  (
+    cd "$ROOT/memory-cockpit-v2"
+    if [ -f scripts/thin-slug-resolve-test.mjs ]; then
+      node scripts/thin-slug-resolve-test.mjs || {
+        echo "  FAIL: thin-slug-resolve — a registered desk may be blocked by RESERVED_API_SLUGS"
+        exit 1
+      }
+    fi
+    if [ -f scripts/desk-health.mjs ]; then
+      node scripts/desk-health.mjs --all || {
+        echo "  FAIL: desk-health — registered desk not operable (process layer)"
+        exit 1
+      }
+      # Live HTTP only if glass is up AND its catalog matches this install's desks
+      # (avoids false PASS when another monorepo's glass is on 4681/4682)
+      LOCAL_SLUGS=$(node -e "
+        const fs=require('fs');const p='config/thin-desks.json';
+        try{const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          console.log((j.desks||[]).map(d=>d.slug).filter(Boolean).sort().join(','));
+        }catch(e){console.log('')}
+      ")
+      for PORT in 4682 4681; do
+        if curl -sf "http://127.0.0.1:${PORT}/api/thin-desks" >/dev/null 2>&1; then
+          REMOTE_SLUGS=$(curl -sS "http://127.0.0.1:${PORT}/api/thin-desks" | node -e "
+            let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
+              try{const j=JSON.parse(d);console.log((j.desks||[]).map(x=>x.slug).filter(Boolean).sort().join(','));}
+              catch(e){console.log('')}
+            });
+          ")
+          if [ -n "$LOCAL_SLUGS" ] && [ "$LOCAL_SLUGS" = "$REMOTE_SLUGS" ]; then
+            echo "  live glass :${PORT} matches this registry ($LOCAL_SLUGS) — desk-health --base-url"
+            node scripts/desk-health.mjs --all --base-url "http://127.0.0.1:${PORT}" || {
+              echo "  FAIL: live desk-health on :${PORT}"
+              exit 1
+            }
+          else
+            echo "  live glass :${PORT} registry mismatch (local=[$LOCAL_SLUGS] remote=[$REMOTE_SLUGS]) — skip live (process layer already ran)"
+          fi
+          break
+        fi
+      done
+    fi
+  ) || exit 1
+else
+  echo "  skip (no memory-cockpit-v2)"
+fi
+echo
+
 # --- 6. what you got ---
 cat <<'EOF'
 ╔══════════════════════════════════════════════════════════╗

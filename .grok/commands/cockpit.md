@@ -9,7 +9,7 @@ Show the **cockpit command menu** and wait for a choice (or desk + action).
 | Slash | What it does |
 |-------|----------------|
 | `/cockpit-desks` | List thin desks via MCP |
-| `/cockpit-new-desk [TICKER] [--light]` | Underwrite **new** desk — deep parallel research default (START CTA) |
+| `/cockpit-new-desk [TICKER] [--light] [--no-street]` | Underwrite **new** desk — deep research + Street bootstrap + desk-health gate |
 | `/cockpit-daily [desk] [--save]` | Daybook daily: what moved + calendar + short book-touch; optional vault save |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research only what user asks; **ask to save** → write note + compile ticker → Sources |
 | `/cockpit-coverage [desk] [scope?]` | Structured coverage / init-style note (Overview AGENTS → Coverage); optional save+compile |

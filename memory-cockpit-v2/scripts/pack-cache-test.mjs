@@ -7,10 +7,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import { setTimeout as sleep } from 'timers/promises';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const require = createRequire(import.meta.url);
 
 // Isolate store dir so we do not touch real packs
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-pack-cache-'));
@@ -27,7 +26,9 @@ const ok = (m) => { pass++; console.log('  ✓', m); };
 const bad = (m) => { fail++; console.log('  ✗', m); };
 
 const packPath = path.join(store, 'TEST.json');
-const writePack = (n, compiled_at) => {
+let epoch = Date.now();
+
+const writePack = async (n, compiled_at) => {
   fs.writeFileSync(
     packPath,
     JSON.stringify({
@@ -39,20 +40,22 @@ const writePack = (n, compiled_at) => {
     }),
     'utf8',
   );
-  // Ensure mtime advances on fast FS
-  const st = fs.statSync(packPath);
-  fs.utimesSync(packPath, st.atime, new Date(st.mtimeMs + 20));
+  // Monotonic mtime past any prior read (avoids coarse FS clocks / same-ms writes)
+  epoch += 2000;
+  const t = new Date(epoch);
+  fs.utimesSync(packPath, t, t);
+  await sleep(15);
 };
 
 console.log('\npack-cache (mtime invalidation)\n');
 
-writePack(1, 't1');
+await writePack(1, 't1');
 clearPackCache('*');
 const a = loadPack('TEST');
 if (!a.available || a.pack?.sources?.[0]?.id !== 'src-1') bad('first load');
 else ok('first load src-1');
 
-writePack(2, 't2');
+await writePack(2, 't2');
 const b = loadPack('TEST');
 if (!b.available || b.pack?.sources?.[0]?.id !== 'src-2') {
   bad(`after mtime change expected src-2 got ${b.pack?.sources?.[0]?.id}`);

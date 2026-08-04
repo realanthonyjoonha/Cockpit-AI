@@ -3,11 +3,16 @@ description: Underwrite a NEW thin desk — deep research default (parallel suba
 argument-hint: "[TICKER] [optional display name] [--light]"
 ---
 
-Parse `$ARGUMENTS`: optional **TICKER** (e.g. AVGO), optional display name, optional **`--light`**.  
+Parse `$ARGUMENTS`: optional **TICKER** (e.g. AVGO), optional display name, optional flags **`--light`**, **`--no-street`**.  
 If ticker missing, **ask once**. Do not invent a ticker.
 
+| Flag | Effect |
+|------|--------|
+| `--light` | Thin research pass; **skip** Street bootstrap (user can REFRESH STREET later) |
+| `--no-street` | Deep research OK; **skip** Street bootstrap only |
+
 **Job:** Help the user **start a new company desk** in **this monorepo** (glass START → Build next company).  
-This is **underwrite**, not operate-on-desk (not daily / steelman on an existing book).
+This is **underwrite** the book, then (default) **one Street operate bootstrap** so the Street room is not left empty. Not daily/steelman on an existing book.
 
 ## Default research mode: DEEP (parallel)
 
@@ -125,32 +130,77 @@ cd ontology && ./ont compile TICKER && ./ont verify TICKER
 
 Verify exit **0** required before treating pack as real.
 
-### 6–7. Human gates
+### 5b. Street bootstrap (default ON — operate handoff, not book SoR)
+
+**When:** After pack verify is green (or best-effort if pack is still thin but desk is registered).  
+**Skip if:** `--no-street`, or `--light`, or user explicitly says skip Street.
+
+This step is **separate** from research slices 1–8. Do **not** invent PTs inside business/risk notes.
+
+1. Confirm Street room exists (registry `rooms` includes `street` — factory default).  
+2. Run the **Street pipeline** for this desk only — same rules as `/cockpit-street {slug} pipeline`:
+   - Complete firm rows only (rating + numeric PT + date + 3–5 sentence why ≥180 chars + https `source_url`)
+   - Prefer 5–15 firms; **omit** firms without sources — never invent  
+   - Dual format + info verify → publish **only** `research-wiki/cockpit/street/{TICKER}.json`  
+   - **Never** write house, risks, or `ontology/store/`; never COMPILE BOOK for Street  
+3. If sell-side coverage is too thin for ≥3 complete firms: leave Street **EMPTY**, report **GAP — sparse Street coverage**, tell user to run **REFRESH STREET** later. Do **not** pad with fake desks.  
+4. Glass: `#/{slug}/street` — user may need hard-refresh; REFRESH STREET remains the ongoing update path.
+
+House may still be FORMING — that is OK; Street is third-party catalog, not house PT.
+
+### 5c. Desk health gate (mandatory — glass operability)
+
+**When:** After pack verify and Street bootstrap (or skip). **Always run** for deep and light once the desk is in `thin-desks.json`.
+
+This proves **routing/factory**, not book quality. Scar-tissue from NBIS (catalog listed desk; `/api/nbis/*` 404 because slug was reserved).
+
+```bash
+cd memory-cockpit-v2
+node scripts/desk-health.mjs --slug SLUG
+# If glass is running (replace PORT):
+node scripts/desk-health.mjs --slug SLUG --base-url http://127.0.0.1:PORT
+# All desks:
+npm run test:thin-slug-resolve
+npm run test:desk-health
+```
+
+| Result | Action |
+|--------|--------|
+| **PASS** | Desk is operable on glass (process layer; live if base-url given) |
+| **FAIL** | **Do not** claim “glass ready.” Report failing check ids (S1 reserved / S2 resolve / S3 live). Fix reserved-slug or registry; restart glass if live fail. **Do not** re-run deep research as the first fix. |
+
+Book may still be FORMING / ACCEPT pending — health only means routes resolve.
+
+### 6–7. Human gates (book only — unchanged)
 
 6. **House + risks** — user CONFIRM house + ACCEPT risks on glass (`#/{slug}/house`, `#/{slug}/risks`).  
    Agents use propose tools only; never claim vault written until ACCEPT.  
-7. **After ACCEPT** — COMPILE BOOK + REFRESH on glass.
+7. **After ACCEPT** — COMPILE BOOK + REFRESH on glass (book pack only; not Street).
 
 ## Playbook paths (relative monorepo)
 
 - `COLD-START.md`  
 - `memory-cockpit-v2/plans/NEW-DESK-PLAYBOOK.md`  
 - `scripts/scaffold-new-desk.sh`  
+- `scripts` via `memory-cockpit-v2/scripts/desk-health.mjs`  
 - `AGENTS.md`  
 - `research-wiki/RESEARCH-PATHS.md`
 
 ## Output
 
-1. Mode: **DEEP** or **LIGHT**  
+1. Mode: **DEEP** or **LIGHT** · Street bootstrap: **ran** / **skipped** (`--light` / `--no-street` / GAP)  
 2. Monorepo + existing desks  
 3. Ticker / slug · scaffold done or skipped  
 4. Parallel slice map + which agents ran  
 5. Files written · claims count · risks draft count  
 6. Depth table summary + residual GAPs  
 7. compile/verify status  
-8. Remind glass CONFIRM/ACCEPT — not book SoR until then  
+8. **Street:** n complete firms published · path `cockpit/street/{TICKER}.json` · or EMPTY/GAP reason  
+9. **Desk health:** PASS / FAIL (+ command to re-run `desk-health.mjs`) — required before “glass ready”  
+10. Remind glass CONFIRM/ACCEPT — book not SoR until then; Street ≠ house PT  
 
 ## Footer
 
 Decision-support only. Not book SoR until human gates. No buy/sell/PT/sizing.  
-**Default is deep parallel research** — opt out with `--light` only.
+**Default is deep parallel research** — opt out with `--light` only.  
+**Default includes one Street bootstrap** after pack — opt out with `--no-street` (or `--light`).

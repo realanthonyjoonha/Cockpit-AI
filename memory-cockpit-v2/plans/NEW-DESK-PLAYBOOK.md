@@ -78,6 +78,8 @@ Obey **THIN-DESK-CONTRACT.md** + **THIN-DESK-UI-PARITY.md**. UI chrome is **shar
 - [ ] meta: `write_path_mode: meta_only`, `parity_group: thin_ontology_v1`, rooms list
 - [ ] **No** copy of Overview/Risks pages — DeskRouter serves shared thin UI
 - [ ] Optional thin wrappers under `src/pages/<slug>/` only if App routing still needs them; prefer registry-driven routes
+- [ ] **Slug resolve invariant:** desk slug must **not** be in `RESERVED_API_SLUGS` (`thinDeskMount.js`). After add: `npm run test:thin-slug-resolve` + `curl /api/{slug}/house` (catalog-only is not enough — NBIS 2026-08-04)
+- [ ] **Desk health gate:** `node scripts/desk-health.mjs --slug {slug}` (and `--base-url` if glass up) must **PASS** before calling the desk glass-ready (`/cockpit-new-desk` §5c)
 - [ ] `npm run format-check` + `npm run smoke` green
 - [ ] `npm run build` → reload / kickstart server if needed
 
@@ -91,9 +93,10 @@ No new per-ticker slash command or MCP tool for each company.
 - [ ] Daily search uses **ticker + legal name** from registry/profile (generic seeds OK; optional topics in profile)
 - [ ] Optional daily save lands at `research-wiki/cockpit/briefs/daily/{slug}/YYYY-MM-DD.md` only
 - [ ] **Street room** on rail: `#/{slug}/street` (shared `thin/Street.jsx`)
-- [ ] **REFRESH STREET** opens `/cockpit-street {slug} pipeline` + seed (house/risks read-only) + glass vault poll; writes only `cockpit/street/{TICKER}.json`
+- [ ] **Street bootstrap** at end of `/cockpit-new-desk` deep underwrite (default): one `/cockpit-street {slug} pipeline` after pack verify — complete rows only or honest EMPTY if sparse; **skip** with `--no-street` or `--light`
+- [ ] **REFRESH STREET** later for PT moves (same pipeline + vault poll); writes only `cockpit/street/{TICKER}.json`
 - [ ] **OPEN GROK** on Street = chat mode with same seed
-- [ ] First Street publish may be EMPTY CTA until agent runs — not a missing room
+- [ ] Street EMPTY only if coverage GAP or bootstrap skipped — not a missing room
 - [ ] `/cockpit-risk-check {slug}` + glass risk detail **PROPOSE status → ACCEPT** (shared `riskProposals.js`; SoR = profile `risksSource`)
 - [ ] `/cockpit-risk-add` + `/cockpit-risk-tripwires` work for the slug
 - [ ] After risk ACCEPT: COMPILE BOOK → book REFRESH (pack only via compile) — see `WRITE-PATH-RISKS.md`

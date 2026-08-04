@@ -16,6 +16,14 @@ Decision-support only: no buy/sell/hold, price targets, or position sizing.
 → **[`FRIEND-UPGRADE.md`](./FRIEND-UPGRADE.md)** · `./scripts/friend-upgrade.sh`  
 Keeps **your** desks and vault; updates glass + agents only.
 
+## Daily use / ship platform
+
+| Doc | Who |
+|-----|-----|
+| **[`OPERATE.md`](./OPERATE.md)** | Which agent/job for a normal day |
+| **[`RELEASE.md`](./RELEASE.md)** | Anthony: kernel → product → push |
+| **[`docs/PRODUCT-KERNEL-SOR.md`](./docs/PRODUCT-KERNEL-SOR.md)** | What to sync (never vault) |
+
 ---
 
 ## Quick run (already cloned)

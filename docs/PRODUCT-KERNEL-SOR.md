@@ -1,7 +1,10 @@
 # Product ↔ Kernel source of truth
 
-**As-of:** 2026-07-31  
+**As-of:** 2026-08-04  
 Decision-support only. Stops silent drift between dogfood (`cockpit-kernel`) and friend/product (`cockpit-product` / Cockpit-AI).
+
+**Ship ritual (short):** see root **`RELEASE.md`** (sync → smoke → push product).  
+**Daily operate map:** root **`OPERATE.md`**.
 
 ---
 
@@ -44,6 +47,8 @@ memory-cockpit-v2/src/pages/thin/Street.jsx
 memory-cockpit-v2/src/pages/thin/DeskRouter.jsx
 memory-cockpit-v2/src/thinDesks.js
 memory-cockpit-v2/scripts/*street*
+memory-cockpit-v2/scripts/desk-health.mjs
+memory-cockpit-v2/scripts/thin-slug-resolve-test.mjs
 memory-cockpit-v2/scripts/open-grok-prompt-test.mjs
 memory-cockpit-v2/scripts/mcp-cockpit-research.mjs
 memory-cockpit-v2/scripts/thin-desk-format-check.mjs
@@ -52,6 +57,9 @@ memory-cockpit-v2/scripts/pack-cache-test.mjs
 memory-cockpit-v2/scripts/live-registry-test.mjs
 memory-cockpit-v2/plans/THIN-DESK-CONTRACT.md
 memory-cockpit-v2/plans/NEW-DESK-PLAYBOOK.md
+memory-cockpit-v2/plans/2026-08-04-desk-health-gate.md
+OPERATE.md
+RELEASE.md
 docs/FINANCE-AGENT-PORTS.md
 docs/AGENT-AUTHORING.md
 docs/PRODUCT-KERNEL-SOR.md
@@ -98,9 +106,15 @@ Defaults on Anthony’s Mac: `~/Desktop/cockpit-kernel` and `~/Desktop/cockpit-p
 
 After platform sync:
 
-1. `cd <dest>/memory-cockpit-v2 && npm run test:platform` (or at least `test:open-grok-prompt` + `format-check`)  
+1. `cd <dest>/memory-cockpit-v2 && npm run test:thin-slug-resolve && npm run test:desk-health`  
+   (prefer full `npm run test:platform` when time allows)  
 2. Restart glass if server files changed  
-3. **No automatic git** — commit/push only when the human says so  
+3. **No automatic git** — commit/push product only when the human says so (see **`RELEASE.md`**)  
+
+## Hard rule (NBIS scar)
+
+Never add a **live thin desk slug** to `RESERVED_API_SLUGS`. Only Memory/global first segments.  
+Exact legacy paths (e.g. `/api/nbis/proposals*`) do not require reserving the whole slug.
 
 ---
 

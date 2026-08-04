@@ -35,7 +35,9 @@ export const RESERVED_API_SLUGS = new Set([
   'page',
   'search',
   'open-grok',
-  'nbis', // legacy NBIS proposal routes (global)
+  // NOTE: do NOT reserve 'nbis' — it is a live thin desk slug (/api/nbis/*).
+  // Legacy proposal routes stay at exact paths /api/nbis/proposals* in index.js
+  // and do not collide with /api/:slug/house|book|risks|…
   'report-file',
   'sync',
   'freshness',
@@ -163,6 +165,29 @@ export function loadThinDeskRegistry() {
 function deskNotFound(slug) {
   const live = getLiveThinRegistry();
   const known = Object.keys(live.bySlug);
+  // Reserved first-segments (Memory globals) — never report as "Known" desks.
+  if (RESERVED_API_SLUGS.has(slug)) {
+    const err = new Error(
+      `Reserved API segment "${slug}" is not a thin desk slug (Memory/global routes). `
+      + `Registered desks: ${known.length ? known.join(', ') : '(none)'}.`,
+    );
+    err.status = 404;
+    err.code = 'thin_desk_reserved_slug';
+    err.known = known;
+    err.reserved = true;
+    throw err;
+  }
+  // Registry desk that somehow failed resolve (should not happen if invariant holds)
+  if (known.includes(slug)) {
+    const err = new Error(
+      `Thin desk "${slug}" is registered but failed to resolve (runtime/profile error). `
+      + 'Check thin-desks.json profile fields and server logs.',
+    );
+    err.status = 500;
+    err.code = 'thin_desk_resolve_failed';
+    err.known = known;
+    throw err;
+  }
   const err = new Error(
     `Unknown thin desk "${slug}". Known: ${known.length ? known.join(', ') : '(none)'}. `
     + 'Use the slug from thin-desks.json (e.g. tsm not tsmc unless listed as alias).',
