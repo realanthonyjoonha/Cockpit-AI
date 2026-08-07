@@ -24,6 +24,20 @@ Keeps **your** desks and vault; updates glass + agents only.
 | **[`RELEASE.md`](./RELEASE.md)** | Anthony: kernel → product → push |
 | **[`docs/PRODUCT-KERNEL-SOR.md`](./docs/PRODUCT-KERNEL-SOR.md)** | What to sync (never vault) |
 
+## Platform engineer (Anthony / eng team — not required for casual use)
+
+Building glass/agents/factory or running **multiple instances**?
+
+| Doc / command | Use |
+|---------------|-----|
+| [`docs/DEVELOP.md`](./docs/DEVELOP.md) | Platform build procedure |
+| [`docs/LAB.md`](./docs/LAB.md) · `./scripts/lab-e2e.sh` | Blank-product E2E gate (Docker/Colima) |
+| [`docs/CUSTOMER-SIM.md`](./docs/CUSTOMER-SIM.md) · `/cockpit-customer-sim` | Grok agent as first-time customer (from scratch) |
+| [`docs/MULTI-INSTANCE.md`](./docs/MULTI-INSTANCE.md) · `./scripts/run-glass-instance.sh 4690` | As many glasses as you want (one folder + port each) |
+| [`AGENTS.md`](./AGENTS.md) · [`RELEASE.md`](./RELEASE.md) | Law + ship |
+
+Casual friends: stay on **FRIEND-START** / **FRIEND-UPGRADE** above (no Docker required).
+
 ---
 
 ## Quick run (already cloned)

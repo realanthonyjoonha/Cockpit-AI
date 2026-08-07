@@ -50,6 +50,9 @@ memory-cockpit-v2/ →  website (glass) + API
 
 | If the user asks you to… | Open |
 |--------------------------|------|
+| Build platform / glass / agents / AFK feature loop | **`docs/DEVELOP.md`** · blank E2E **`docs/LAB.md`** / `lab-e2e.sh` · ship → **`RELEASE.md`** |
+| Multi-instance / many glasses (eng) | **`docs/MULTI-INSTANCE.md`** · `./scripts/run-glass-instance.sh PORT` |
+| Grok as first-time customer / test feature from scratch | **`docs/CUSTOMER-SIM.md`** · `/cockpit-customer-sim` · `./scripts/customer-sim-preflight.sh` |
 | Daily operate / which agent for what | **`OPERATE.md`** |
 | Ship platform to friends / dual-tree | **`RELEASE.md`** + `docs/PRODUCT-KERNEL-SOR.md` |
 | Glass desk dead but pack green | `memory-cockpit-v2/scripts/desk-health.mjs` |

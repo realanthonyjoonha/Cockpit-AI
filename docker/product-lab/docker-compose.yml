@@ -1,0 +1,37 @@
+# Product lab — blank product E2E + optional glass.
+# Usage (from monorepo root):
+#   COCKPIT_PRODUCT=~/Desktop/cockpit-product docker compose -f docker/product-lab/docker-compose.yml --profile test run --rm lab-test
+#   COCKPIT_PRODUCT=... docker compose -f docker/product-lab/docker-compose.yml --profile glass up glass
+#
+# Ports: lab glass host 4690 (does not use 4681/4682).
+name: cockpit-product-lab
+
+services:
+  lab-test:
+    profiles: ["test"]
+    build:
+      context: ../..
+      dockerfile: docker/product-lab/Dockerfile
+    environment:
+      COCKPIT_PRODUCT: /work/product
+      LAB_WORKDIR: /tmp/lab-product
+    volumes:
+      - ${COCKPIT_PRODUCT:-../../cockpit-product}:/work/product:ro
+    # one-shot
+    entrypoint: ["/entrypoint-test.sh"]
+
+  glass:
+    profiles: ["glass"]
+    build:
+      context: ../..
+      dockerfile: docker/product-lab/Dockerfile
+    environment:
+      COCKPIT_PRODUCT: /work/product
+      LAB_PORT: ${LAB_PORT:-4690}
+      HOST: 0.0.0.0
+      LAB_WORKDIR: /tmp/lab-product
+    volumes:
+      - ${COCKPIT_PRODUCT:-../../cockpit-product}:/work/product:ro
+    ports:
+      - "${LAB_PORT:-4690}:${LAB_PORT:-4690}"
+    entrypoint: ["/entrypoint-glass.sh"]

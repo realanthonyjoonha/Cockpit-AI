@@ -60,6 +60,15 @@ memory-cockpit-v2/plans/NEW-DESK-PLAYBOOK.md
 memory-cockpit-v2/plans/2026-08-04-desk-health-gate.md
 OPERATE.md
 RELEASE.md
+docs/DEVELOP.md
+docs/LAB.md
+docs/MULTI-INSTANCE.md
+scripts/test-develop-discipline.sh
+scripts/lab-e2e.sh
+scripts/run-glass-instance.sh
+scripts/lab-feature-hooks/
+docker/product-lab/
+docker/develop-discipline/
 docs/FINANCE-AGENT-PORTS.md
 docs/AGENT-AUTHORING.md
 docs/PRODUCT-KERNEL-SOR.md

@@ -68,6 +68,26 @@ fi
 # Platform files only — keep thin-desks.json / vault out.
 FILES=(
   ".grok/commands/cockpit.md"
+  "docs/DEVELOP.md"
+  "docs/LAB.md"
+  "docs/MULTI-INSTANCE.md"
+  "docs/CUSTOMER-SIM.md"
+  "CUSTOMER-SIM-PROMPT.md"
+  "scripts/customer-sim-preflight.sh"
+  "scripts/customer-sim-e2e.sh"
+  "scripts/scenario-up.sh"
+  "scripts/test-agent-accept-e2e.sh"
+  "docs/SCENARIO-PIN.md"
+  "memory-cockpit-v2/scripts/agent-accept-e2e-test.mjs"
+  ".grok/commands/cockpit-customer-sim.md"
+  "memory-cockpit-v2/server/mcpPinGuard.js
+  "memory-cockpit-v2/server/cockpitMcpProject.js""
+  "memory-cockpit-v2/scripts/mcp-pin-guard-test.mjs"
+  "scripts/test-develop-discipline.sh"
+  "scripts/lab-e2e.sh"
+  "scripts/lab-isolation-e2e.sh"
+  "scripts/run-glass-instance.sh"
+  "scripts/lib/lab-seal.sh"
   "docs/FINANCE-AGENT-PORTS.md"
   "docs/AGENT-AUTHORING.md"
   "docs/PRODUCT-KERNEL-SOR.md"
@@ -125,7 +145,12 @@ copy_one() {
     return 0
   fi
   mkdir -p "$(dirname "$d")"
-  cp "$s" "$d"
+  if [ -d "$s" ]; then
+    rm -rf "$d"
+    cp -a "$s" "$d"
+  else
+    cp "$s" "$d"
+  fi
   echo "  copied: $rel"
 }
 
@@ -149,6 +174,32 @@ fi
 [ -f "$SRC/scripts/friend-upgrade.sh" ] && copy_one "scripts/friend-upgrade.sh"
 [ -f "$SRC/scripts/ensure-thin-rooms.mjs" ] && copy_one "scripts/ensure-thin-rooms.mjs"
 [ -f "$SRC/scripts/sync-agent-surface.sh" ] && copy_one "scripts/sync-agent-surface.sh"
+
+# Lab / multi-instance eng harness (directories)
+if [ -d "$SRC/scripts/lab-feature-hooks" ]; then
+  if [ "$DRY" -eq 1 ]; then echo "  would rsync: scripts/lab-feature-hooks/"
+  else
+    mkdir -p "$DST/scripts/lab-feature-hooks"
+    rsync -a --delete "$SRC/scripts/lab-feature-hooks/" "$DST/scripts/lab-feature-hooks/"
+    echo "  rsynced: scripts/lab-feature-hooks/"
+  fi
+fi
+if [ -d "$SRC/docker/product-lab" ]; then
+  if [ "$DRY" -eq 1 ]; then echo "  would rsync: docker/product-lab/"
+  else
+    mkdir -p "$DST/docker/product-lab"
+    rsync -a --delete "$SRC/docker/product-lab/" "$DST/docker/product-lab/"
+    echo "  rsynced: docker/product-lab/"
+  fi
+fi
+if [ -d "$SRC/docker/develop-discipline" ]; then
+  if [ "$DRY" -eq 1 ]; then echo "  would rsync: docker/develop-discipline/"
+  else
+    mkdir -p "$DST/docker/develop-discipline"
+    rsync -a --delete "$SRC/docker/develop-discipline/" "$DST/docker/develop-discipline/"
+    echo "  rsynced: docker/develop-discipline/"
+  fi
+fi
 
 for rel in "${FILES[@]}"; do
   copy_one "$rel"

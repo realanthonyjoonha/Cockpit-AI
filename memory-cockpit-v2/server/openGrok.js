@@ -9,6 +9,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ensureProjectCockpitMcp } from './cockpitMcpProject.js';
+import { scenarioPinPreamble } from './mcpPinGuard.js';
 import { writeStreetAgentSeed } from './streetAgentSeed.js';
 
 const SERVER_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -272,86 +273,114 @@ export function listGrokAgents(opts = {}) {
  * @param {{ action?: string, desk?: string, ticker?: string, prompt?: string, risk_id?: string, risk_name?: string }} opts
  */
 export function buildInitialPrompt(opts = {}) {
+  let core;
   if (opts.prompt && typeof opts.prompt === 'string') {
     const p = opts.prompt.trim().slice(0, 240);
-    if (p.startsWith('/cockpit')) return p;
+    if (p.startsWith('/cockpit')) core = p;
   }
-  const action = String(opts.action || 'daily').toLowerCase();
-  const desk = String(opts.desk || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
-  const riskArg = sanitizeRiskArg(opts.risk_name, opts.risk_id);
-  const tickerArg = sanitizeTickerArg(opts.ticker);
+  if (!core) {
+    const action = String(opts.action || 'daily').toLowerCase();
+    const desk = String(opts.desk || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const riskArg = sanitizeRiskArg(opts.risk_name, opts.risk_id);
+    const tickerArg = sanitizeTickerArg(opts.ticker);
 
-  if (!ALLOWED_ACTIONS.has(action) && action !== 'menu') {
-    return '/cockpit';
-  }
+    if (!ALLOWED_ACTIONS.has(action) && action !== 'menu') {
+      core = '/cockpit';
+    } else {
+      const withDesk = (cmd) => (desk ? `${cmd} ${desk}` : cmd);
+      const withDeskRisk = (cmd) => {
+        const base = withDesk(cmd);
+        return riskArg ? `${base} ${riskArg}` : base;
+      };
 
-  const withDesk = (cmd) => (desk ? `${cmd} ${desk}` : cmd);
-  const withDeskRisk = (cmd) => {
-    const base = withDesk(cmd);
-    return riskArg ? `${base} ${riskArg}` : base;
-  };
-
-  switch (action) {
-    case 'new-desk':
-      return tickerArg ? `/cockpit-new-desk ${tickerArg}` : '/cockpit-new-desk';
-    case 'daily':
-      return withDesk('/cockpit-daily');
-    case 'research':
-      return withDesk('/cockpit-research');
-    case 'coverage':
-      return withDesk('/cockpit-coverage');
-    case 'comps':
-      return withDesk('/cockpit-comps');
-    case 'model-bridge':
-      return withDesk('/cockpit-model-bridge');
-    case 'model-audit':
-      return withDesk('/cockpit-model-audit');
-    case 'ebitda-bridge':
-      return withDesk('/cockpit-ebitda-bridge');
-    case 'ebitda-quality':
-      return withDesk('/cockpit-ebitda-quality');
-    case 'street':
-    case 'street-build': // legacy alias → unified Street agent
-    case 'street-refresh': // legacy alias → unified Street agent
-    {
-      // Embed mode in slash args so agent gets PIPELINE even if seed file is missed.
-      // Glass REFRESH STREET sends mode=pipeline → /cockpit-street tsm pipeline
-      const rawMode = String(opts.mode || '').toLowerCase().trim();
-      let streetMode = 'chat';
-      if (rawMode === 'pipeline' || rawMode === 'refresh' || rawMode === 'rebuild') {
-        streetMode = 'pipeline';
-      } else if (rawMode === 'chat') {
-        streetMode = 'chat';
-      } else if (action === 'street-build' || action === 'street-refresh') {
-        streetMode = 'pipeline';
+      switch (action) {
+        case 'new-desk':
+          core = tickerArg ? `/cockpit-new-desk ${tickerArg}` : '/cockpit-new-desk';
+          break;
+        case 'daily':
+          core = withDesk('/cockpit-daily');
+          break;
+        case 'research':
+          core = withDesk('/cockpit-research');
+          break;
+        case 'coverage':
+          core = withDesk('/cockpit-coverage');
+          break;
+        case 'comps':
+          core = withDesk('/cockpit-comps');
+          break;
+        case 'model-bridge':
+          core = withDesk('/cockpit-model-bridge');
+          break;
+        case 'model-audit':
+          core = withDesk('/cockpit-model-audit');
+          break;
+        case 'ebitda-bridge':
+          core = withDesk('/cockpit-ebitda-bridge');
+          break;
+        case 'ebitda-quality':
+          core = withDesk('/cockpit-ebitda-quality');
+          break;
+        case 'street':
+        case 'street-build': // legacy alias → unified Street agent
+        case 'street-refresh': // legacy alias → unified Street agent
+        {
+          // Embed mode in slash args so agent gets PIPELINE even if seed file is missed.
+          // Glass REFRESH STREET sends mode=pipeline → /cockpit-street tsm pipeline
+          const rawMode = String(opts.mode || '').toLowerCase().trim();
+          let streetMode = 'chat';
+          if (rawMode === 'pipeline' || rawMode === 'refresh' || rawMode === 'rebuild') {
+            streetMode = 'pipeline';
+          } else if (rawMode === 'chat') {
+            streetMode = 'chat';
+          } else if (action === 'street-build' || action === 'street-refresh') {
+            streetMode = 'pipeline';
+          }
+          const parts = ['/cockpit-street'];
+          if (desk) parts.push(desk);
+          parts.push(streetMode);
+          core = parts.join(' ');
+          break;
+        }
+        case 'daily-save':
+          core = desk ? `/cockpit-daily ${desk} --save` : '/cockpit-daily --save';
+          break;
+        case 'risk-check':
+          core = withDeskRisk('/cockpit-risk-check');
+          break;
+        case 'risk-add':
+          core = withDesk('/cockpit-risk-add');
+          break;
+        case 'risk-tripwires':
+          core = withDeskRisk('/cockpit-risk-tripwires');
+          break;
+        case 'steelman':
+          core = withDesk('/cockpit-steelman');
+          break;
+        case 'match':
+          core = withDesk('/cockpit-match');
+          break;
+        case 'propose':
+          core = withDesk('/cockpit-propose');
+          break;
+        case 'pending':
+          core = withDesk('/cockpit-pending');
+          break;
+        case 'desks':
+          core = '/cockpit-desks';
+          break;
+        case 'menu':
+        default:
+          core = '/cockpit';
+          break;
       }
-      const parts = ['/cockpit-street'];
-      if (desk) parts.push(desk);
-      parts.push(streetMode);
-      return parts.join(' ');
     }
-    case 'daily-save':
-      return desk ? `/cockpit-daily ${desk} --save` : '/cockpit-daily --save';
-    case 'risk-check':
-      return withDeskRisk('/cockpit-risk-check');
-    case 'risk-add':
-      return withDesk('/cockpit-risk-add');
-    case 'risk-tripwires':
-      return withDeskRisk('/cockpit-risk-tripwires');
-    case 'steelman':
-      return withDesk('/cockpit-steelman');
-    case 'match':
-      return withDesk('/cockpit-match');
-    case 'propose':
-      return withDesk('/cockpit-propose');
-    case 'pending':
-      return withDesk('/cockpit-pending');
-    case 'desks':
-      return '/cockpit-desks';
-    case 'menu':
-    default:
-      return '/cockpit';
   }
+
+  // Multi-scenario isolation: prepend pin check when .cockpit-scenario.json exists
+  const repoForPin = process.env.COCKPIT_REPO || DEFAULT_REPO;
+  const preamble = scenarioPinPreamble(repoForPin);
+  return preamble ? `${preamble}${core}` : core;
 }
 
 /**

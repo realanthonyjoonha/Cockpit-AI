@@ -98,6 +98,7 @@ export default function ThinOverview({ desk }) {
         <div className="pagechips" style={{ paddingBottom: 10 }}>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/house`; }}><b>»</b> full house view</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/risks`; }}><b>»</b> risk register</span>
+          <span className="pchip" onClick={() => { window.location.hash = `${base}/street`; }}><b>»</b> street models</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/sources`; }}><b>»</b> sources catalog</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/ask`; }}><b>»</b> ask the book</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/update`; }}><b>»</b> update / write path</span>

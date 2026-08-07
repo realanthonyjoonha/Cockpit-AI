@@ -34,6 +34,27 @@ export function ensureProjectCockpitMcp(monorepoRoot, opts = {}) {
   const ontRoot = process.env.ONTOLOGY_ROOT || path.join(root, 'ontology');
   const nodeBin = opts.nodeBin || process.execPath;
 
+  // Scenario / pin isolation (multi-cockpit on one Mac)
+  let expectRoot = process.env.COCKPIT_EXPECT_ROOT || root;
+  let allowedSlugs = process.env.COCKPIT_ALLOWED_SLUGS || '';
+  let scenarioName = process.env.COCKPIT_SCENARIO_NAME || '';
+  let agentAccept = process.env.COCKPIT_AGENT_ACCEPT || '';
+  const scenarioPath = path.join(root, '.cockpit-scenario.json');
+  if (fs.existsSync(scenarioPath)) {
+    try {
+      const sc = JSON.parse(fs.readFileSync(scenarioPath, 'utf8'));
+      if (sc.expect_root) expectRoot = String(sc.expect_root);
+      if (sc.allowed_slugs != null) {
+        allowedSlugs = Array.isArray(sc.allowed_slugs)
+          ? sc.allowed_slugs.join(',')
+          : String(sc.allowed_slugs);
+      }
+      if (sc.name) scenarioName = String(sc.name);
+      if (sc.agent_accept === true && !agentAccept) agentAccept = '1';
+      if (sc.agent_accept === false && !agentAccept) agentAccept = '0';
+    } catch { /* ignore bad scenario file */ }
+  }
+
   const grokDir = path.join(root, '.grok');
   const cfgPath = path.join(grokDir, 'config.toml');
   fs.mkdirSync(grokDir, { recursive: true });
@@ -42,6 +63,7 @@ export function ensureProjectCockpitMcp(monorepoRoot, opts = {}) {
   const body = `# Auto-written by cockpit (install-grok-mcp / OPEN GROK). Machine-local — do not commit.
 # When Grok cwd is this monorepo, project scope overrides user MCP of the same name.
 # Ensures list_desks / risk-check hit THIS vault (not another clone on the same Mac).
+# COCKPIT_EXPECT_ROOT + COCKPIT_ALLOWED_SLUGS fail-closed multi-scenario pins.
 
 [mcp_servers.cockpit-research]
 command = ${tomlStr(nodeBin)}
@@ -52,10 +74,21 @@ enabled = true
 COCKPIT_VAULT = ${tomlStr(vault)}
 ONTOLOGY_STORE = ${tomlStr(store)}
 ONTOLOGY_ROOT = ${tomlStr(ontRoot)}
-`;
+COCKPIT_EXPECT_ROOT = ${tomlStr(expectRoot)}
+${allowedSlugs ? `COCKPIT_ALLOWED_SLUGS = ${tomlStr(allowedSlugs)}\n` : ''}${scenarioName ? `COCKPIT_SCENARIO_NAME = ${tomlStr(scenarioName)}\n` : ''}${agentAccept ? `COCKPIT_AGENT_ACCEPT = ${tomlStr(agentAccept)}\n` : ''}`;
 
   fs.writeFileSync(cfgPath, body, 'utf8');
-  return { ok: true, path: cfgPath, monorepo_root: root, vault, store };
+  return {
+    ok: true,
+    path: cfgPath,
+    monorepo_root: root,
+    vault,
+    store,
+    expect_root: expectRoot,
+    allowed_slugs: allowedSlugs || null,
+    scenario: scenarioName || null,
+    agent_accept: agentAccept || null,
+  };
 }
 
 function tomlStr(s) {

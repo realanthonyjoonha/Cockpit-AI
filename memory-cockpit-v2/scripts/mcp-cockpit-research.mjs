@@ -14,6 +14,7 @@ import {
   proposeHouse,
   proposeHouseFromCurrent,
   listHouseProposals,
+  acceptHouseProposal,
 } from '../server/houseProposals.js';
 import {
   proposeRiskStatus,
@@ -23,6 +24,7 @@ import {
   getSorRiskSnapshot,
   readSorStatusMap,
   resolveDisplayStatus,
+  acceptRiskProposal,
 } from '../server/riskProposals.js';
 import { readFileSync, existsSync, realpathSync } from 'fs';
 import os from 'os';
@@ -44,6 +46,24 @@ if (!process.env.ONTOLOGY_STORE) {
 }
 if (!process.env.ONTOLOGY_ROOT) {
   process.env.ONTOLOGY_ROOT = path.join(REPO_ROOT, 'ontology');
+}
+
+// Scenario pin file → env (fail-closed multi-cockpit isolation)
+const {
+  assertMcpPin,
+  loadScenarioFileIntoEnv,
+  assertAgentAcceptAllowed,
+  appendAgentAcceptAudit,
+  isAgentAcceptEnabled,
+} = await import(path.join(ROOT, 'server', 'mcpPinGuard.js'));
+loadScenarioFileIntoEnv(REPO_ROOT);
+
+function pinGuard(deskSlug) {
+  return assertMcpPin({
+    repoRoot: REPO_ROOT,
+    vault: process.env.COCKPIT_VAULT,
+    deskSlug,
+  });
 }
 
 /** Full house markdown from allowlisted path (large payloads without stuffing MCP args). */
@@ -87,17 +107,20 @@ function deskCatalogHint() {
 }
 
 function resolveDesk(slugOrTicker) {
+  pinGuard(); // expect_root + vault under monorepo
   const { registry: REG, bySlug: DESK_BUNDLES } = liveRegistry();
   const q = String(slugOrTicker || '').trim().toLowerCase();
   if (!q) throw new Error(`desk required (slug or ticker). ${deskCatalogHint()}`);
   const bySlug = (REG.desks || []).find((d) => d.slug === q);
   if (bySlug) {
+    pinGuard(bySlug.slug);
     const bundle = DESK_BUNDLES[bySlug.slug];
     if (!bundle) throw new Error(`no profile for ${bySlug.slug}`);
     return { desk: bySlug, profile: bundle.model };
   }
   const byTicker = (REG.desks || []).find((d) => String(d.ticker).toLowerCase() === q);
   if (byTicker) {
+    pinGuard(byTicker.slug);
     const bundle = DESK_BUNDLES[byTicker.slug];
     if (!bundle) throw new Error(`no profile for ${byTicker.slug}`);
     return { desk: byTicker, profile: bundle.model };
@@ -106,6 +129,7 @@ function resolveDesk(slugOrTicker) {
   for (const d of REG.desks || []) {
     const aliases = Array.isArray(d.aliases) ? d.aliases : [];
     if (aliases.some((a) => String(a).toLowerCase() === q)) {
+      pinGuard(d.slug);
       const bundle = DESK_BUNDLES[d.slug];
       if (!bundle) throw new Error(`no profile for ${d.slug}`);
       return { desk: d, profile: bundle.model };
@@ -122,6 +146,20 @@ function textResult(obj) {
 const server = new McpServer({ name: 'cockpit-research', version: '1.0.0' });
 
 server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS MCP monorepo install.', {}, async () => {
+  let pin;
+  try {
+    pin = pinGuard();
+  } catch (e) {
+    return textResult({
+      ok: false,
+      pin_ok: false,
+      error: String(e?.message || e),
+      monorepo_root: REPO_ROOT,
+      expect_root: process.env.COCKPIT_EXPECT_ROOT || null,
+      allowed_slugs: process.env.COCKPIT_ALLOWED_SLUGS || null,
+      note: 'STOP — wrong MCP pin. install-grok-mcp from the correct monorepo; OPEN GROK from that glass only.',
+    });
+  }
   const { registry: REG, bySlug, registryPath, mtimeMs } = liveRegistry();
   const desks = (REG.desks || []).map((d) => {
     const p = bySlug[d.slug]?.model;
@@ -133,9 +171,27 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
       house_file: d.house_file || p?.houseFile || null,
     };
   });
+  const allowed = process.env.COCKPIT_ALLOWED_SLUGS
+    ? new Set(
+        String(process.env.COCKPIT_ALLOWED_SLUGS)
+          .split(/[\s,]+/)
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+      )
+    : null;
+  const foreign = allowed
+    ? desks.filter((d) => !allowed.has(String(d.slug).toLowerCase())).map((d) => d.slug)
+    : [];
   return textResult({
+    ok: true,
+    pin_ok: true,
     desks,
     monorepo_root: REPO_ROOT,
+    expect_root: process.env.COCKPIT_EXPECT_ROOT || null,
+    allowed_slugs: process.env.COCKPIT_ALLOWED_SLUGS || null,
+    scenario: process.env.COCKPIT_SCENARIO_NAME || null,
+    foreign_slugs_in_registry: foreign,
+    pin,
     vault: process.env.COCKPIT_VAULT,
     ontology_store: process.env.ONTOLOGY_STORE,
     registry: registryPath,
@@ -145,7 +201,7 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
     note:
       'Desks = config/thin-desks.json (re-read on file change — long Grok sessions pick up new desks). ' +
       'If a desk is missing, confirm monorepo MCP pin (project .grok/config.toml) points at THIS clone. ' +
-      'ACCEPT house/risks on glass only.',
+      'If pin_ok is false or monorepo_root is wrong, STOP. ACCEPT house/risks on glass only.',
   });
 });
 
@@ -534,10 +590,110 @@ server.tool(
       return textResult({
         ...out,
         glass: `http://127.0.0.1:4681/#/${d.slug}/risks → ACCEPT set_tripwires`,
-        invariant: 'SoR unchanged until ACCEPT. User should have approved each tripwire.',
+        invariant: 'SoR unchanged until ACCEPT (or agent_accept grant). User should have approved each tripwire.',
       });
     } catch (e) {
       return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'agent_accept_status',
+  'Whether this monorepo grants agent ACCEPT of house/risk proposals (scenario or COCKPIT_AGENT_ACCEPT=1).',
+  {},
+  async () => {
+    try {
+      pinGuard();
+    } catch (e) {
+      return textResult({ ok: false, pin_ok: false, error: String(e?.message || e) });
+    }
+    const enabled = isAgentAcceptEnabled();
+    return textResult({
+      ok: true,
+      pin_ok: true,
+      agent_accept: enabled,
+      monorepo_root: REPO_ROOT,
+      scenario: process.env.COCKPIT_SCENARIO_NAME || null,
+      note: enabled
+        ? 'Agent may call accept_house_proposal / accept_risk_proposal (same write path as glass ACCEPT). Decision-support only.'
+        : 'Agent ACCEPT denied — use glass ACCEPT or enable via scenario-up / COCKPIT_AGENT_ACCEPT=1.',
+      decision_support_only: true,
+    });
+  },
+);
+
+server.tool(
+  'accept_house_proposal',
+  'AGENT ACCEPT pending house proposal (writes vault house). Requires agent_accept grant (scenario default on). Same path as glass ACCEPT.',
+  {
+    desk: z.string(),
+    proposal_id: z.string().describe('Pending house proposal id from list_house_proposals'),
+  },
+  async ({ desk, proposal_id }) => {
+    try {
+      pinGuard();
+      assertAgentAcceptAllowed(REPO_ROOT);
+      const { desk: d, profile } = resolveDesk(desk);
+      const houseFile = d.house_file || profile.houseFile;
+      const out = acceptHouseProposal(d.slug, proposal_id, { houseFile });
+      const logPath = appendAgentAcceptAudit(process.env.COCKPIT_VAULT, {
+        kind: 'house',
+        desk: d.slug,
+        proposal_id,
+        house_file: houseFile,
+        monorepo_root: REPO_ROOT,
+        scenario: process.env.COCKPIT_SCENARIO_NAME || null,
+        written_path: out.written?.path,
+      });
+      return textResult({
+        ...out,
+        agent_accept: true,
+        audit_log: logPath,
+        note: (out.note || '') + ' Accepted by agent grant (not human glass click). COMPILE BOOK still recommended.',
+        decision_support_only: true,
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e), agent_accept: isAgentAcceptEnabled() });
+    }
+  },
+);
+
+server.tool(
+  'accept_risk_proposal',
+  'AGENT ACCEPT pending risk proposal (writes risks SoR). Requires agent_accept grant. Same path as glass ACCEPT.',
+  {
+    desk: z.string(),
+    proposal_id: z.string().describe('Pending risk proposal id from list_risk_proposals'),
+  },
+  async ({ desk, proposal_id }) => {
+    try {
+      pinGuard();
+      assertAgentAcceptAllowed(REPO_ROOT);
+      const { desk: d, profile } = resolveDesk(desk);
+      const out = acceptRiskProposal({
+        slug: d.slug,
+        id: proposal_id,
+        risksSourceRel: profile.risksSource,
+      });
+      const logPath = appendAgentAcceptAudit(process.env.COCKPIT_VAULT, {
+        kind: 'risk',
+        desk: d.slug,
+        proposal_id,
+        risk_kind: out.proposal?.kind,
+        monorepo_root: REPO_ROOT,
+        scenario: process.env.COCKPIT_SCENARIO_NAME || null,
+        written_path: out.written?.path || out.written?.abs,
+      });
+      return textResult({
+        ...out,
+        agent_accept: true,
+        audit_log: logPath,
+        note: (out.note || '') + ' Accepted by agent grant. COMPILE BOOK still recommended.',
+        decision_support_only: true,
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e), agent_accept: isAgentAcceptEnabled() });
     }
   },
 );

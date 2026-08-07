@@ -66,22 +66,37 @@ function slimRisk(r) {
   };
 }
 
+/**
+ * Overview / book strip stance one-liner from house_prior.view_excerpt.
+ * Must not stop at "." (breaks "U.S.", "800G", etc.). Nested **Stance:** **body** is common.
+ */
 function stanceLine(housePrior, extended) {
   if (!housePrior) return null;
-  const ex = housePrior.view_excerpt || '';
-  let m;
-  if (extended) {
-    m = ex.match(/\*\*Stance[^:]*:\s*([^*]+)\*\*/i)
-      || ex.match(/Stance:\s*([^\n.]+)/i)
-      || ex.match(/>\s*\*\*Stance[^:]*:\s*([^*]+)\*\*/i)
-      || ex.match(/I am \*\*very bullish\*\*[^.]+\./i)
-      || ex.match(/very bullish on[^.]{0,120}/i);
-    if (m) return m[0].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
-  } else {
-    m = ex.match(/\*\*Stance:\s*([^*]+)\*\*/i)
-      || ex.match(/Stance:\s*([^\n.]+)/i)
-      || ex.match(/>\s*\*\*Stance:\s*([^*]+)\*\*/i);
-    if (m) return m[1].replace(/\s+/g, ' ').trim();
+  const ex = String(housePrior.view_excerpt || '');
+  const clean = (s) => String(s || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+
+  // Full line after Stance: (prefer — do not use [^\n.]+ which truncates at U.S.)
+  let m = ex.match(/\*\*Stance:\*\*\s*(.+?)(?=\s*(?:Not a rating|###|\n\n|$))/is)
+    || ex.match(/\*\*Stance:\s*(.+?)\*\*(?=\s*(?:Not a rating|###|\n\n|$))/is)
+    || ex.match(/(?:^|\n)\s*\*\*Stance[^:]*:\*\*\s*(.+?)(?=\n\n|\n###|$)/is)
+    || ex.match(/(?:^|\n)\s*Stance:\s*(.+?)(?=\n\n|\n###|$)/im);
+
+  if (!m && extended) {
+    m = ex.match(/I am \*\*very bullish\*\*[^.]*\./i)
+      || ex.match(/very bullish on[^.]{0,200}/i);
+    if (m) return clean(m[0]).slice(0, 480);
+  }
+
+  if (m) {
+    const body = clean(m[1] != null ? m[1] : m[0]);
+    if (body) return body.slice(0, 480);
+  }
+  // Fallback: first long bold sentence in excerpt after "Stance"
+  const idx = ex.search(/Stance/i);
+  if (idx >= 0) {
+    const tail = ex.slice(idx).replace(/^Stance:?\*?\*?\s*/i, '');
+    const line = clean(tail.split(/\n/)[0] || '');
+    if (line.length > 40) return line.slice(0, 480);
   }
   return housePrior.play || null;
 }

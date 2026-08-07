@@ -171,10 +171,21 @@ npm run test:desk-health
 
 Book may still be FORMING / ACCEPT pending — health only means routes resolve.
 
-### 6–7. Human gates (book only — unchanged)
+### 6–7. Human gates (book only) — or scenario agent ACCEPT
 
-6. **House + risks** — user CONFIRM house + ACCEPT risks on glass (`#/{slug}/house`, `#/{slug}/risks`).  
+6. **House + risks** — default product/kernel: user CONFIRM house + ACCEPT risks on glass (`#/{slug}/house`, `#/{slug}/risks`).  
    Agents use propose tools only; never claim vault written until ACCEPT.  
+
+   **Scenario monorepo only** (`.cockpit-scenario.json` with `agent_accept: true`, MCP `COCKPIT_AGENT_ACCEPT=1`):  
+   After **DEEP** research + propose house/risks (same bar as kernel — **not** thin seeders), the **test-user agent may ACCEPT**:
+   - MCP `agent_accept_status` → must show grant on  
+   - `accept_house_proposal` / `accept_risk_proposal` (same write path as glass ACCEPT)  
+   - Audit: `research-wiki/cockpit/agent-accept-log.jsonl`  
+   - Still **no** invent; decision-support only; no buy/sell/PT/sizing  
+   - Factory closeout: `./scripts/scenario-pipeline-e2e.sh <name> --ticker TICKER --port N`  
+     (depth gate **fails** if house/claims are thin — see `docs/SCENARIO-DEPTH-LAW.md`)  
+   - OPEN GROK **only** from the scenario folder / that glass (wrong pin = wrong books)
+
 7. **After ACCEPT** — COMPILE BOOK + REFRESH on glass (book pack only; not Street).
 
 ## Playbook paths (relative monorepo)
@@ -197,10 +208,10 @@ Book may still be FORMING / ACCEPT pending — health only means routes resolve.
 7. compile/verify status  
 8. **Street:** n complete firms published · path `cockpit/street/{TICKER}.json` · or EMPTY/GAP reason  
 9. **Desk health:** PASS / FAIL (+ command to re-run `desk-health.mjs`) — required before “glass ready”  
-10. Remind glass CONFIRM/ACCEPT — book not SoR until then; Street ≠ house PT  
+10. Remind glass CONFIRM/ACCEPT (or scenario agent ACCEPT when grant on) — book not SoR until then; Street ≠ house PT  
 
 ## Footer
 
-Decision-support only. Not book SoR until human gates. No buy/sell/PT/sizing.  
+Decision-support only. Not book SoR until ACCEPT (human glass **or** scenario agent grant). No buy/sell/PT/sizing.  
 **Default is deep parallel research** — opt out with `--light` only.  
 **Default includes one Street bootstrap** after pack — opt out with `--no-street` (or `--light`).

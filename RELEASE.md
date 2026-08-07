@@ -30,13 +30,14 @@ Decision-support only.
 
 | When | You do |
 |------|--------|
-| Finished a **platform** feature on kernel | `./scripts/release-check.sh --full` |
-| Check says **PASS** | Review `git status` on product (no vault) → commit → push |
-| Check says **FAIL** | Fix; do **not** push |
+| Finished a **platform** feature on kernel | `./scripts/lab-e2e.sh` then `./scripts/release-check.sh --full` |
+| Lab + check say **PASS** | Review `git status` on product (no vault) → commit → push |
+| Either says **FAIL** | Fix; do **not** push |
 | Normal research day | **`OPERATE.md`** only — no release |
 | Friend asks for updates | Confirm you pushed; they run `friend-upgrade` |
 
-**Agents:** before claiming “friends can use this,” run `release-check.sh --full` and show PASS. Never push unless human asks.
+**Agents:** before claiming “friends can use this,” run `./scripts/lab-e2e.sh` **and** `release-check.sh --full` and show PASS. Never push unless human asks.  
+Blank product E2E: [`docs/LAB.md`](./docs/LAB.md). Multi-instance eng: [`docs/MULTI-INSTANCE.md`](./docs/MULTI-INSTANCE.md).
 
 ### Ship checklist (do in order)
 
