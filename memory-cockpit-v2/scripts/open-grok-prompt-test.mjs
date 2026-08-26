@@ -151,8 +151,8 @@ const phase1 = [
   ['ebitda-bridge', '/cockpit-ebitda-bridge tsm'],
   ['ebitda-quality', '/cockpit-ebitda-quality tsm'],
 ];
-// street prompts tested separately (include mode suffix)
-const financeActions = ['comps', 'model-bridge', 'model-audit', 'ebitda-bridge', 'ebitda-quality', 'street'];
+// street / model-desk prompts tested separately (include mode suffix)
+const financeActions = ['comps', 'model-bridge', 'model-audit', 'ebitda-bridge', 'ebitda-quality', 'street', 'model-desk'];
 for (const [action, expect] of phase1) {
   try {
     const p = buildInitialPrompt({ action, desk: 'tsm' });
@@ -161,6 +161,57 @@ for (const [action, expect] of phase1) {
   } catch (e) {
     fail(`${action} prompt`, e);
   }
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'model-desk', desk: 'nvda', mode: 'pipeline' });
+  if (p !== '/cockpit-model nvda pipeline') throw new Error(p);
+  ok('model-desk pipeline → /cockpit-model nvda pipeline');
+} catch (e) {
+  fail('model-desk pipeline prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'research-compile',
+    desk: 'nvda',
+    mode: 'pipeline',
+    run_id: '20260808T120000Z_deep_compile_NVDA',
+  });
+  if (p !== '/cockpit-research-compile nvda pipeline 20260808T120000Z_deep_compile_NVDA') {
+    throw new Error(p);
+  }
+  ok('research-compile pipeline + run_id');
+} catch (e) {
+  fail('research-compile prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'research-compile')) {
+    throw new Error('research-compile missing from desk variant');
+  }
+  ok('desk variant includes research-compile');
+} catch (e) {
+  fail('desk research-compile catalog', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'model-desk', desk: 'nvda', mode: 'chat' });
+  if (p !== '/cockpit-model nvda chat') throw new Error(p);
+  ok('model-desk chat → /cockpit-model nvda chat');
+} catch (e) {
+  fail('model-desk chat prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'model-desk')) {
+    throw new Error('model-desk missing from desk variant');
+  }
+  ok('desk variant includes model-desk');
+} catch (e) {
+  fail('desk model-desk catalog', e);
 }
 
 try {

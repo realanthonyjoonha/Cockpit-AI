@@ -101,6 +101,20 @@ if [ "$DO_NEGATIVE" -eq 1 ]; then
   echo
 fi
 
+ensure_docker() {
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+  if docker info >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v colima >/dev/null 2>&1; then
+    echo "  → colima start"
+    colima start || true
+  fi
+  docker info >/dev/null 2>&1
+}
+
 run_host_suite() {
   echo "→ L1 host platform health (product empty)"
   (
@@ -123,17 +137,7 @@ run_host_suite() {
 
 run_docker_suite() {
   echo "→ L1/L3 docker product-lab test"
-  if ! command -v docker >/dev/null 2>&1; then
-    echo "  docker missing — host suite only"
-    return 1
-  fi
-  if ! docker info >/dev/null 2>&1; then
-    if command -v colima >/dev/null 2>&1; then
-      echo "  → colima start"
-      colima start || true
-    fi
-  fi
-  if ! docker info >/dev/null 2>&1; then
+  if ! ensure_docker; then
     echo "  docker daemon not ready — host suite only"
     return 1
   fi
@@ -150,16 +154,23 @@ run_docker_suite() {
   pass "docker lab-test PASS"
 }
 
-# --- develop discipline ---
+# --- develop discipline (docker if ready; host fallback otherwise) ---
 echo "→ L6 develop-discipline"
+ensure_docker || true
 if [ -x "$KERNEL/docker/develop-discipline/run.sh" ]; then
-  COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
-    bash "$KERNEL/docker/develop-discipline/run.sh" || bad "develop-discipline FAIL"
-  pass "develop-discipline"
+  if COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
+    bash "$KERNEL/docker/develop-discipline/run.sh"; then
+    pass "develop-discipline"
+  else
+    bad "develop-discipline FAIL"
+  fi
 elif [ -x "$KERNEL/scripts/test-develop-discipline.sh" ]; then
-  COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
-    bash "$KERNEL/scripts/test-develop-discipline.sh" || bad "develop-discipline FAIL"
-  pass "develop-discipline (host)"
+  if COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
+    bash "$KERNEL/scripts/test-develop-discipline.sh"; then
+    pass "develop-discipline (host)"
+  else
+    bad "develop-discipline FAIL"
+  fi
 else
   bad "develop-discipline runner missing"
 fi

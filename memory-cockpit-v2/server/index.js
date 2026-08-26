@@ -11,6 +11,7 @@ import { VAULT_DIR, canonicalize, syncState, STATE_PATH, LOCK_PATH, houseView, s
 import * as model from './model.js';
 import * as proposals from './nbisProposals.js';
 import { mountThinDesks } from './thinDeskMount.js';
+import { operateGlance } from './operateGlance.js';
 import { gate, handleLogin, handleLogout, authEnabled } from './auth.js';
 import { openGrokBuild, isLoopbackRequest, listGrokAgents } from './openGrok.js';
 
@@ -103,6 +104,8 @@ app.post('/api/open-grok', (req, res) => {
       risk_id: body.risk_id || body.riskId,
       risk_name: body.risk_name || body.riskName,
       mode: body.mode, // street: pipeline | chat
+      run_id: body.run_id || body.runId, // research-compile: target run (was dropped — 2026-08-20 fix)
+      job: body.job,
     });
     return res.json(out);
   } catch (e) {
@@ -114,6 +117,9 @@ app.post('/api/open-grok', (req, res) => {
 // Core surface: meta, overview, risks, house, sources, quote, book, compile, ask, write-meta.
 // URLs remain /api/{slug}/… (nbis, msft, …). Memory routes above untouched.
 mountThinDesks(app, { j, ja });
+
+// Multi-desk operate glance for START (factory-native attention board)
+app.get('/api/operate-glance', j(() => operateGlance()));
 
 // Phase 5b — NBIS propose/accept/reject only (meta_only glass; not part of thin factory mount)
 app.get('/api/nbis/proposals', j((req) => proposals.listProposals({ status: req.query.status || undefined })));

@@ -7,6 +7,7 @@ import { createThinModel } from './thinModel.js';
 import { createThinAsk } from './thinAsk.js';
 import { createThinCompile } from './thinCompile.js';
 import { loadThinDeskProfiles, REG_PATH } from './thinDeskProfiles.js';
+import { pipelineSnapshot } from './secEdgar.js';
 
 /**
  * First path segments reserved by Memory / global APIs — never treat as thin slug.
@@ -16,6 +17,8 @@ export const RESERVED_API_SLUGS = new Set([
   'overview',
   'complex-quotes',
   'cockpit-read',
+  'operate-glance',
+  'thin-desks',
   'risks',
   'risk',
   'series',
@@ -239,8 +242,30 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/risks/proposals/:id/accept', j(withDesk((rt, req) => rt.model.riskProposalAccept(req.params.id))));
   app.post('/api/:slug/risks/proposals/:id/reject', j(withDesk((rt, req) => rt.model.riskProposalReject(req.params.id))));
   app.get('/api/:slug/sources', j(withDesk((rt) => rt.model.sources())));
+  app.get('/api/:slug/sources/:id', j(withDesk((rt, req) => rt.model.sourceGet(req.params.id))));
   app.get('/api/:slug/street', j(withDesk((rt) => rt.model.street())));
   app.post('/api/:slug/street/refresh', ja(withDesk(async (rt, req) => rt.model.streetRefresh(req.body || {}))));
+  app.get('/api/:slug/model', j(withDesk((rt) => rt.model.workingModel())));
+  app.post('/api/:slug/model/refresh', ja(withDesk(async (rt, req) => rt.model.workingModelRefresh(req.body || {}))));
+  app.post('/api/:slug/model/print/arm', j(withDesk((rt, req) => rt.model.workingModelArm(req.body || {}))));
+  app.post('/api/:slug/model/print/lock', j(withDesk((rt) => rt.model.workingModelLock())));
+  app.get('/api/:slug/research', j(withDesk((rt) => rt.model.researchList())));
+  app.get('/api/:slug/research/runs/:runId', j(withDesk((rt, req) => rt.model.researchGet(req.params.runId))));
+  app.post('/api/:slug/research/runs', j(withDesk((rt, req) => rt.model.researchStart(req.body || {}))));
+  app.post('/api/:slug/research/runs/:runId/publish', j(withDesk((rt, req) => rt.model.researchPublish(req.params.runId, req.body || {}))));
+  app.post('/api/:slug/research/runs/:runId/cancel', j(withDesk((rt, req) => rt.model.researchCancel(req.params.runId, req.body || {}))));
+  app.post('/api/:slug/research/runs/:runId/heartbeat', j(withDesk((rt, req) => rt.model.researchHeartbeat(req.params.runId))));
+  app.post('/api/:slug/research/runs/:runId/retry', j(withDesk((rt, req) => rt.model.researchRetry(req.params.runId, req.body || {}))));
+  app.post('/api/:slug/research/runs/:runId/acquire', ja(withDesk(async (rt, req) => rt.model.researchAcquire(req.params.runId, req.body || {}))));
+  // Deep-compile pipeline stages 0+1 (SEC EDGAR resolve + filing index) — plan 2026-08-19.
+  // Read-only for the book: cache lane cockpit/compile/{TICKER}/ only; never pack/house SoR.
+  app.get('/api/:slug/pipeline', ja(withDesk(async (rt) => pipelineSnapshot(rt.desk.ticker, {
+    compiledAt: rt.model.book().compiled_at || null,
+  }))));
+  app.post('/api/:slug/pipeline/refresh', ja(withDesk(async (rt) => pipelineSnapshot(rt.desk.ticker, {
+    force: true,
+    compiledAt: rt.model.book().compiled_at || null,
+  }))));
   app.get('/api/:slug/quote', ja(withDesk((rt) => rt.model.quote())));
   app.get('/api/:slug/book', j(withDesk((rt) => rt.model.book())));
   app.post('/api/:slug/book/refresh', j(withDesk((rt) => rt.model.refreshBook())));

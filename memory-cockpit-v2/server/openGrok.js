@@ -11,6 +11,17 @@ import { fileURLToPath } from 'url';
 import { ensureProjectCockpitMcp } from './cockpitMcpProject.js';
 import { scenarioPinPreamble } from './mcpPinGuard.js';
 import { writeStreetAgentSeed } from './streetAgentSeed.js';
+import { writeWorkingModelAgentSeed } from './workingModelAgentSeed.js';
+import { writeResearchRunsAgentSeed } from './researchRunsAgentSeed.js';
+import { spawnResearchWorker } from './researchRunsWorker.js';
+import {
+  findInFlightRun,
+  attachWorker,
+  patchRunMeta,
+  failResearchRun,
+  researchRunDir,
+  tickerId as researchTickerId,
+} from './thinResearchRuns.js';
 
 const SERVER_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_REPO = path.resolve(SERVER_ROOT, '..');
@@ -81,6 +92,13 @@ export const GROK_AGENTS = [
     variants: ['desk'],
   },
   {
+    action: 'model-desk',
+    label: 'Model desk',
+    hint: 'Working assumptions + bridge vault · not PT · glass Model room',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
     action: 'model-bridge',
     label: 'Model bridge',
     hint: 'FCF / assumptions framework · not a PT · optional save',
@@ -105,6 +123,13 @@ export const GROK_AGENTS = [
     action: 'street',
     label: 'Street agent',
     hint: 'Street room · firm models + house/risk context · refresh or rebuild',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'research-compile',
+    label: 'Research compile',
+    hint: 'Deep compile archive · Research room · heavy compute',
     needs_desk: true,
     variants: ['desk'],
   },
@@ -303,12 +328,44 @@ export function buildInitialPrompt(opts = {}) {
         case 'research':
           core = withDesk('/cockpit-research');
           break;
+        case 'research-compile':
+        {
+          const rawMode = String(opts.mode || '').toLowerCase().trim();
+          let rMode = 'chat';
+          if (rawMode === 'pipeline' || rawMode === 'refresh' || rawMode === 'compile') {
+            rMode = 'pipeline';
+          } else if (rawMode === 'chat') {
+            rMode = 'chat';
+          }
+          const parts = ['/cockpit-research-compile'];
+          if (desk) parts.push(desk);
+          parts.push(rMode);
+          const rid = String(opts.run_id || opts.runId || '').replace(/[^A-Za-z0-9._-]/g, '');
+          if (rid) parts.push(rid);
+          core = parts.join(' ');
+          break;
+        }
         case 'coverage':
           core = withDesk('/cockpit-coverage');
           break;
         case 'comps':
           core = withDesk('/cockpit-comps');
           break;
+        case 'model-desk':
+        {
+          const rawMode = String(opts.mode || '').toLowerCase().trim();
+          let modelMode = 'chat';
+          if (rawMode === 'pipeline' || rawMode === 'refresh' || rawMode === 'rebuild' || rawMode === 'update') {
+            modelMode = 'pipeline';
+          } else if (rawMode === 'chat') {
+            modelMode = 'chat';
+          }
+          const parts = ['/cockpit-model'];
+          if (desk) parts.push(desk);
+          parts.push(modelMode);
+          core = parts.join(' ');
+          break;
+        }
         case 'model-bridge':
           core = withDesk('/cockpit-model-bridge');
           break;
@@ -388,13 +445,6 @@ export function buildInitialPrompt(opts = {}) {
  * @param {{ action?: string, desk?: string, ticker?: string, prompt?: string, risk_id?: string, risk_name?: string }} opts
  */
 export function openGrokBuild(opts = {}) {
-  if (process.platform !== 'darwin') {
-    return {
-      ok: false,
-      error: 'open-grok only supported on macOS Terminal right now',
-    };
-  }
-
   const repo = resolveRepo();
   if (!fs.existsSync(repo)) {
     return { ok: false, error: `repo not found: ${repo}` };
@@ -423,7 +473,105 @@ export function openGrokBuild(opts = {}) {
     }
   }
 
-  const cmd = `cd ${shellQuote(repo)} && ${shellQuote(grok)} ${shellQuote(initial)}`;
+  // Model desk: working assumptions seed (pipeline = UPDATE MODEL).
+  let model_seed = null;
+  if (action === 'model-desk') {
+    try {
+      model_seed = writeWorkingModelAgentSeed(opts.desk || ticker || '', {
+        mode: opts.mode || 'chat',
+      });
+    } catch (e) {
+      model_seed = { ok: false, error: e.message || String(e) };
+    }
+  }
+
+  // Research runs: deep compile archive seed.
+  let research_seed = null;
+  if (action === 'research-compile') {
+    try {
+      research_seed = writeResearchRunsAgentSeed(opts.desk || ticker || '', {
+        mode: opts.mode || 'chat',
+        run_id: opts.run_id || opts.runId || null,
+        job: opts.job || 'deep_compile',
+      });
+    } catch (e) {
+      research_seed = { ok: false, error: e.message || String(e) };
+    }
+  }
+
+  // Pipeline launches must be self-contained: if the slash-command file fails to load
+  // or the agent stops at a menu, the execute directive + seed path are still in the
+  // prompt itself (2026-08-20 — NEW COMPILE opened Grok idle; fire-and-forget hardening).
+  let launchPrompt = initial;
+  const researchPipeline = !!(research_seed?.ok && research_seed.mode === 'pipeline');
+  if (researchPipeline) {
+    launchPrompt = `${initial}\n\nPIPELINE MODE — execute the research job now; do not stop at a menu or ask which desk. `
+      + `First read the seed file: ${research_seed.path} . `
+      + `run_id ${research_seed.run_id || '(in seed)'} is already created (status=queued until worker attach); `
+      + `write only under that run folder and publish via the API in the seed. Decision-support only.`;
+  }
+
+  // Research PIPELINE: OS-agnostic headless spawn. Canonical artifacts live in the run
+  // folder. Same-desk mutex: refuse a second grok if this desk/run already has a live worker.
+  let headless = null;
+  if (researchPipeline) {
+    const tkr = research_seed.ticker || researchTickerId(opts.ticker || opts.desk);
+    const spawned = spawnResearchWorker({
+      ticker: tkr,
+      run_id: research_seed.run_id,
+      desk: opts.desk,
+      job: research_seed.job,
+      prompt: launchPrompt,
+      seed_path: research_seed.path,
+      grok,
+      repo,
+      deps: {
+        findInFlightRun,
+        attachWorker,
+        patchRunMeta,
+        failResearchRun,
+        researchRunDir,
+      },
+    });
+    if (spawned?.already_in_flight) {
+      return {
+        ok: true,
+        already_in_flight: true,
+        run_id: spawned.run_id,
+        pid: spawned.pid || null,
+        repo,
+        grok,
+        action,
+        desk: opts.desk || null,
+        ticker: tkr,
+        initial_prompt: initial,
+        note: `Run ${spawned.run_id} already in flight — did not spawn a second grok.`,
+        decision_support_only: true,
+      };
+    }
+    if (!spawned?.ok) {
+      if (research_seed.run_id && tkr) {
+        try { failResearchRun(tkr, research_seed.run_id, spawned?.error || 'pipeline spawn failed'); } catch { /* */ }
+      }
+      return {
+        ok: false,
+        error: spawned?.error || 'pipeline spawn failed',
+        decision_support_only: true,
+      };
+    }
+    headless = { ok: true, log: spawned.log, prompt_file: spawned.prompt_file, pid: spawned.pid };
+  }
+
+  if (!researchPipeline && process.platform !== 'darwin') {
+    return {
+      ok: false,
+      error: 'open-grok only supported on macOS Terminal right now',
+    };
+  }
+
+  const cmd = headless?.ok
+    ? `clear; echo 'Grok pipeline running HEADLESS (pid ${headless.pid}) — live log below. No typing needed.'; tail -n 40 -f ${shellQuote(headless.log)}`
+    : `cd ${shellQuote(repo)} && ${shellQuote(grok)} ${shellQuote(launchPrompt)}`;
 
   const script = `tell application "Terminal"
   activate
@@ -431,11 +579,26 @@ export function openGrokBuild(opts = {}) {
 end tell`;
 
   try {
-    const child = spawn('osascript', ['-e', script], {
-      detached: true,
-      stdio: 'ignore',
-    });
-    child.unref();
+    if (process.platform === 'darwin') {
+      const child = spawn('osascript', ['-e', script], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      child.unref();
+    }
+    let note = 'Opened Terminal → Grok Build (cwd=this monorepo; project MCP pin for cockpit-research).';
+    if (street_seed?.ok) {
+      note = `Opened Terminal → Grok Build with Street seed (${street_seed.mode || 'chat'} · page + house + risks). Agent: /cockpit-street.`;
+    } else if (model_seed?.ok) {
+      note = `Opened Terminal → Grok Build with Model seed (${model_seed.mode || 'chat'} · assumptions + house + risks). Agent: /cockpit-model.`;
+    } else if (research_seed?.ok) {
+      note = `Opened Terminal → Grok Build with Research seed (${research_seed.mode || 'chat'} · run ${research_seed.run_id || '—'}). Agent: /cockpit-research-compile.`;
+    }
+    if (headless?.ok) {
+      note = process.platform === 'darwin'
+        ? `Grok pipeline running HEADLESS (pid ${headless.pid}) · run ${research_seed?.run_id || '—'} · Terminal shows live log tail. Log: ${headless.log}`
+        : `Grok pipeline running HEADLESS (pid ${headless.pid}) · run ${research_seed?.run_id || '—'} · log ${headless.log}`;
+    }
     return {
       ok: true,
       repo,
@@ -446,6 +609,8 @@ end tell`;
       risk_id: opts.risk_id || null,
       risk_name: opts.risk_name || null,
       initial_prompt: initial,
+      headless: headless?.ok ? { pid: headless.pid, log: headless.log } : null,
+      headless_error: headless && !headless.ok ? headless.error : null,
       street_seed: street_seed && street_seed.ok
         ? {
           path: street_seed.path,
@@ -457,11 +622,32 @@ end tell`;
         }
         : null,
       street_seed_error: street_seed && !street_seed.ok ? (street_seed.error || 'seed failed') : null,
+      model_seed: model_seed && model_seed.ok
+        ? {
+          path: model_seed.path,
+          bytes: model_seed.bytes,
+          ticker: model_seed.ticker,
+          mode: model_seed.mode || null,
+          assumption_count: model_seed.assumption_count,
+          model_available: model_seed.model_available,
+        }
+        : null,
+      model_seed_error: model_seed && !model_seed.ok ? (model_seed.error || 'seed failed') : null,
+      research_seed: research_seed && research_seed.ok
+        ? {
+          path: research_seed.path,
+          bytes: research_seed.bytes,
+          ticker: research_seed.ticker,
+          mode: research_seed.mode || null,
+          run_id: research_seed.run_id || null,
+          job: research_seed.job || null,
+          n_runs: research_seed.n_runs,
+        }
+        : null,
+      research_seed_error: research_seed && !research_seed.ok ? (research_seed.error || 'seed failed') : null,
       mcp_project: mcpPin.ok ? mcpPin.path : null,
       mcp_project_error: mcpPin.ok ? null : mcpPin.error,
-      note: street_seed?.ok
-        ? `Opened Terminal → Grok Build with Street seed (${street_seed.mode || 'chat'} · page + house + risks). Agent: /cockpit-street.`
-        : 'Opened Terminal → Grok Build (cwd=this monorepo; project MCP pin for cockpit-research).',
+      note,
       decision_support_only: true,
     };
   } catch (e) {

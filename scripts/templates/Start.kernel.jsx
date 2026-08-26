@@ -1,8 +1,9 @@
 // Start — kernel cold start: product ready, underwrite next company from here.
 // Keep in sync with scripts/templates/Start.kernel.jsx (export-kernel overwrites Start.jsx).
+// Operate glance: multi-desk WATCH / house / Street attention (factory-native).
 // Decision-support only. User picks company and gates house/risks.
-import React, { useCallback, useState } from 'react';
-import { apiPost } from '../api.js';
+import React, { useCallback, useEffect, useState } from 'react';
+import { api, apiPost } from '../api.js';
 import { THIN_DESKS_FALLBACK } from '../thinDesks.js';
 
 /** Client-side ticker filter; server re-sanitizes. */
@@ -11,6 +12,20 @@ function sanitizeTickerInput(raw) {
     .toUpperCase()
     .replace(/[^A-Z0-9.-]/g, '')
     .slice(0, 12);
+}
+
+function attnLabel(row) {
+  const a = Array.isArray(row.attention) ? row.attention : [];
+  if (a.includes('compile-stalled')) return { t: 'COMPILE STALLED', cls: 'fired' };
+  if (a.includes('compile-running')) return { t: 'COMPILING…', cls: 'watch' };
+  if (a.includes('fired')) return { t: 'FIRED', cls: 'fired' };
+  if (a.includes('watch')) return { t: `${row.watch_count} WATCH`, cls: 'watch' };
+  if (a.includes('house') || a.includes('compile')) return { t: a.includes('compile') ? 'COMPILE' : 'HOUSE', cls: 'watch' };
+  if (a.includes('street') || a.includes('street-stale')) {
+    return { t: a.includes('street-stale') ? 'STREET STALE' : 'STREET', cls: 'dim' };
+  }
+  if (a.includes('pack') || a.includes('error')) return { t: 'PACK', cls: 'dim' };
+  return { t: 'OK', cls: 'ok' };
 }
 
 /**
@@ -23,6 +38,39 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
   const [ticker, setTicker] = useState('');
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState(null);
+  const [glance, setGlance] = useState(null);
+  const [glanceErr, setGlanceErr] = useState(null);
+  const [glanceLoading, setGlanceLoading] = useState(false);
+
+  const loadGlance = useCallback(async () => {
+    if (deskCount === 0) {
+      setGlance(null);
+      setGlanceErr(null);
+      return;
+    }
+    setGlanceLoading(true);
+    setGlanceErr(null);
+    try {
+      const g = await api('operate-glance');
+      setGlance(g);
+    } catch (e) {
+      setGlance(null);
+      setGlanceErr(e.message || 'operate-glance failed');
+    } finally {
+      setGlanceLoading(false);
+    }
+  }, [deskCount]);
+
+  useEffect(() => {
+    loadGlance();
+  }, [loadGlance]);
+
+  useEffect(() => {
+    const n = (glance?.totals?.compiles_running || 0) + (glance?.totals?.compiles_stalled || 0);
+    if (!n) return undefined;
+    const t = setInterval(loadGlance, 5000);
+    return () => clearInterval(t);
+  }, [glance, loadGlance]);
 
   const openNewDesk = useCallback(async () => {
     if (busy) return;
@@ -270,22 +318,139 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
         <div className="sect">
           <div className="shd">
             <span className="no">·</span>
-            <h2>REGISTERED DESKS</h2>
-            <span className="m">scaffold / example / underwritten · not automatic research</span>
+            <h2>OPERATE GLANCE</h2>
+            <span className="m">
+              multi-desk attention · WATCH / house / Street
+              {glance?.totals ? (
+                <>
+                  {' · '}
+                  {glance.totals.with_watch} with WATCH
+                  {glance.totals.with_fired ? ` · ${glance.totals.with_fired} FIRED` : ''}
+                  {glance.totals.street_empty ? ` · ${glance.totals.street_empty} Street empty` : ''}
+                  {glance.totals.need_compile ? ` · ${glance.totals.need_compile} need COMPILE` : ''}
+                  {glance.totals.compiles_running ? ` · ${glance.totals.compiles_running} compiling` : ''}
+                  {glance.totals.compiles_stalled ? ` · ${glance.totals.compiles_stalled} compile STALLED` : ''}
+                </>
+              ) : null}
+            </span>
+            <button
+              type="button"
+              className="desk-btn"
+              onClick={loadGlance}
+              disabled={glanceLoading}
+              style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: 10 }}
+              title="Refresh operate glance"
+            >
+              {glanceLoading ? '…' : 'Refresh'}
+            </button>
           </div>
-          <div style={{ padding: '8px 16px 12px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {desks.map((d) => (
-              <button
-                key={d.id || d.slug}
-                type="button"
-                className="desk-btn"
-                onClick={() => { window.location.hash = `#/${d.slug}/overview`; }}
-                style={{ padding: '6px 12px', fontSize: 11 }}
-              >
-                {d.label} · {d.ticker}
-              </button>
-            ))}
-          </div>
+          {glanceErr && (
+            <div className="emptyD" style={{ margin: 12 }}>
+              Glance failed: {glanceErr} · restart glass if server just updated
+            </div>
+          )}
+          {!glanceErr && glanceLoading && !glance && (
+            <div className="emptyD" style={{ margin: 12 }}>Loading desk attention…</div>
+          )}
+          {glance?.desks?.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Desk</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Attn</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>House</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Risks</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Street</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Compile</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Open</th>
+                </tr>
+              </thead>
+              <tbody>
+                {glance.desks.map((row) => {
+                  const att = attnLabel(row);
+                  return (
+                    <tr key={row.slug}>
+                      <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                        <b>{row.ticker}</b>
+                        <span className="dim" style={{ marginLeft: 6, fontSize: 10 }}>
+                          {row.displayName || row.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '6px 10px' }}>
+                        <span className={`chipC ${att.cls}`}>{att.t}</span>
+                      </td>
+                      <td className="dim" style={{ padding: '6px 10px', fontSize: 10, maxWidth: 200 }}>
+                        {row.house_status || '—'}
+                        {row.sor_ahead_of_pack ? ' · SoR ahead' : ''}
+                      </td>
+                      <td className="dim" style={{ padding: '6px 10px', fontSize: 10 }}>
+                        {row.fired_count > 0 && <span className="chipC fired" style={{ marginRight: 4 }}>{row.fired_count}F</span>}
+                        {row.watch_count > 0 ? (
+                          <span className="chipC watch">{row.watch_count}W</span>
+                        ) : (
+                          <span>{row.risks_count || 0} total</span>
+                        )}
+                      </td>
+                      <td className="dim" style={{ padding: '6px 10px', fontSize: 10 }}>
+                        {row.street_status || '—'}
+                        {row.street_n_firms ? ` · ${row.street_n_firms}` : ''}
+                        {row.street_as_of ? ` · ${row.street_as_of}` : ''}
+                      </td>
+                      <td className="dim" style={{ padding: '6px 10px', fontSize: 10 }}>
+                        {row.research_stalled ? (
+                          <span className="chipC fired">STALLED</span>
+                        ) : row.research_running ? (
+                          <span className="chipC watch">COMPILING</span>
+                        ) : row.research_last_complete_at ? (
+                          <span title={row.research_last_complete_run_id}>
+                            last {String(row.research_last_complete_at).slice(0, 10)}
+                            {row.research_last_complete_n_sources ? ` · ${row.research_last_complete_n_sources} src` : ''}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          className="desk-btn"
+                          style={{ padding: '3px 8px', fontSize: 10, marginRight: 4 }}
+                          onClick={() => { window.location.hash = `#/${row.slug}/overview`; }}
+                        >
+                          Book
+                        </button>
+                        <button
+                          type="button"
+                          className="desk-btn"
+                          style={{ padding: '3px 8px', fontSize: 10, marginRight: 4 }}
+                          onClick={() => { window.location.hash = `#/${row.slug}/risks`; }}
+                        >
+                          Risks
+                        </button>
+                        <button
+                          type="button"
+                          className="desk-btn"
+                          style={{ padding: '3px 8px', fontSize: 10 }}
+                          onClick={() => { window.location.hash = `#/${row.slug}/street`; }}
+                        >
+                          Street
+                        </button>
+                        <button
+                          type="button"
+                          className="desk-btn"
+                          style={{ padding: '3px 8px', fontSize: 10, marginLeft: 4 }}
+                          onClick={() => { window.location.hash = `#/${row.slug}/research`; }}
+                        >
+                          Research
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          <p className="dim" style={{ padding: '8px 14px 12px', fontSize: 10, margin: 0 }}>
+            Decision-support only · Street ≠ house PT · COMPILE BOOK when SoR ahead of pack · empty product stays clean with 0 desks
+          </p>
         </div>
       )}
     </div>

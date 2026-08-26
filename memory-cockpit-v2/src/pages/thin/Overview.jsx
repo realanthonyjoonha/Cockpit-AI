@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 import BookStrip from './BookStrip.jsx';
+import { filingDocLabel, companyEdgarUrl } from './filingLink.js';
 
 function fmtCompiled(iso) {
   if (!iso) return '—';
@@ -19,10 +20,12 @@ export default function ThinOverview({ desk }) {
   const { slug, ticker, label } = desk;
   const [d, setD] = useState(null);
   const [qx, setQx] = useState(null);
+  const [pipe, setPipe] = useState(null);
 
   useEffect(() => {
     api(`${slug}/overview`).then(setD).catch(() => setD({ available: false, reason: 'request failed' }));
     api(`${slug}/quote`).then(setQx).catch(() => setQx({ quote: null }));
+    api(`${slug}/pipeline`).then(setPipe).catch(() => setPipe(null));
   }, [slug]);
 
   if (!d) return <div className="crumb">LOADING…</div>;
@@ -63,6 +66,51 @@ export default function ThinOverview({ desk }) {
 
       <BookStrip desk={slug} ticker={ticker} compact />
 
+      {/* Attention surface: material filings only. Routine (Form 3/4/5, 144, 13F) never
+          earns an Overview section — full detail lives on the Research pipeline card. */}
+      {pipe?.available && pipe.since_compile?.material_count > 0 && (
+        <div className="sect">
+          <div className="shd">
+            <span className="no">▤</span>
+            <h2>FILED SINCE COMPILE</h2>
+            <span className="m">
+              SEC EDGAR · tier {pipe.tier?.tier || '—'} · {pipe.since_compile.count} filing{pipe.since_compile.count === 1 ? '' : 's'} after book compile
+              {pipe.stale ? ' · EDGAR cache STALE' : ''}
+              {companyEdgarUrl(pipe.cik) ? (
+                <>
+                  {' · '}
+                  <a className="filing-link" href={companyEdgarUrl(pipe.cik)} target="_blank" rel="noopener noreferrer">
+                    company filings
+                  </a>
+                </>
+              ) : null}
+            </span>
+          </div>
+          <table>
+            <thead><tr><th>Form</th><th>Filed</th><th>Document</th></tr></thead>
+            <tbody>
+              {pipe.since_compile.material_items.slice(0, 6).map((f) => (
+                <tr key={f.accession}>
+                  <td className="idc"><b>{f.form}</b>{f.items ? <span className="dimmer mono" style={{ fontSize: 10, marginLeft: 6 }}>{f.items}</span> : null}</td>
+                  <td className="idc mono">{f.filed}</td>
+                  <td>
+                    <a className="filing-link" href={f.url} target="_blank" rel="noopener noreferrer">
+                      {filingDocLabel(f)}
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="dimmer" style={{ padding: '6px 16px 10px', fontSize: 11 }}>
+            {pipe.since_compile.routine_count > 0
+              ? `+ ${pipe.since_compile.routine_count} routine (insider Form 3/4/5 · 144 · 13F) not shown · `
+              : ''}
+            the pack does not see these yet — research + COMPILE BOOK to fold them in
+          </div>
+        </div>
+      )}
+
       <div className="sect">
         <div className="rdhead">
           <h1 style={{ fontSize: 20 }}>{(d.name || label).toUpperCase()}</h1>
@@ -99,6 +147,8 @@ export default function ThinOverview({ desk }) {
           <span className="pchip" onClick={() => { window.location.hash = `${base}/house`; }}><b>»</b> full house view</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/risks`; }}><b>»</b> risk register</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/street`; }}><b>»</b> street models</span>
+          <span className="pchip" onClick={() => { window.location.hash = `${base}/model`; }}><b>»</b> working model</span>
+          <span className="pchip" onClick={() => { window.location.hash = `${base}/research`; }}><b>»</b> research runs</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/sources`; }}><b>»</b> sources catalog</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/ask`; }}><b>»</b> ask the book</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/update`; }}><b>»</b> update / write path</span>

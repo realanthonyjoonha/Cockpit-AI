@@ -18,12 +18,14 @@ A desk that ships without these items is **not** a thin desk — it is incomplet
 | House | Confirmed house view (vault-first when present) |
 | Sources | Pack source catalog |
 | Street | Published third-party firm models (vault `cockpit/street/{TICKER}.json`; not house PT). Shared UI: **REFRESH STREET** (agent pipeline + vault poll) · **OPEN GROK** (chat). EMPTY until first publish |
+| Model | User working assumptions + bridge (vault `cockpit/model/{TICKER}.json`; not pack/house/Street). Shared UI: **UPDATE MODEL** · **OPEN GROK**. EMPTY until first publish. Illustration only — not PT |
+| Research | Saved on-demand deep compiles (vault `cockpit/research/{TICKER}/runs/`). Shared UI: **NEW COMPILE** · list/detail. Draft archive — not live pack until promote |
 | Ask | Pack-only deterministic Q&A |
 | Update | Write path per `write_path_mode` (v1.1 default **meta_only**; pins = future optional) |
 
 Honest EMPTY only for rooms explicitly parked — never silent redirect to Overview.
 
-**Factory invariant:** Street is a **shared** room (`pages/thin/Street.jsx` + `thinStreet` APIs). New desks do **not** get a per-ticker Street fork — registry + `rooms` including `street` is enough.
+**Factory invariant:** Street and Model are **shared** rooms (`pages/thin/Street.jsx` / `Model.jsx` + vault APIs). New desks do **not** get per-ticker forks — registry + `rooms` including `street` and `model` is enough.
 
 ---
 
@@ -57,6 +59,16 @@ For desk slug `D` and ticker `T`:
 - overview, risks, house, sources as implemented for NBIS  
 - `GET /api/D/street` — complete firm models or honest EMPTY / needs_rebuild  
 - `POST /api/D/street/refresh` — format-gated publish of Street vault (agent/body; not Nasdaq dump as SoR)  
+- `GET /api/D/model` — working model or honest EMPTY / needs_rebuild  
+- `POST /api/D/model/refresh` — format-gated publish of Model vault (assumptions + bridge; not pack/house)  
+- `GET /api/D/research` — list research runs or EMPTY  
+- `GET /api/D/research/runs/:runId` — one run detail (reconciles in-flight; stalled overlay)  
+- `POST /api/D/research/runs` — start run (meta=`queued`; `{ launch: true }` spawns worker). Same-desk in-flight → `already_in_flight` (no second grok)  
+- `POST /api/D/research/runs/:runId/publish` — format-gated complete publish (truth gate: source_ids + acquired excerpt for financials/guide)  
+- `POST /api/D/research/runs/:runId/cancel` — cancel queued/running and kill worker  
+- `POST /api/D/research/runs/:runId/heartbeat` — optional agent ping (log mtime is the real heartbeat)  
+- `POST /api/D/research/runs/:runId/retry` — from `failed` only, same run_id  
+- `POST /api/D/research/runs/:runId/acquire` — bounded fetch into `acquired/` (GAP not hang; never `cockpit/compile/`)  
 
 ---
 
@@ -84,12 +96,14 @@ Each thin desk `GET /api/<desk>/meta` **must** include:
     "desk": "nebius",
     "ticker": "NBIS",
     "parity_group": "thin_ontology_v1",
-    "rooms": ["overview", "risks", "house", "sources", "street", "ask", "update"],
+    "rooms": ["overview", "risks", "house", "sources", "street", "model", "research", "ask", "update"],
     "capabilities": {
       "compile_book": true,
       "refresh_book": true,
       "pack_ask": true,
       "street": true,
+      "working_model": true,
+      "research_runs": true,
       "write_path": true,
       "write_path_mode": "meta_only"
     },

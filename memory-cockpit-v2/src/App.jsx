@@ -33,6 +33,8 @@ function activeThinRoom(hash, slug) {
   if (hash.startsWith(`#/${slug}/house`)) return `#/${slug}/house`;
   if (hash.startsWith(`#/${slug}/sources`)) return `#/${slug}/sources`;
   if (hash.startsWith(`#/${slug}/street`)) return `#/${slug}/street`;
+  if (hash.startsWith(`#/${slug}/model`)) return `#/${slug}/model`;
+  if (hash.startsWith(`#/${slug}/research`)) return `#/${slug}/research`;
   if (hash.startsWith(`#/${slug}/ask`)) return `#/${slug}/ask`;
   if (hash.startsWith(`#/${slug}/update`)) return `#/${slug}/update`;
   // Alias in hash still highlights correct rail

@@ -80,6 +80,8 @@ export function thinRail(desk) {
     ['§', `${L} House view`, `#/${s}/house`],
     ['⧉', `${L} Sources — pack catalog`, `#/${s}/sources`],
     ['$', `${L} Street — published targets (not house)`, `#/${s}/street`],
+    ['∑', `${L} Model — working assumptions + bridge`, `#/${s}/model`],
+    ['⚗', `${L} Research — saved deep compiles`, `#/${s}/research`],
     ['?', `${L} Ask — pack Q&A (deterministic)`, `#/${s}/ask`],
     ['✎', `${L} Update — write path (file → compile → refresh)`, `#/${s}/update`],
   ];

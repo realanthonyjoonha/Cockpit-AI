@@ -15,6 +15,8 @@ const REQUIRED = [
   'house',
   'sources',
   'street',
+  'model',
+  'research',
   'ask',
   'update',
 ];

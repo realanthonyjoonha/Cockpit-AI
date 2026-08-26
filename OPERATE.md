@@ -13,12 +13,16 @@ Use this when the desk **already exists**. For a **new** company → `NEW-DESK-P
 | **Daybook** | “What moved for this name?” | Glass AGENTS → **Daily brief** · `/cockpit-daily {slug}` | Optional brief archive only |
 | **Street update** | “Firm PTs / coverage moved” | Desk → **Street** → **REFRESH STREET** | `cockpit/street/{TICKER}.json` only |
 | **Street chat** | Discuss models vs house/WATCH | Street → **OPEN GROK** | Only if you publish Street |
+| **Working model** | Assumptions / bridge / variance | Desk → **Model** → **UPDATE MODEL** | `cockpit/model/{TICKER}.json` only (not pack/house) |
+| **Research runs** | Re-read / start deep compile archive | Desk → **Research** → **NEW COMPILE** (START glance shows compiling / stalled / last complete) | `cockpit/research/{TICKER}/runs/` only (not live pack until promote) |
 | **Risk DD** | One WATCH needs diligence | `/cockpit-risk-check` or risk page agents | Propose only → glass ACCEPT |
 | **House edit** | Stance text change | `/cockpit-propose` → glass ACCEPT → **COMPILE BOOK** | House + pack after compile |
 | **Glass broken / empty rooms** | Desk listed but pages dead | `cd memory-cockpit-v2 && node scripts/desk-health.mjs --slug {slug} --base-url http://127.0.0.1:PORT` | None |
 | **Ship platform to friends** | You changed glass/agents | `./scripts/release-check.sh --full` then **`RELEASE.md`** push | Product git only — **never your research books** |
 
 **Do not** re-run `/cockpit-new-desk` or full deep research for a normal operate day.
+
+**Building features or shipping to friends?** Don’t use this file — use **[`docs/EASY.md`](./docs/EASY.md)** · `/cockpit-feature` · `/cockpit-ship`.
 
 ---
 

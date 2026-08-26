@@ -112,6 +112,28 @@ async function healthOne(slug, opts = {}) {
     add('S6_street_room', true, 'rooms not declared at top-level (skip)');
   }
 
+  // Soft: model room (working numbers desk)
+  if (rooms.length && !rooms.includes('model')) {
+    add('S6_model_room', false, 'top-level rooms[] missing model (soft factory warn)');
+    failed -= 1;
+    checks[checks.length - 1].soft = true;
+  } else if (rooms.includes('model')) {
+    add('S6_model_room', true, 'rooms includes model');
+  } else {
+    add('S6_model_room', true, 'rooms not declared at top-level (skip)');
+  }
+
+  // Soft: research room (saved deep compiles)
+  if (rooms.length && !rooms.includes('research')) {
+    add('S6_research_room', false, 'top-level rooms[] missing research (soft factory warn)');
+    failed -= 1;
+    checks[checks.length - 1].soft = true;
+  } else if (rooms.includes('research')) {
+    add('S6_research_room', true, 'rooms includes research');
+  } else {
+    add('S6_research_room', true, 'rooms not declared at top-level (skip)');
+  }
+
   let live = null;
   if (opts.baseUrl) {
     live = { baseUrl: opts.baseUrl, routes: {} };

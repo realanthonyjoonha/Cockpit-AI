@@ -5,6 +5,22 @@ import path from 'path';
 import { VAULT_DIR, renderMd, fm } from './vault.js';
 import { loadPack, clearPackCache } from './pack.js';
 import { getStreet, refreshStreet } from './thinStreet.js';
+import {
+  getWorkingModel,
+  refreshWorkingModel,
+  armWorkingModelPrint,
+  lockWorkingModelPrint,
+} from './thinWorkingModel.js';
+import {
+  listResearchRuns,
+  getResearchRun,
+  startResearchRun,
+  publishResearchRun,
+  cancelResearchRun,
+  heartbeatResearchRun,
+  retryResearchRun,
+  acquireResearchSource,
+} from './thinResearchRuns.js';
 import { liveUsEquity } from './quotes.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
 import { buildHouseAssistContext } from './assistContext.js';
@@ -30,6 +46,7 @@ import {
 } from './riskProposals.js';
 import { resolveOntRoot } from './monorepoPaths.js';
 import { tryGetThinDeskBundle } from './thinDeskProfiles.js';
+import { readCatalogSource } from './sourceRead.js';
 
 // Prefer ONTOLOGY_ROOT → monorepo ontology/ → legacy ~/Trading/ontology
 const ONT_ROOT = resolveOntRoot();
@@ -133,7 +150,7 @@ export function createThinModel(profile) {
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'ask', 'update'],
+      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'ask', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
@@ -145,6 +162,14 @@ export function createThinModel(profile) {
         house_proposals: true,
         street: true,
         street_refresh: true,
+        working_model: true,
+        working_model_refresh: true,
+        research_runs: true,
+        research_start: true,
+        research_cancel: true,
+        research_heartbeat: true,
+        research_retry: true,
+        research_acquire: true,
       },
       compile: {
         method: 'POST',
@@ -903,6 +928,20 @@ export function createThinModel(profile) {
     };
   }
 
+  function sourceGet(id) {
+    const { available, pack, reason } = loadPack(TICKER);
+    if (!available) {
+      return { available: false, id: String(id || ''), reason: reason || 'pack unavailable', markdown: null, html: null };
+    }
+    return readCatalogSource({
+      pack,
+      id,
+      houseFile,
+      entitySlug,
+      ticker: TICKER,
+    });
+  }
+
   function writeMeta() {
     const entity = path.join(VAULT_DIR, 'wiki', 'entities', `${entitySlug}.md`);
     const risksSource = path.join(VAULT_DIR, risksSourceRel);
@@ -1002,8 +1041,21 @@ export function createThinModel(profile) {
     riskProposalReject,
     quote,
     sources,
+    sourceGet,
     street: () => getStreet(TICKER, { desk: deskId }),
     streetRefresh: async (body = {}) => refreshStreet(TICKER, body || {}, { desk: deskId }),
+    workingModel: () => getWorkingModel(TICKER, { desk: deskId }),
+    workingModelRefresh: async (body = {}) => refreshWorkingModel(TICKER, body || {}, { desk: deskId }),
+    workingModelArm: (body = {}) => armWorkingModelPrint(TICKER, body || {}, { desk: deskId }),
+    workingModelLock: () => lockWorkingModelPrint(TICKER, { desk: deskId }),
+    researchList: () => listResearchRuns(TICKER, { desk: deskId }),
+    researchGet: (runId) => getResearchRun(TICKER, runId, { desk: deskId }),
+    researchStart: (body = {}) => startResearchRun(TICKER, body || {}, { desk: deskId }),
+    researchPublish: (runId, body = {}) => publishResearchRun(TICKER, runId, body || {}, { desk: deskId }),
+    researchCancel: (runId, body = {}) => cancelResearchRun(TICKER, runId, { reason: (body && body.reason) || undefined }),
+    researchHeartbeat: (runId) => heartbeatResearchRun(TICKER, runId),
+    researchRetry: (runId, body = {}) => retryResearchRun(TICKER, runId, body || {}),
+    researchAcquire: (runId, body = {}) => acquireResearchSource(TICKER, runId, body || {}),
     writeMeta,
   };
 }

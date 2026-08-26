@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Assert research-run reliability modules load on empty product (no live grok spawn).
+set -euo pipefail
+ROOT="${1:?}"
+test -f "$ROOT/memory-cockpit-v2/server/thinResearchRuns.js"
+test -f "$ROOT/memory-cockpit-v2/server/researchRunsWorker.js"
+test -f "$ROOT/memory-cockpit-v2/server/researchAcquire.js"
+grep -q 'research/runs/:runId/cancel' "$ROOT/memory-cockpit-v2/server/thinDeskMount.js"
+grep -q 'research/runs/:runId/acquire' "$ROOT/memory-cockpit-v2/server/thinDeskMount.js"
+(cd "$ROOT/memory-cockpit-v2" && node scripts/thin-research-runs-test.mjs)
+(cd "$ROOT/memory-cockpit-v2" && node scripts/research-lifecycle-test.mjs)
+(cd "$ROOT/memory-cockpit-v2" && node scripts/research-acquire-test.mjs)
+echo "    research-runs reliability OK"

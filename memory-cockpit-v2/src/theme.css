@@ -196,6 +196,42 @@ tr.goto:hover td { background: var(--card-head); }
 .dimmer { color: var(--dim); }
 .idc { color: var(--accent); font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
+/* EDGAR / filed-since-compile links — must look clickable (global `a` is unstyled). */
+a.filing-link, button.filing-link {
+  color: var(--accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+}
+a.filing-link:hover, button.filing-link:hover { color: var(--text-strong); }
+button.filing-link:disabled { opacity: 0.55; cursor: default; }
+
+.reader-overlay {
+  position: fixed; inset: 0; z-index: 95;
+  background: rgba(8, 10, 14, .78);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 8vh 16px 24px;
+}
+.reader {
+  width: min(1100px, 96vw); max-height: 84vh;
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 11px; overflow: hidden;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .55);
+  display: flex; flex-direction: column;
+}
+.reader-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--hairline); background: var(--card-head);
+}
+.reader-title { font-size: 13px; font-weight: 700; color: var(--text-strong); letter-spacing: .03em; }
+.reader-close { min-height: 36px; padding: 6px 12px; }
+.reader-body { overflow-y: auto; flex: 1; min-height: 0; }
+
 /* ---------- risk / reader page head ---------- */
 .rdhead { display: flex; align-items: baseline; gap: 14px; padding: 14px 16px;
   border-bottom: 1px solid var(--hairline); background: var(--card-head); flex-wrap: wrap; }
@@ -220,6 +256,8 @@ tr.goto:hover td { background: var(--card-head); }
 
 /* ---------- prose ---------- */
 .prose { padding: 13px 16px; font-size: 11.5px; line-height: 1.65; max-width: 82ch; color: var(--text); }
+.prose.wide { max-width: none; width: 100%; }
+.prose.wide table, .prose.wide hr { width: 100%; max-width: none; }
 .prose p { margin: 0 0 9px; }
 .prose p:last-child { margin-bottom: 0; }
 .prose .hl, .prose strong { color: var(--accent-soft); font-weight: 700; }
@@ -227,6 +265,16 @@ tr.goto:hover td { background: var(--card-head); }
 .prose code { font-family: var(--mono); font-size: 10.5px; background: var(--pchip-bg); padding: 1px 5px; border-radius: 4px; }
 .prose h1, .prose h2, .prose h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-head); margin: 14px 0 6px; }
 .prose table { font-size: 10.5px; margin: 8px 0; }
+/* Reader modal must not inherit House 82ch column */
+.reader .prose.reader-body {
+  max-width: none !important;
+  width: 100%;
+}
+.reader .prose.reader-body table,
+.reader .prose.reader-body hr {
+  width: 100%;
+  max-width: none;
+}
 .prose blockquote { border-left: 3px solid var(--rail-on-ring); margin: 8px 0; padding: 2px 12px; color: var(--sec); }
 .prose ul, .prose ol { padding-left: 20px; margin: 6px 0; }
 
@@ -498,4 +546,7 @@ tr.goto:hover td { background: var(--card-head); }
   .rdhead h1 { font-size: 13.5px; }
   .hvq { margin: 10px 12px 4px; }
   .prose { font-size: 12px; }
+  .reader-overlay { padding: 0; }
+  .reader { max-width: 100vw; width: 100%; max-height: 100vh; border-radius: 0; }
+  .reader-close { min-height: 44px; }
 }

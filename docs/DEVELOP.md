@@ -5,6 +5,9 @@
 
 **Hard law is not here.** Read **[`AGENTS.md`](../AGENTS.md)** first (decision-support, no invent, human ACCEPT, no secrets). This file is **procedure** for platform work so habits survive cold sessions.
 
+**Anthony’s short path:** [`EASY.md`](./EASY.md) · slash **`/cockpit-feature`** (build) · **`/cockpit-ship`** (friends).  
+This file is the deep procedure those commands implement.
+
 Decision-support only.
 
 ---
@@ -13,7 +16,7 @@ Decision-support only.
 
 | Job | Open |
 |-----|------|
-| New glass/agent/factory feature, AFK coding loop, fix ship path | **This file** → blank E2E [`LAB.md`](./LAB.md) · ship [`RELEASE.md`](../RELEASE.md) |
+| New glass/agent/factory feature, AFK coding loop, fix ship path | **`/cockpit-feature`** first · then **this file** → blank E2E [`LAB.md`](./LAB.md) · ship [`/cockpit-ship`](../.grok/commands/cockpit-ship.md) / [`RELEASE.md`](../RELEASE.md) |
 | Daybook / Street / risk-check on an existing desk | [`OPERATE.md`](../OPERATE.md) |
 | “Friends can upgrade?” | [`RELEASE.md`](../RELEASE.md) + `./scripts/release-check.sh --full` |
 | What copies kernel ↔ product | [`PRODUCT-KERNEL-SOR.md`](./PRODUCT-KERNEL-SOR.md) |

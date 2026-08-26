@@ -456,7 +456,7 @@ export default function ThinHouse({ desk }) {
             </span>
           </div>
         </div>
-        <div className="prose" dangerouslySetInnerHTML={{ __html: h.hero.html }} />
+        <div className="prose wide" dangerouslySetInnerHTML={{ __html: h.hero.html }} />
       </div>
     </div>
   );
