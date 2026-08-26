@@ -14,6 +14,8 @@ user-invocable: true
 
 You have MCP **cockpit-research**. Prefer tools over inventing. Never write `house-view-*.md` directly.
 
+**Trees:** operate/build on `~/Desktop/cockpit-kernel` (glass often `:4682`). Friend shell is `~/Desktop/cockpit-product`. `~/cockpit-personal/repo` is the Grok Bot twin — not factory SoR. Coding/ship → `docs/SESSION.md` · `/cockpit-feature` · `/cockpit-ship`.
+
 ## Menu
 
 | Command | Action |

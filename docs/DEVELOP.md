@@ -5,7 +5,7 @@
 
 **Hard law is not here.** Read **[`AGENTS.md`](../AGENTS.md)** first (decision-support, no invent, human ACCEPT, no secrets). This file is **procedure** for platform work so habits survive cold sessions.
 
-**Anthony’s short path:** [`EASY.md`](./EASY.md) · slash **`/cockpit-feature`** (build) · **`/cockpit-ship`** (friends).  
+**Anthony’s short path:** [`SESSION.md`](./SESSION.md) · [`EASY.md`](./EASY.md) · slash **`/cockpit-feature`** (build) · **`/cockpit-ship`** (friends).  
 This file is the deep procedure those commands implement.
 
 Decision-support only.
@@ -26,10 +26,11 @@ Decision-support only.
 
 ## 2. Read order (developer)
 
-1. **`AGENTS.md`** — hard rules  
-2. **This file** — classify, brief, done stages  
-3. **`RELEASE.md`** — only when shipping platform to product/friends  
-4. Task-specific: `THIN-DESK-CONTRACT.md` · `NEW-DESK-PLAYBOOK.md` · `docs/AGENT-AUTHORING.md`
+1. **`docs/SESSION.md`** — trees + which docs are stale  
+2. **`AGENTS.md`** — hard rules  
+3. **This file** — classify, brief, done stages  
+4. **`RELEASE.md`** — only when shipping platform to product/friends  
+5. Task-specific: `THIN-DESK-CONTRACT.md` · `NEW-DESK-PLAYBOOK.md` · `docs/AGENT-AUTHORING.md`
 
 ---
 

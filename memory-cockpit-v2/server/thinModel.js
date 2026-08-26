@@ -47,6 +47,7 @@ import {
 import { resolveOntRoot } from './monorepoPaths.js';
 import { tryGetThinDeskBundle } from './thinDeskProfiles.js';
 import { readCatalogSource } from './sourceRead.js';
+import { filterCatalogForDesk } from './sourceCatalog.js';
 
 // Prefer ONTOLOGY_ROOT → monorepo ontology/ → legacy ~/Trading/ontology
 const ONT_ROOT = resolveOntRoot();
@@ -861,13 +862,40 @@ export function createThinModel(profile) {
     };
   }
 
+  function packSourceGlobs() {
+    try {
+      const p = path.join(ONT_ROOT, 'packs', `${TICKER}.json`);
+      if (!fs.existsSync(p)) return [];
+      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+      const globs = Array.isArray(j.source_globs) ? j.source_globs.map(String) : [];
+      const extra = (Array.isArray(j.sources) ? j.sources : [])
+        .map((s) => s && s.path)
+        .filter(Boolean);
+      if (j.house_view_path) extra.push(String(j.house_view_path));
+      return [...globs, ...extra];
+    } catch {
+      return [];
+    }
+  }
+
+  function deskSourceOwner() {
+    return {
+      ticker: TICKER,
+      slug,
+      entitySlug,
+      rawDir: rawDirRel,
+      sourceGlobs: packSourceGlobs(),
+    };
+  }
+
   function sources() {
     const { available, pack, path: packPath, reason } = loadPack(TICKER);
     if (!available) {
       return { ...unavailable(reason), pack_path: packPath, sources: [], provenance: null };
     }
 
-    const raw = Array.isArray(pack.sources) ? pack.sources : [];
+    const ingested = Array.isArray(pack.sources) ? pack.sources : [];
+    const raw = filterCatalogForDesk(ingested, deskSourceOwner());
     const isPrimary = (s) => {
       const about = (s.about || []).map((a) => String(a).toLowerCase());
       const id = String(s.id || '').toLowerCase();
@@ -914,7 +942,9 @@ export function createThinModel(profile) {
       ticker: TICKER,
       compiled_at: pack.compiled_at || null,
       pack_path: packPath,
-      provenance: pack.provenance || null,
+      provenance: pack.provenance
+        ? { ...pack.provenance, source_count: raw.length }
+        : null,
       counts: {
         total: raw.length,
         primary: primary.length,
@@ -937,6 +967,7 @@ export function createThinModel(profile) {
       pack,
       id,
       houseFile,
+      owner: deskSourceOwner(),
       entitySlug,
       ticker: TICKER,
     });

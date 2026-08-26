@@ -4,6 +4,8 @@ description: Cockpit research menu — list MCP recipes for house/pack (Grok + c
 
 Show the **cockpit command menu** and wait for a choice (or desk + action).
 
+Cold session: **`docs/SESSION.md`** — kernel `~/Desktop/cockpit-kernel`, product `~/Desktop/cockpit-product`, personal is not factory SoR. Build → `/cockpit-feature`. Ship → `/cockpit-ship`.
+
 ## Menu
 
 | Slash | What it does |

@@ -9,9 +9,11 @@ Parse `$ARGUMENTS` as the **feature goal** (one line). If empty, ask once for th
 
 **Human load:** Anthony only stated a goal. **You** own factory scale, empty-shell safety, ship-readiness design, and which tree to edit.
 
-Read **`docs/EASY.md`** first (modes). Hard law: **`AGENTS.md`**. Procedure depth: **`docs/DEVELOP.md`**.
+Read **`docs/SESSION.md`** (trees) then **`docs/EASY.md`** (modes). Hard law: **`AGENTS.md`**. Procedure depth: **`docs/DEVELOP.md`**.
 
 Decision-support only. No buy/sell/PT/sizing.
+
+**Trees:** build in `~/Desktop/cockpit-kernel` (`:4682`). Do not implement factory code in `~/cockpit-personal/repo`. Product `~/Desktop/cockpit-product` is ship-only. New `pages/thin` imports and server modules must go on `scripts/sync-agent-surface.sh` + `docs/PRODUCT-KERNEL-SOR.md`. `npm run build` does not remount Express — restart `npm start` after server changes. Verify on product `desks=[]`, not only kernel.
 
 ---
 
@@ -19,7 +21,7 @@ Decision-support only. No buy/sell/PT/sizing.
 
 | Default | Value |
 |---------|--------|
-| Tree | **cockpit-kernel** (dogfood) |
+| Tree | **`~/Desktop/cockpit-kernel`** (dogfood) |
 | Class | **PLATFORM** |
 | Scale | Every desk in `thin-desks.json` gets feature with **zero** per-ticker forks |
 | Empty product | Must still work with `desks: []` |

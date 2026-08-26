@@ -71,6 +71,7 @@ FILES=(
   ".grok/commands/cockpit-feature.md"
   ".grok/commands/cockpit-ship.md"
   "docs/EASY.md"
+  "docs/SESSION.md"
   "docs/DEVELOP.md"
   "docs/LAB.md"
   "docs/MULTI-INSTANCE.md"
@@ -120,6 +121,9 @@ FILES=(
   "memory-cockpit-v2/server/streetAgentSeed.js"
   "memory-cockpit-v2/server/thinDeskMount.js"
   "memory-cockpit-v2/server/sourceRead.js"
+  "memory-cockpit-v2/server/sourceCatalog.js"
+  "memory-cockpit-v2/scripts/source-catalog-test.mjs"
+  "ontology/compile/from_sources.py"
   "memory-cockpit-v2/server/secEdgar.js"
   "memory-cockpit-v2/server/thinWorkingModel.js"
   "memory-cockpit-v2/server/workingModelAgentSeed.js"
@@ -202,6 +206,9 @@ fi
 
 if [ -f "$SRC/.grok/skills/cockpit/SKILL.md" ]; then
   copy_one ".grok/skills/cockpit/SKILL.md"
+fi
+if [ -f "$SRC/.grok/skills/cockpit-session/SKILL.md" ]; then
+  copy_one ".grok/skills/cockpit-session/SKILL.md"
 fi
 
 # Friend upgrade helpers

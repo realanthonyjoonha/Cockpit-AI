@@ -42,6 +42,9 @@ memory-cockpit-v2/server/streetProvider.js
 memory-cockpit-v2/server/streetAgentSeed.js
 memory-cockpit-v2/server/thinDeskMount.js
 memory-cockpit-v2/server/sourceRead.js
+memory-cockpit-v2/server/sourceCatalog.js
+memory-cockpit-v2/scripts/source-catalog-test.mjs
+ontology/compile/from_sources.py
 memory-cockpit-v2/server/secEdgar.js
 memory-cockpit-v2/server/thinWorkingModel.js
 memory-cockpit-v2/server/workingModelAgentSeed.js
@@ -77,6 +80,8 @@ memory-cockpit-v2/plans/2026-08-04-desk-health-gate.md
 OPERATE.md
 RELEASE.md
 docs/EASY.md
+docs/SESSION.md
+.grok/skills/cockpit-session/SKILL.md
 docs/DEVELOP.md
 docs/LAB.md
 docs/MULTI-INSTANCE.md

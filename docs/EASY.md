@@ -3,6 +3,8 @@
 **You do not need to re-learn kernel / product / scenario every day.**  
 Talk in **modes**. Agents execute the rest under hard law (`AGENTS.md`).
 
+**New session:** read [`SESSION.md`](./SESSION.md) first (absolute trees + build/ship scars).
+
 Decision-support only.
 
 ---
@@ -138,6 +140,7 @@ Research AVGO …    → operate mode
 
 | Doc | When agent needs depth |
 |-----|------------------------|
+| [`SESSION.md`](./SESSION.md) | Cold session card (trees + scars) |
 | [`DEVELOP.md`](./DEVELOP.md) | Full platform procedure |
 | [`LAB.md`](./LAB.md) | Blank E2E |
 | [`RELEASE.md`](../RELEASE.md) | Ship ritual |

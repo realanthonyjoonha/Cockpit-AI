@@ -31,6 +31,9 @@ need_grep() {
 
 echo "→ easy-mode docs + commands (Anthony cognitive load)"
 need_file "$ROOT/docs/EASY.md" "docs/EASY.md"
+need_file "$ROOT/docs/SESSION.md" "docs/SESSION.md"
+need_file "$ROOT/.grok/skills/cockpit-session/SKILL.md" "cockpit-session skill"
+need_grep "$ROOT/AGENTS.md" 'docs/SESSION\.md' "AGENTS points at SESSION.md"
 need_file "$ROOT/.grok/commands/cockpit-feature.md" "/cockpit-feature command"
 need_file "$ROOT/.grok/commands/cockpit-ship.md" "/cockpit-ship command"
 need_grep "$ROOT/AGENTS.md" 'docs/EASY\.md|/cockpit-feature|Easy mode' "AGENTS points at easy mode or feature command"

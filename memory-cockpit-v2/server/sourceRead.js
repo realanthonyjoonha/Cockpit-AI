@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { VAULT_DIR, isInsideVault, canonicalize, renderMd, fm } from './vault.js';
 import { resolveOntRoot } from './monorepoPaths.js';
+import { sourceOwnedByDesk } from './sourceCatalog.js';
 
 export const SOURCE_MAX_BYTES = 800000;
 
@@ -131,9 +132,9 @@ export function openMappedFile(opts) {
 }
 
 /**
- * @param {{ pack: object, id: string, houseFile?: string, entitySlug?: string, ticker?: string }} args
+ * @param {{ pack: object, id: string, houseFile?: string, entitySlug?: string, ticker?: string, owner?: object }} args
  */
-export function readCatalogSource({ pack, id, houseFile, entitySlug, ticker }) {
+export function readCatalogSource({ pack, id, houseFile, entitySlug, ticker, owner }) {
   const rawId = decodeURIComponent(String(id || '')).trim();
   if (!rawId) {
     return { available: false, id: '', reason: 'missing source id', markdown: null, html: null };
@@ -165,6 +166,9 @@ export function readCatalogSource({ pack, id, houseFile, entitySlug, ticker }) {
   const hit = list.find((s) => String(s.id) === rawId);
   if (!hit) {
     return { available: false, id: rawId, reason: 'not in pack catalog', markdown: null, html: null };
+  }
+  if (owner && !sourceOwnedByDesk(hit, owner)) {
+    return { available: false, id: rawId, reason: 'not this desk’s source', markdown: null, html: null };
   }
   const pathStr = hit.path;
   if (!pathStr) {

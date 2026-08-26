@@ -80,11 +80,12 @@ def build_source_catalog(cfg: dict[str, Any], wiki_root: Path) -> list[dict[str,
       source_globs: ["raw/*master*.md", ...]  # relative to wiki_root or absolute
       source_roots: extra dirs to scan for *master*.md
     """
+    ticker = (cfg.get("ticker") or "").lower()
+    entity = (cfg.get("entity_slug") or cfg.get("focus_id") or ticker).lower()
     about_default = list(cfg.get("themes") or []) + [
         cfg.get("focus_id") or "",
-        (cfg.get("ticker") or "").lower(),
-        "micron",
-        "memory",
+        ticker,
+        entity,
     ]
     about_default = [a for a in about_default if a]
 
@@ -129,11 +130,17 @@ def build_source_catalog(cfg: dict[str, Any], wiki_root: Path) -> list[dict[str,
                 kind = "master" if "master" in path.stem.lower() else "raw"
             add(catalog_path(path, kind=kind, about=about_default))
 
-    # 3) wiki/sources distillates that claims may cite
+    # 3) this desk's wiki/sources distillates only — never the whole vault.
+    # Filename must be {ticker}|{slug}|{focus}-*.md (or exact stem). Extra files
+    # (e.g. NBIS citing crwv-*.md) belong in pack source_globs, not this sweep.
     sources_dir = wiki_root / "wiki" / "sources"
     if sources_dir.is_dir():
+        prefixes = {ticker, entity, str(cfg.get("focus_id") or "").lower()}
+        prefixes.discard("")
         for path in sorted(sources_dir.glob("*.md")):
-            add(catalog_path(path, kind="wiki-source", about=about_default))
+            stem = path.stem.lower()
+            if any(stem == p or stem.startswith(f"{p}-") for p in prefixes):
+                add(catalog_path(path, kind="wiki-source", about=about_default))
 
     # 4) extra roots (e.g. memory-thesis/output)
     for root in cfg.get("source_roots") or []:
