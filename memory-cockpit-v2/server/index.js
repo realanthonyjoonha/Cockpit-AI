@@ -107,6 +107,9 @@ app.post('/api/open-grok', (req, res) => {
       run_id: body.run_id || body.runId, // research-compile: target run (was dropped — 2026-08-20 fix)
       job: body.job,
       thesis_mode: body.thesis_mode || body.thesisMode,
+      register_scope: body.register_scope || body.registerScope,
+      register_ids: body.register_ids || body.registerIds,
+      thesis_pace: body.thesis_pace || body.thesisPace,
     });
     return res.json(out);
   } catch (e) {

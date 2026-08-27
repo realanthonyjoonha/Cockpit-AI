@@ -12,6 +12,8 @@ grep -q 'thesis_report' "$ROOT/memory-cockpit-v2/server/researchRunsSchema.js"
 grep -q 'reports' "$ROOT/memory-cockpit-v2/src/pages/thin/DeskRouter.jsx"
 test -f "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
 grep -q 'researchLane' "$ROOT/memory-cockpit-v2/server/researchRunsSchema.js"
+grep -q 'isThesisReportJob' "$ROOT/memory-cockpit-v2/server/researchRunsWorker.js"
+grep -q 'Stopped before PDF' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
 grep -q 'lane: req.query.lane' "$ROOT/memory-cockpit-v2/server/thinDeskMount.js"
 (cd "$ROOT/memory-cockpit-v2" && node scripts/thin-research-runs-test.mjs)
 (cd "$ROOT/memory-cockpit-v2" && node scripts/research-lifecycle-test.mjs)

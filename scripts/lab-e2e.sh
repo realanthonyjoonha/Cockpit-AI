@@ -6,7 +6,7 @@
 # Usage:
 #   ./scripts/lab-e2e.sh           # full gate
 #   ./scripts/lab-e2e.sh --host    # host-only (no docker)
-#   ./scripts/lab-e2e.sh --glass   # also start glass smoke briefly via compose
+#   ./scripts/lab-e2e.sh --glass   # HTTP smoke on LAB_PORT (fails if port already bound)
 #   ./scripts/lab-e2e.sh --negative   # isolation negative test then clean re-run
 #   ./scripts/lab-e2e.sh --isolation  # extensive multi-instance contamination suite
 #   ./scripts/lab-e2e.sh --isolation --isolation-live --isolation-docker
@@ -49,6 +49,18 @@ export LAB_PORT
 fail=0
 pass() { echo "  ✓ $*"; }
 bad() { echo "  ✗ $*"; fail=1; }
+
+port_in_use() {
+  local p="$1"
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+  if (echo >/dev/tcp/127.0.0.1/"$p") >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
 
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║  LAB E2E — blank product ship gate                       ║"
@@ -146,11 +158,20 @@ run_docker_suite() {
     -f "$ROOT/docker/product-lab/Dockerfile" \
     "$ROOT"
 
-  docker run --rm \
+  # -t so hook stdout is line-buffered (non-TTY docker run hid hook FAIL, then we printed PASS).
+  # Do not write `local rc=$?` — `local` clobbers $? in bash.
+  local rc
+  set +e
+  docker run --rm -t \
     -e COCKPIT_PRODUCT=/work/product \
     -v "$PRODUCT:/work/product:ro" \
     cockpit-product-lab:local
-
+  rc=$?
+  set -e
+  if [ "$rc" -ne 0 ]; then
+    echo "  ✗ docker lab-test FAIL (container exit $rc)" >&2
+    return 1
+  fi
   pass "docker lab-test PASS"
 }
 
@@ -180,13 +201,14 @@ echo
 if [ "$HOST_ONLY" -eq 1 ]; then
   run_host_suite
 else
-  if run_docker_suite; then
-    :
+  if ensure_docker; then
+    if ! run_docker_suite; then
+      bad "docker lab-test FAIL"
+    fi
   else
     echo "  · docker path unavailable — running host suite"
     run_host_suite
   fi
-  # always also run host hooks quickly for dual signal
   echo "→ L1 host cross-check"
   (
     cd "$PRODUCT/memory-cockpit-v2"
@@ -200,9 +222,12 @@ echo
 # --- optional glass HTTP ---
 if [ "$DO_GLASS" -eq 1 ]; then
   echo "→ L2 glass HTTP smoke (compose profile glass, port $LAB_PORT)"
-  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  if [ "$LAB_PORT" = "4681" ] || [ "$LAB_PORT" = "4682" ]; then
+    bad "LAB_PORT=$LAB_PORT is reserved (product 4681 / kernel 4682) — set LAB_PORT=4690+"
+  elif port_in_use "$LAB_PORT"; then
+    bad "LAB_PORT $LAB_PORT already in use — refuse to smoke a foreign glass. Set LAB_PORT to a free port (4691+)."
+  elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     docker build -t cockpit-product-lab:local -f "$ROOT/docker/product-lab/Dockerfile" "$ROOT" >/dev/null
-    # run glass in background
     cid=$(docker run -d --rm \
       -e COCKPIT_PRODUCT=/work/product \
       -e LAB_PORT="$LAB_PORT" \
@@ -212,7 +237,6 @@ if [ "$DO_GLASS" -eq 1 ]; then
       --entrypoint /entrypoint-glass.sh \
       cockpit-product-lab:local)
     echo "  container $cid"
-    # wait for listen
     ready=0
     for i in $(seq 1 60); do
       if curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:${LAB_PORT}/api/thin-desks"; then

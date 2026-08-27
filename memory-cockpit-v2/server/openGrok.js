@@ -13,6 +13,7 @@ import { scenarioPinPreamble } from './mcpPinGuard.js';
 import { writeStreetAgentSeed } from './streetAgentSeed.js';
 import { writeWorkingModelAgentSeed } from './workingModelAgentSeed.js';
 import { writeResearchRunsAgentSeed } from './researchRunsAgentSeed.js';
+import { resolveThesisRegister, shortRegisterToken, normalizeThesisPace } from './researchRunsSchema.js';
 import { spawnResearchWorker } from './researchRunsWorker.js';
 import {
   findInFlightRun,
@@ -361,6 +362,14 @@ export function buildInitialPrompt(opts = {}) {
           const parts = ['/cockpit-report'];
           if (desk) parts.push(desk);
           parts.push(reportMode);
+          const reg = resolveThesisRegister(opts);
+          if (reg.register_scope === 'pick' && reg.register_ids.length) {
+            const labels = [...new Set(reg.register_ids.map(shortRegisterToken))];
+            parts.push('pick', labels.join(','));
+          } else {
+            parts.push(reg.register_scope);
+          }
+          parts.push(normalizeThesisPace(opts.thesis_pace || opts.thesisPace));
           core = parts.join(' ');
           break;
         }
@@ -513,6 +522,9 @@ export function openGrokBuild(opts = {}) {
         run_id: opts.run_id || opts.runId || null,
         job: action === 'thesis-report' ? 'thesis_report' : (opts.job || 'deep_compile'),
         thesis_mode: opts.thesis_mode || opts.thesisMode || null,
+        register_scope: opts.register_scope || opts.registerScope || null,
+        register_ids: opts.register_ids || opts.registerIds || null,
+        thesis_pace: opts.thesis_pace || opts.thesisPace || null,
       });
     } catch (e) {
       research_seed = { ok: false, error: e.message || String(e) };
@@ -535,10 +547,14 @@ export function openGrokBuild(opts = {}) {
       + `run_id ${research_seed.run_id || '(in seed)'} is already created (status=queued until worker attach); `
       + `write only under that run folder and publish via the API in the seed. Decision-support only.`;
   } else if (research_seed?.ok && research_seed.job === 'thesis_report') {
+    const through = research_seed.thesis_pace === 'through';
     launchPrompt = `${initial}\n\nTHESIS LANE — execute /cockpit-report; do not stop at a menu. `
       + `First read the seed file: ${research_seed.path} . `
       + `run_id ${research_seed.run_id || '(in seed)'} is already created. `
-      + `STOP at skill checkpoints. PDF is ops, never pack SoR. Decision-support only.`;
+      + (through
+        ? 'PACE through — do not wait at Checkpoint 1 or 2. Still POST each checkpoint. Closeout via propose_* only; never silent-write house/risks. '
+        : 'STOP at skill checkpoints. ')
+      + `PDF is ops, never pack SoR. Decision-support only.`;
   }
 
   // Research PIPELINE: OS-agnostic headless spawn. Canonical artifacts live in the run

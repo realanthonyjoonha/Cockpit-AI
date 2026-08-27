@@ -18,6 +18,7 @@ export default function ThinHouse({ desk }) {
   const [pending, setPending] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
   const [propBusy, setPropBusy] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
 
   const load = useCallback(() => {
     return api(`${slug}/house`)
@@ -44,6 +45,7 @@ export default function ThinHouse({ desk }) {
     setSavedBanner(null);
     setCopyNote(null);
     setActiveProposal(null);
+    setShowRaw(false);
     load();
     loadProposals();
   }, [slug, load, loadProposals]);
@@ -104,6 +106,7 @@ export default function ThinHouse({ desk }) {
         setErr(out?.error || 'proposal not found');
         return;
       }
+      setShowRaw(false);
       setActiveProposal(out.proposal);
     } catch (e) {
       setErr(e.message || String(e));
@@ -229,32 +232,57 @@ export default function ThinHouse({ desk }) {
         ))}
         {activeProposal && (
           <div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: 11, marginBottom: 6 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
               <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>REVIEW</span>
-              <span>{activeProposal.summary || 'House draft'}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
+                {activeProposal.summary || 'House draft'}
+              </span>
             </div>
             {activeProposal.rationale ? (
-              <div className="dim" style={{ fontSize: 11, marginBottom: 6, lineHeight: 1.4 }}>
+              <div className="house-review-lede">
                 {activeProposal.rationale}
               </div>
             ) : null}
-            <pre
-              style={{
-                maxHeight: 280,
-                overflow: 'auto',
-                fontSize: 11,
-                lineHeight: 1.4,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                background: 'var(--panel, #141820)',
-                border: '1px solid var(--hairline)',
-                borderRadius: 6,
-                padding: 10,
-                margin: '0 0 8px',
-              }}
-            >
-              {activeProposal.markdown || '(no markdown)'}
-            </pre>
+            {activeProposal.review?.unchanged ? (
+              <div className="dim" style={{ fontSize: 12, margin: '0 0 10px' }}>
+                Draft matches the live house. Nothing to apply unless you still want ACCEPT.
+              </div>
+            ) : null}
+            {Array.isArray(activeProposal.review?.fields) && activeProposal.review.fields.length > 0 && (
+              <div className="house-changes">
+                <div className="house-changes-k">WHAT CHANGES</div>
+                {activeProposal.review.fields.map((f) => (
+                  <div key={f.key} className="house-change-row">
+                    <div className="k">{String(f.key).toUpperCase()}</div>
+                    <div className="from">{f.from}</div>
+                    <div className="arrow">→</div>
+                    <div className="to">{f.to}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {activeProposal.review?.html ? (
+              <div className="house-review-prose">
+                <div className="house-changes-k">PROPOSED HOUSE</div>
+                <div className="prose wide" dangerouslySetInnerHTML={{ __html: activeProposal.review.html }} />
+              </div>
+            ) : null}
+            {Array.isArray(activeProposal.review?.hunks) && activeProposal.review.hunks.length > 0 && (
+              <div className="house-diff">
+                <div className="house-changes-k">VS LIVE HOUSE</div>
+                {activeProposal.review.hunks.map((row, i) => (
+                  <div key={`${row.t}-${i}`} className={`house-diff-line ${row.t}`}>
+                    <span className="mark">{row.t === 'add' ? '+' : row.t === 'del' ? '−' : row.t === 'gap' ? '·' : ' '}</span>
+                    <span>{row.s}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {showRaw ? (
+              <pre className="house-review-raw">
+                {activeProposal.markdown || '(no markdown)'}
+              </pre>
+            ) : null}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 type="button"
@@ -290,10 +318,19 @@ export default function ThinHouse({ desk }) {
                 type="button"
                 className="desk-btn"
                 disabled={propBusy}
-                onClick={() => setActiveProposal(null)}
+                onClick={() => { setShowRaw(false); setActiveProposal(null); }}
                 style={btnSm}
               >
                 BACK
+              </button>
+              <button
+                type="button"
+                className="desk-btn"
+                disabled={propBusy || !activeProposal.markdown}
+                onClick={() => setShowRaw((v) => !v)}
+                style={btnSm}
+              >
+                {showRaw ? 'Hide raw' : 'Raw markdown'}
               </button>
             </div>
           </div>

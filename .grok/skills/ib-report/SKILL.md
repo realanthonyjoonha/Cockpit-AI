@@ -2,11 +2,11 @@
 name: ib-report
 description: >
   Cockpit thesis-lane report: interactive, web-research-allowed, judgment-shaped
-  (deep-dive / earnings-update / initiation). Load house + register first; two
-  human checkpoints; PDF via scripts/report; closeout via propose_* only.
+  (deep-dive / earnings-update / initiation). Load house + register first;
+  checkpoints (stop default, or through); PDF via scripts/report; closeout via propose_* only.
   Triggers: /cockpit-report, IB report, thesis report, earnings update note,
   initiating coverage note, report factory. Decision-support only.
-argument-hint: "[desk] [deep-dive|earnings-update|initiation]"
+argument-hint: "[desk] [deep-dive|earnings-update|initiation] [all|pick|skim] [R1,R2…] [stop|through]"
 user-invocable: true
 ---
 
@@ -24,8 +24,8 @@ Decision-support only: no buy/sell/hold, no price target, no sizing. **Initiatio
 ## Four touchpoints (do not relitigate)
 
 1. **START** — load this desk’s CONFIRMED house (+ version) **and** the risk register (pack/SoR). Protocol: **steelman house → delta vs house → red-team → flag contradictions loudly.**
-2. **REGISTER AS CO-INPUT** — plan research around the register. For each relevant Rn: does new evidence move INTACT↔WATCH↔FIRED? Spend tier-2 verification **first** on claims that bear on **WATCH** risks and tripwires. Status is **TESTED, never cited as evidence**. Still hunt risks **outside** the register (add-risk candidates). Propose only A/B-anchored moves — else **GAP**.
-3. **REPORT STRUCTURE** — risk section is the **register UPDATED** (Rn → status → what this report’s evidence does → tripwire readings), never a fresh risks essay. **Delta vs house is mandatory.**
+2. **REGISTER AS CO-INPUT** — depth is a **glass/arg choice** (`all` | `pick` | `skim`). House is never off. Status is **TESTED, never cited as evidence**. Propose only A/B-anchored moves — else **GAP**. Never silent-write.
+3. **REPORT STRUCTURE** — risk section is the **register UPDATED** (in-scope Rn → test → evidence → tripwires), never a fresh risks essay. Out-of-scope Rn: one line `not tested this note`. **Delta vs house is mandatory.**
 4. **CLOSEOUT (fail-closed)** — file anchors per vault claim format → `./ont compile TICKER && ./ont verify TICKER` exit 0 → house/risk implications **only** via `propose_*` MCP → PDF in the run archive. **PDF is ops, never pack SoR.**
 
 ---
@@ -38,10 +38,13 @@ Decision-support only: no buy/sell/hold, no price target, no sizing. **Initiatio
 |-------|---------|
 | desk-like (slug/ticker) | Desk. If missing: `list_desks`, ask once |
 | `deep-dive` / `earnings-update` / `initiation` | Mode |
+| `all` / `pick` / `skim` / `house-only` | Register scope (default **all**) |
+| `R1`, `R9` or `R1,R9` | Pick ids (with `pick`) |
+| `stop` / `through` | Pace (default **stop**) |
 | page count (`12pp`, `20 pages`) | Page budget |
 | remaining text | Optional focus (print, product, one risk) |
 
-If **mode or desk missing**, ask once (do not research yet).
+If **mode or desk missing**, ask once (do not research yet). If glass already chose register scope or pace (seed / `$ARGUMENTS`), **do not re-ask**.
 
 ---
 
@@ -53,9 +56,11 @@ Ask only what is still open:
 2. **Mode** — deep-dive · earnings-update · initiation  
 3. **Page budget** — default: earnings-update **8–12**; deep-dive **15–25**; initiation **20–30**  
 4. **Section ORDER** — propose the default below; get a nod or edits  
-5. **Focus** — optional (one print, one product, one Rn)
+5. **Focus** — optional (one print, one product, one Rn)  
+6. **Register scope** — `all` (default: WATCH in depth, INTACT/FIRED short) · `pick` + ids · `skim` (titles+status table). **House is never off.** If the seed already set this, print it and continue.  
+7. **Pace** — `stop` (default: wait at Checkpoint 1 and 2) · `through` (end to end, no conversational waits). If the seed already set this, print it and continue.
 
-Then print the scope block and proceed only if desk+mode are set.
+Then print the scope block (include register scope + pace) and proceed only if desk+mode are set. On **through**, do not wait for an ORDER nod — print defaults and go.
 
 ### Default ORDER (exec always drafted last)
 
@@ -63,7 +68,21 @@ Then print the scope block and proceed only if desk+mode are set.
 **deep-dive:** `setup` · `delta-vs-house` · `register-updated` · `mechanism` · `monitorables` · `exec`  
 **initiation:** `spine` · `delta-vs-house` · `financials` · `register-updated` · `monitorables` · `exec`
 
-`delta-vs-house` and `register-updated` are mandatory in every mode (`print-vs-house` counts as delta for earnings-update).
+`delta-vs-house` and `register-updated` are mandatory in every mode (`print-vs-house` counts as delta for earnings-update). On **skim**, `register-updated` is the titles+status table — not a mechanism essay.
+
+### Per-Rn (in-scope only)
+
+Each in-scope Rn in `register-updated` / anchors:
+
+1. **Mechanism** — what would fire  
+2. **Tripwires** — from SoR (`get_risk_sor`); do not invent  
+3. **Evidence this note** — A/B/C from `baseline-anchors.md`  
+4. **Test** — INTACT / WATCH / FIRED (test, **not a write**)  
+5. **GAP** if unverified  
+
+Out of scope: `Rn Title — not tested this note.`  
+**skim:** id · name · pack status. Still print the WATCH title list. No deep test.  
+**all:** WATCH in depth; INTACT/FIRED short; still hunt add-risk *candidates* outside the register.
 
 ---
 
@@ -91,8 +110,8 @@ $COCKPIT_VAULT/cockpit/research/{TICKER}/runs/{YYYYMMDDTHHMMSSZ}_thesis_report_{
 1. `list_desks` if desk is uncertain.  
 2. `get_house_view` — stance, status, version/date, flip triggers.  
 3. `get_pack_snapshot` — house_prior, **SoR-aware** WATCH/INTACT/FIRED, claims, gaps. Copy WATCH **titles** from pack; never invent.  
-4. Tripwires: MCP `get_risk_sor` per WATCH (and any Rn in focus). If that fails, read vault `raw/{slug}-research/08-risks-catalysts.md` — do not invent tables.  
-5. Short “context loaded” blurb: house status + WATCH list. **No web yet** if scope is still open.  
+4. Tripwires: MCP `get_risk_sor` per **in-scope** Rn (`all` → every WATCH plus any FIRED in play; `pick` → listed ids; `skim` → skip deep SoR, still list WATCH titles). If that fails, read vault `raw/{slug}-research/08-risks-catalysts.md` — do not invent tables.  
+5. Short “context loaded” blurb: house status + WATCH list + register scope. **No web yet** if scope is still open.  
 6. If `list_desks` does not include this desk, **stop** — MCP is pinned to the wrong tree. Re-run `./scripts/install-grok-mcp.sh` from kernel (or OPEN GROK from kernel glass). Do not silently use another vault.
 
 House protocol in every later phase: steelman → **delta** → red-team → loud contradiction.
@@ -122,18 +141,18 @@ Also keep vault-claim form ready for closeout:
 ### How to research
 
 - Fan out by thread (filings, the print, WATCH risks, outside-register hunt). Primary first. Soft press → **[soft]**.  
-- **Tier-2 (skeptics)** first on claims that move **WATCH** names or tripwires (2–5 contested facts). Independent corroboration required.  
-- For each relevant Rn: evidence → INTACT / WATCH / FIRED **test** (not a write).  
-- Hunt risks **not** on the register → add-risk *candidates* only.  
+- **Tier-2 (skeptics)** first on claims that move **in-scope** WATCH names or tripwires (2–5 contested facts). Independent corroboration required.  
+- For each **in-scope** Rn: evidence → INTACT / WATCH / FIRED **test** (not a write). Out of scope: one line.  
+- Hunt risks **not** on the register → add-risk *candidates* only (`all` and `pick`; on `skim` note candidates in GAP, do not deep-dive).  
 - Register status is never a citation.
 
 Anchors file must contain: FRAMEWORK, VERDICT draft, delta-vs-house bullets, per-Rn test table, contested-fact resolutions, figure list (`[[FIG:key]]` = FIGMAP keys), hedges, evidence ledger.
 
 ---
 
-## CHECKPOINT 1 — STOP
+## CHECKPOINT 1 — STOP (unless pace=through)
 
-Present, then **wait for Anthony** (conversational; not a glass run state):
+Present:
 
 - Verdict draft  
 - Delta vs house  
@@ -141,7 +160,7 @@ Present, then **wait for Anthony** (conversational; not a glass run state):
 - Anchor grade mix (count A/B/C)  
 - Proposed ORDER / page budget if still floating  
 
-Do **not** draft sections until he steers or says proceed.
+POST checkpoint `research`. On **stop**, **wait for Anthony** (conversational; not a glass run state). Do **not** draft until he steers or says proceed. On **through**, write this block into `baseline-anchors.md` and continue — do not wait.
 
 ---
 
@@ -176,7 +195,7 @@ Chain: wire_figures → assemble → footnote_citations (**one footnote per occu
 
 ---
 
-## CHECKPOINT 2 — QA, then STOP
+## CHECKPOINT 2 — QA, then STOP (unless pace=through)
 
 - N/N sections present; no empty/truncated section.  
 - Endnotes **1:1** (in-text refs == defs). **Zero** leftover `[^fn` in section sources.  
@@ -186,11 +205,11 @@ Chain: wire_figures → assemble → footnote_citations (**one footnote per occu
 - Mode-discipline grep again on the master.  
 - Other desks’ PDFs / books untouched.
 
-Wait for Anthony before closeout writes.
+POST checkpoint `qa`. On **stop**, wait for Anthony before closeout writes. On **through**, continue to closeout — do not wait.
 
 ---
 
-## Closeout (only after Checkpoint 2 nod)
+## Closeout (after Checkpoint 2 nod, or immediately on through)
 
 1. **File** A/B (and agreed C) claims into vault per `research-wiki/RESEARCH-PATHS.md` — typically `wiki/sources/{slug}-*.md` and/or entity Key facts. Never `ontology/store/`. Never overwrite house or `08-risks-catalysts.md`.  
 2. From kernel: `./ont compile {TICKER} && ./ont verify {TICKER}` — **exit 0 required**.  
@@ -204,7 +223,7 @@ Wait for Anthony before closeout writes.
 
 1. Decision-support only.  
 2. Do not invent WATCH titles or pack numbers.  
-3. Do not skip Checkpoint 1 or 2.  
+3. Do not skip Checkpoint 1 or 2 **work**. On `stop`, wait. On `through`, do the checks and continue — never skip the QA list.  
 4. Do not cite register status as evidence.  
 5. Do not silent-write house/risks.  
 6. Do not mix this lane’s judgment with deep-compile’s fact tables as if they were the same SoR. Cite pack/house; GAP if missing.

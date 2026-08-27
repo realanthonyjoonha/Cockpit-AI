@@ -1,71 +1,91 @@
-// Shared thin Reports room (`#/{desk}/reports`) — thesis-lane notes + PDF.
-// Compile notebooks stay on `#/{desk}/research`. Decision-support only.
+// Shared thin Reports room (`#/{desk}/reports`) — PDF-first thesis notes.
+// Arm-next-print is glass-open, not cron. Decision-support only.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, apiPost } from '../../api.js';
 
 const POLL_MS = 2500;
 const CHECKPOINTS = ['scope', 'research', 'draft', 'qa', 'closeout'];
-const CP_LABEL = {
-  scope: 'scope',
-  research: 'research',
-  draft: 'draft',
-  qa: 'qa',
-  closeout: 'closeout',
-};
+const MODES = [
+  { id: 'earnings-update', label: 'Earnings update', hint: '8–12pp · print vs house' },
+  { id: 'deep-dive', label: 'Deep-dive', hint: '15–25pp' },
+  { id: 'initiation', label: 'Initiation', hint: '20–30pp · structure, not a rating' },
+];
+const REGISTER_CHOICES = [
+  { id: 'all', label: 'All', hint: 'WATCH in depth · INTACT short' },
+  { id: 'pick', label: 'Pick', hint: 'Named Rn only' },
+  { id: 'skim', label: 'House only', hint: 'Register skim table' },
+];
+const PACE_CHOICES = [
+  { id: 'stop', label: 'Stop at checkpoints', hint: 'Wait at Checkpoint 1 and 2' },
+  { id: 'through', label: 'Run through', hint: 'End to end · ACCEPT still on glass' },
+];
 
-function listFingerprint(payload) {
-  if (!payload || typeof payload !== 'object') return 'null';
-  const runs = Array.isArray(payload.runs) ? payload.runs : [];
-  return runs.map((r) => `${r.run_id}|${r.status}|${r.checkpoint || ''}|${r.finished_at || ''}`).join(';');
+function registerOf(r) {
+  return r?.register_scope || r?.thesis?.register_scope || null;
+}
+function registerIdsOf(r) {
+  const ids = r?.register_ids || r?.thesis?.register_ids;
+  return Array.isArray(ids) ? ids : [];
+}
+function paceOf(r) {
+  return r?.thesis_pace || r?.thesis?.thesis_pace || 'stop';
+}
+function scopePhrase(scope, ids) {
+  if (scope === 'skim') return 'House only (register skim)';
+  if (scope === 'pick') return ids.length ? `Pick ${ids.map(shortRiskToken).join(', ')}` : 'Pick risks';
+  return 'All (WATCH in depth)';
+}
+function shortRiskToken(id) {
+  const s = String(id || '').trim();
+  if (/^R\d{1,3}$/i.test(s)) return s.toUpperCase();
+  const m = s.match(/(?:^|[-_./])r(\d{1,3})(?:[-_./]|$)/i);
+  return m ? `R${m[1]}` : s;
+}
+function riskChip(rk) {
+  const id = String(rk.id || '');
+  const name = String(rk.name || '');
+  const fromName = name.match(/^(R\d{1,3})\b/i);
+  const short = fromName ? fromName[1].toUpperCase() : shortRiskToken(id);
+  const rest = name.replace(/^(R\d{1,3})\s*[—–-]\s*/i, '');
+  return { id, short, rest };
 }
 
 function whenLabel(r) {
   return String(r.finished_at || r.started_at || '').slice(0, 16).replace('T', ' ');
 }
-
-function statusLabel(r) {
-  if (r?.stalled) return 'STALLED';
-  if (r?.status === 'queued' || r?.status === 'running') {
-    const cp = r.checkpoint || r.thesis?.checkpoint;
-    return cp ? `at ${CP_LABEL[cp] || cp}` : r.status;
-  }
-  return r?.status || '—';
+function dayLabel(r) {
+  return String(r.finished_at || r.started_at || '').slice(0, 10);
 }
-
-function statusClass(r) {
-  if (r?.status === 'complete') return ' ok';
-  if (r?.status === 'failed' || r?.stalled) return ' watch';
-  return '';
+function modeOf(r) {
+  return r?.thesis_mode || r?.thesis?.mode || r?.thesis?.thesis_mode || 'report';
 }
-
 function pdfRel(r, detail) {
   const fromDetail = detail?.thesis?.pdfs || [];
   const fromRow = r?.pdfs || [];
   const list = fromDetail.length ? fromDetail : fromRow;
   return list[0] || detail?.thesis?.pdf_rel || r?.pdf_rel || null;
 }
+function humanTitle(r, ticker) {
+  const mode = String(modeOf(r)).replace(/-/g, ' ');
+  const day = dayLabel(r);
+  return `${ticker || ''} ${mode}${day ? ` · ${day}` : ''}`.trim();
+}
 
 function Stepper({ checkpoint, failed }) {
   const cur = CHECKPOINTS.indexOf(checkpoint || 'scope');
   const idx = cur < 0 ? 0 : cur;
   return (
-    <div style={{ fontSize: 12, padding: '4px 0 10px', fontFamily: 'var(--mono)' }}>
+    <div style={{ fontSize: 11, padding: '2px 0 8px', fontFamily: 'var(--mono)' }}>
       {CHECKPOINTS.map((c, i) => {
         let mark = '○';
         if (failed && i === idx) mark = '✗';
         else if (i < idx) mark = '✓';
         else if (i === idx) mark = failed ? '✗' : '●';
-        const color = mark === '✓'
-          ? 'var(--intact)'
-          : mark === '✗'
-            ? 'var(--fired)'
-            : mark === '●'
-              ? 'var(--watch)'
-              : 'var(--dim)';
+        const color = mark === '✓' ? 'var(--intact)' : mark === '✗' ? 'var(--fired)' : mark === '●' ? 'var(--watch)' : 'var(--dim)';
         return (
           <span key={c}>
             {i > 0 ? <span className="dim"> → </span> : null}
-            <span style={{ color }}>{CP_LABEL[c]} {mark}</span>
+            <span style={{ color }}>{c} {mark}</span>
           </span>
         );
       })}
@@ -73,35 +93,20 @@ function Stepper({ checkpoint, failed }) {
   );
 }
 
-function DossierRow({ k, children }) {
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: '88px 1fr',
-      gap: 10,
-      padding: '5px 0',
-      fontSize: 12,
-      lineHeight: 1.45,
-    }}
-    >
-      <div className="dim" style={{ letterSpacing: 0.4, fontSize: 10 }}>{k}</div>
-      <div>{children}</div>
-    </div>
-  );
-}
-
 /** @param {{ desk: { slug: string, ticker: string, label: string } }} props */
 export default function ThinReports({ desk }) {
-  const { slug, label } = desk;
+  const { slug, ticker, label } = desk;
   const [list, setList] = useState(null);
   const [runId, setRunId] = useState(null);
   const [detail, setDetail] = useState(null);
-  const [mode, setMode] = useState('earnings-update');
-  const [askMode, setAskMode] = useState(false);
+  const [sched, setSched] = useState(null);
   const [busy, setBusy] = useState(false);
   const [polling, setPolling] = useState(false);
   const [flash, setFlash] = useState(null);
   const [ctx, setCtx] = useState(null);
+  const [registerScope, setRegisterScope] = useState('all');
+  const [pickedIds, setPickedIds] = useState([]);
+  const [thesisPace, setThesisPace] = useState('stop');
   const pollRef = useRef(null);
 
   const stopPoll = useCallback(() => {
@@ -117,19 +122,18 @@ export default function ThinReports({ desk }) {
       api(`${slug}/house`).catch(() => null),
       api(`${slug}/overview`).catch(() => null),
       api(`${slug}/risks/proposals?status=pending`).catch(() => null),
-      api(`${slug}/house/proposals?status=pending`).catch(() => null),
-    ]).then(([house, overview, riskP, houseP]) => {
-      const riskPend = Array.isArray(riskP?.proposals) ? riskP.proposals
-        : (Array.isArray(riskP) ? riskP : []);
-      const housePend = Array.isArray(houseP?.proposals) ? houseP.proposals
-        : (Array.isArray(houseP) ? houseP : []);
-      const watch = (overview?.on_watch || overview?.watch || overview?.risks || [])
-        .filter((r) => String(r.status || '').toUpperCase() === 'WATCH');
+      api(`${slug}/risks`).catch(() => null),
+    ]).then(([house, overview, riskP, risksBody]) => {
+      const riskPend = Array.isArray(riskP?.proposals) ? riskP.proposals : [];
+      const watch = overview?.risk_summary?.watch;
+      const watchN = Array.isArray(watch) ? watch.length : (overview?.n_watch || 0);
+      const risks = Array.isArray(risksBody?.risks) ? risksBody.risks : [];
       setCtx({
         houseStatus: house?.hero?.status || house?.status || '—',
         houseDate: house?.hero?.date || null,
-        watchN: watch.length || overview?.n_watch || 0,
-        pending: [...riskPend, ...housePend],
+        watchN,
+        pending: riskPend,
+        risks,
       });
     });
   }, [slug]);
@@ -141,7 +145,8 @@ export default function ThinReports({ desk }) {
         setRunId((cur) => {
           if (cur) return cur;
           const runs = Array.isArray(payload.runs) ? payload.runs : [];
-          return runs[0]?.run_id || null;
+          const withPdf = runs.find((r) => r.status === 'complete' && (r.pdfs || [])[0]);
+          return (withPdf || runs[0])?.run_id || null;
         });
         return payload;
       })
@@ -152,38 +157,35 @@ export default function ThinReports({ desk }) {
       });
   }, [slug]);
 
+  const loadSched = useCallback(() => {
+    return api(`${slug}/reports/schedule`).then(setSched).catch(() => setSched(null));
+  }, [slug]);
+
   const loadDetail = useCallback((id) => {
-    if (!id) {
-      setDetail(null);
-      return Promise.resolve(null);
-    }
+    if (!id) { setDetail(null); return Promise.resolve(null); }
     return api(`${slug}/research/runs/${encodeURIComponent(id)}`)
-      .then((payload) => {
-        setDetail(payload);
-        return payload;
-      })
-      .catch(() => {
-        setDetail({ available: false, reason: 'load failed', run_id: id });
-        return null;
-      });
+      .then((payload) => { setDetail(payload); return payload; })
+      .catch(() => { setDetail({ available: false, reason: 'load failed', run_id: id }); return null; });
   }, [slug]);
 
   useEffect(() => {
     loadList();
     loadCtx();
+    loadSched();
     return () => stopPoll();
-  }, [loadList, loadCtx, stopPoll]);
+  }, [loadList, loadCtx, loadSched, stopPoll]);
 
   useEffect(() => {
     stopPoll();
     setRunId(null);
     setDetail(null);
     setFlash(null);
+    setRegisterScope('all');
+    setPickedIds([]);
+    setThesisPace('stop');
   }, [slug, stopPoll]);
 
-  useEffect(() => {
-    if (runId) loadDetail(runId);
-  }, [runId, loadDetail]);
+  useEffect(() => { if (runId) loadDetail(runId); }, [runId, loadDetail]);
 
   const startPoll = useCallback((expectRunId) => {
     stopPoll();
@@ -196,7 +198,7 @@ export default function ThinReports({ desk }) {
           await loadList();
           if (row && (row.status === 'complete' || row.status === 'failed' || row.status === 'cancelled')) {
             stopPoll();
-            setFlash(`Run ${row.status} · ${expectRunId}`);
+            setFlash(`Run ${row.status}`);
           }
         }
       } catch { /* keep polling */ }
@@ -208,334 +210,408 @@ export default function ThinReports({ desk }) {
 
   const isInFlight = (r) => r && (r.status === 'running' || r.status === 'queued') && !r.stalled;
 
-  const cancelRun = async (rid) => {
-    if (!window.confirm(`Cancel report ${rid}?`)) return;
-    try {
-      const out = await apiPost(`${slug}/research/runs/${encodeURIComponent(rid)}/cancel`, {});
-      if (out?.ok) { setFlash(`Cancelled · ${rid}`); loadList(); } else setFlash(out?.error || 'cancel failed');
-    } catch (e) { setFlash(e.message || String(e)); }
-  };
-
   const retryRun = async (rid) => {
-    if (!window.confirm(`Retry report ${rid}? Same run folder.`)) return;
+    const retryPace = paceOf(detail) || thesisPace;
+    if (!window.confirm(
+      retryPace === 'through'
+        ? 'Retry this report? Same run folder. Grok runs through without waiting at checkpoints.'
+        : 'Retry this report? Same run folder. Grok will stop at Checkpoint 1.',
+    )) return;
     try {
       const out = await apiPost(`${slug}/research/runs/${encodeURIComponent(rid)}/retry`, { launch: false });
       if (!out?.ok) { setFlash(out?.error || 'retry failed'); return; }
       const grok = await apiPost('open-grok', {
-        action: 'thesis-report',
-        desk: slug,
-        run_id: rid,
-        job: 'thesis_report',
-        thesis_mode: detail?.thesis?.mode || mode,
-        mode: 'pipeline',
+        action: 'thesis-report', desk: slug, run_id: rid, job: 'thesis_report',
+        thesis_mode: detail?.thesis?.mode || 'earnings-update', mode: 'pipeline',
+        register_scope: registerOf(detail) || 'all',
+        register_ids: registerIdsOf(detail),
+        thesis_pace: retryPace,
       });
-      setFlash(grok?.ok ? `Retry · ${rid}` : (grok?.error || `Run ${rid} queued but OPEN GROK failed`));
+      setFlash(grok?.ok ? 'Retry · OPEN GROK' : (grok?.error || 'queued but OPEN GROK failed'));
       setRunId(rid);
       startPoll(rid);
     } catch (e) { setFlash(e.message || String(e)); }
   };
 
-  const startReport = async (useMode) => {
-    const thesisMode = useMode || mode;
+  const startReport = async (useMode, extra = {}) => {
+    const thesisMode = useMode || 'earnings-update';
     const runs = list?.runs || [];
     const inFlight = runs.find((r) => isInFlight(r));
     if (inFlight) {
-      setFlash(`Report already in flight (${inFlight.run_id}) — wait, or cancel it first.`);
+      setFlash(`Already in flight — wait or cancel.`);
       setRunId(inFlight.run_id);
-      setAskMode(false);
       return;
     }
-    if (!window.confirm(
-      `Start ${thesisMode} report for this desk?\n\nGrok runs /cockpit-report and STOPS at checkpoints.`,
+    if (registerScope === 'pick' && !pickedIds.length) {
+      setFlash('Pick at least one risk, or switch to All / House only.');
+      return;
+    }
+    const scope = registerScope;
+    const ids = scope === 'pick' ? pickedIds : [];
+    const pace = thesisPace === 'through' ? 'through' : 'stop';
+    if (!extra.skipConfirm && !window.confirm(
+      `Start ${thesisMode} for this desk?\n\nHouse: on\nRegister: ${scopePhrase(scope, ids)}\nPace: ${pace === 'through' ? 'run through (no checkpoint waits)' : 'stop at checkpoints'}\n\n${pace === 'through' ? 'Grok runs /cockpit-report end to end. House/risks still need your ACCEPT.' : 'Grok runs /cockpit-report and STOPS at Checkpoint 1.'}`,
     )) return;
     setBusy(true);
     setFlash(null);
-    setAskMode(false);
     try {
       const started = await apiPost(`${slug}/research/runs`, {
-        job: 'thesis_report',
-        thesis_mode: thesisMode,
-        launch: false,
+        job: 'thesis_report', thesis_mode: thesisMode, launch: false,
+        register_scope: scope, register_ids: ids, thesis_pace: pace,
       });
-      if (started?.already_in_flight && started.run_id) {
-        setRunId(started.run_id);
-        setFlash(`Report already in flight (${started.run_id})`);
-        loadList();
-        return;
-      }
       if (!started?.ok || !started.run_id) {
-        setFlash(started?.error || 'failed to start report');
+        setFlash(started?.error || 'failed to start');
         return;
       }
       const newId = started.run_id;
       setRunId(newId);
-      const grok = await apiPost('open-grok', {
-        action: 'thesis-report',
-        desk: slug,
-        run_id: newId,
-        job: 'thesis_report',
-        thesis_mode: thesisMode,
-        mode: 'pipeline',
-      });
-      if (!grok?.ok) {
-        setFlash(grok?.error || `Run ${newId} created but OPEN GROK failed`);
-        return;
+      if (extra.ackPrint) {
+        await apiPost(`${slug}/reports/schedule`, { armed: true, ack_print: extra.ackPrint }).catch(() => {});
+        loadSched();
       }
-      setFlash(`Report started · ${newId} · ${thesisMode}`);
+      const grok = await apiPost('open-grok', {
+        action: 'thesis-report', desk: slug, run_id: newId, job: 'thesis_report',
+        thesis_mode: thesisMode, mode: 'pipeline',
+        register_scope: scope, register_ids: ids, thesis_pace: pace,
+      });
+      setFlash(grok?.ok ? `Started · ${thesisMode} · ${scopePhrase(scope, ids)} · ${pace}` : (grok?.error || 'created but OPEN GROK failed'));
       startPoll(newId);
       loadList();
     } catch (e) {
       setFlash(e.message || String(e));
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   };
 
   const openChat = async () => {
     setBusy(true);
     try {
       const out = await apiPost('open-grok', {
-        action: 'thesis-report',
-        desk: slug,
-        mode: 'chat',
-        run_id: runId || undefined,
-        job: 'thesis_report',
-        thesis_mode: detail?.thesis?.mode || mode,
+        action: 'thesis-report', desk: slug, mode: 'chat',
+        run_id: runId || undefined, job: 'thesis_report',
+        thesis_mode: detail?.thesis?.mode || 'earnings-update',
+        register_scope: registerOf(detail) || registerScope,
+        register_ids: registerIdsOf(detail).length ? registerIdsOf(detail) : pickedIds,
+        thesis_pace: paceOf(detail) || thesisPace,
       });
-      if (!out?.ok) setFlash(out?.error || 'open Grok failed');
-      else setFlash(`Opened Grok · ${out.initial_prompt || ''}`);
+      setFlash(out?.ok ? 'Opened Grok' : (out?.error || 'open Grok failed'));
     } catch (e) { setFlash(e.message || String(e)); } finally { setBusy(false); }
+  };
+
+  const toggleArm = async () => {
+    const next = !(sched?.armed);
+    try {
+      const out = await apiPost(`${slug}/reports/schedule`, { armed: next });
+      setSched(out);
+    } catch (e) { setFlash(e.message || String(e)); }
   };
 
   const runs = list?.runs || [];
   const empty = !list?.available || !runs.length;
   const inflight = runs.find((r) => isInFlight(r));
   const selected = runs.find((r) => r.run_id === runId) || null;
-  const lastComplete = runs.find((r) => r.status === 'complete');
+  const statusOf = (r) => {
+    if (detail && r && detail.run_id === r.run_id && detail.status) return detail.status;
+    return r?.status;
+  };
+  const lastComplete = runs.find((r) => statusOf(r) === 'complete' && pdfRel(r, runId === r.run_id ? detail : null));
+  const lastAnyComplete = lastComplete || runs.find((r) => statusOf(r) === 'complete');
+  const lastFailed = runs.find((r) => statusOf(r) === 'failed');
+  const selectedStatus = statusOf(selected);
+  const hero = (selected && selectedStatus === 'complete' && pdfRel(selected, detail))
+    ? selected
+    : lastAnyComplete;
   const pendingN = ctx?.pending?.length || 0;
-  const fileHref = (rel) => `/api/${slug}/research/runs/${encodeURIComponent(runId)}/file?rel=${encodeURIComponent(rel)}`;
-
+  const fileHref = (rid, rel) => `/api/${slug}/research/runs/${encodeURIComponent(rid)}/file?rel=${encodeURIComponent(rel)}`;
+  const heroPdf = hero ? pdfRel(hero, runId === hero.run_id ? detail : null) : null;
+  const failed = selectedStatus === 'failed';
+  const checkpoint = detail?.thesis?.checkpoint || selected?.checkpoint || 'scope';
   const summaryLine = useMemo(() => {
     const s = String(detail?.summary || '').replace(/\s+/g, ' ').trim();
-    return s.slice(0, 140);
+    return s.slice(0, 180);
   }, [detail]);
 
   if (!list) return <div className="crumb">LOADING…</div>;
 
-  const failed = detail?.status === 'failed' || selected?.status === 'failed';
-  const checkpoint = detail?.thesis?.checkpoint || selected?.checkpoint || 'scope';
-  const artifact = pdfRel(selected, detail);
+  const printDate = sched?.print?.date;
+  const printKnown = !!sched?.print_known && !!printDate;
 
   return (
     <div>
       <div className="crumb">
-        {label} · REPORTS · {empty ? <b>EMPTY</b> : <b>{runs.length} RUN{runs.length === 1 ? '' : 'S'}</b>}
+        {label} · REPORTS
+        {lastAnyComplete ? ` · last ${dayLabel(lastAnyComplete)}` : ' · EMPTY'}
         {polling ? <span style={{ color: 'var(--sec-2)' }}> · <b>WAITING</b></span> : null}
       </div>
 
-      <div className="sect" style={{ padding: '8px 16px 10px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+      {sched?.due && printKnown && (
+        <div className="sect" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            Print landed · <b>{printDate}</b> · {sched.print.form}
+            {' · '}no earnings-update since then.
+          </div>
+          <div className="dimmer" style={{ fontSize: 11, marginBottom: 10 }}>
+            Dates from SEC only. Agent still stops at Checkpoint 1. Not a clock.
+          </div>
           <button
             type="button"
             className="btn"
-            disabled={busy || polling}
-            onClick={() => setAskMode((v) => !v)}
-            style={{ fontSize: 10, padding: '4px 10px' }}
+            disabled={busy || !!inflight}
+            onClick={() => startReport('earnings-update', { skipConfirm: true, ackPrint: printDate })}
+            style={{ fontSize: 11, padding: '6px 12px' }}
           >
-            NEW REPORT
+            Start earnings-update
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={openChat} style={{ fontSize: 10, padding: '4px 10px' }}>
-            OPEN GROK
-          </button>
-          <button type="button" className="btn" onClick={() => { loadList(); loadCtx(); }} style={{ fontSize: 10, padding: '4px 10px' }}>
-            REFRESH
-          </button>
-          {flash && <span className="dim" style={{ fontSize: 10 }}>{flash}</span>}
         </div>
-        {askMode && (
-          <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {['earnings-update', 'deep-dive', 'initiation'].map((m) => (
+      )}
+
+      {hero && heroPdf && (
+        <div className="sect">
+          <div className="report-hero">
+            <div className="dim" style={{ fontSize: 10, letterSpacing: 0.08, marginBottom: 4 }}>
+              {String(modeOf(hero)).toUpperCase()} · COMPLETE
+            </div>
+            <h1>{humanTitle(hero, ticker)}</h1>
+            <div className="acts">
+              <a className="btn primary" href={fileHref(hero.run_id, heroPdf)} target="_blank" rel="noreferrer">
+                Open PDF
+              </a>
+              <a className="btn" href={fileHref(hero.run_id, 'baseline-anchors.md')} target="_blank" rel="noreferrer">
+                Anchors
+              </a>
+              <button type="button" className="btn" disabled={busy} onClick={openChat}>
+                Open Grok
+              </button>
+            </div>
+            {runId === hero.run_id && summaryLine ? (
+              <div style={{ fontSize: 12, lineHeight: 1.5, maxWidth: '52rem' }}>{summaryLine}</div>
+            ) : null}
+            <div className="dim" style={{ fontSize: 11, marginTop: 10 }}>
+              HOUSE {ctx?.houseStatus || '—'}
+              {ctx?.watchN != null ? ` · ${ctx.watchN} WATCH` : ''}
+              {pendingN > 0 ? (
+                <span className="filing-link" style={{ marginLeft: 8 }} onClick={() => { window.location.hash = `#/${slug}/risks`; }}>
+                  {pendingN} proposal{pendingN === 1 ? '' : 's'} pending
+                </span>
+              ) : null}
+              <span className="dimmer"> · PDF is ops, not pack SoR</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {inflight && (
+        <div className="sect" style={{ padding: '12px 16px' }}>
+          <div style={{ fontSize: 12, marginBottom: 6 }}>IN FLIGHT · {modeOf(inflight)}</div>
+          <Stepper checkpoint={checkpoint} failed={false} />
+          <div className="dim" style={{ fontSize: 11, marginBottom: 8 }}>
+            {paceOf(inflight) === 'through' || (detail && detail.run_id === inflight.run_id && paceOf(detail) === 'through')
+              ? 'Running through · not waiting at checkpoints'
+              : 'Waiting on Grok · Checkpoint 1 is next'}
+          </div>
+          <button type="button" className="btn" onClick={openChat} style={{ fontSize: 10, padding: '4px 10px', marginRight: 8 }}>OPEN GROK</button>
+        </div>
+      )}
+
+      <div className="sect">
+        <div className="report-canvas">
+          {empty && !hero && !inflight && (
+            <>
+              <div className="eyebrow">REPORTS</div>
+              <h1>No note yet</h1>
+              <p className="lede">
+                House stays on. Choose register depth and whether Grok waits at checkpoints, then a type.
+              </p>
+            </>
+          )}
+          {(!empty || hero) && (
+            <div className="eyebrow" style={{ marginBottom: 10 }}>NEW NOTE</div>
+          )}
+          <div className="scope-bar">
+            <div>
+              <span className="scope-k">HOUSE</span>
+              <div className="scope-group">
+                <span className="scope-chip on locked">On · steelman + delta</span>
+              </div>
+            </div>
+            <div>
+              <span className="scope-k">REGISTER</span>
+              <div className="scope-group">
+                {REGISTER_CHOICES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`scope-chip${registerScope === c.id ? ' on' : ''}`}
+                    disabled={busy || !!inflight}
+                    title={c.hint}
+                    onClick={() => setRegisterScope(c.id)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <span className="scope-k">PACE</span>
+              <div className="scope-group">
+                {PACE_CHOICES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`scope-chip${thesisPace === c.id ? ' on' : ''}`}
+                    disabled={busy || !!inflight}
+                    title={c.hint}
+                    onClick={() => setThesisPace(c.id)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="scope-hint">
+            {registerScope === 'skim'
+              ? 'Register is a titles + status table. No deep test. House still required.'
+              : registerScope === 'pick'
+                ? 'Deep only the risks you tick. Others get one line: not tested this note.'
+                : 'WATCH in depth · INTACT short. Hunt outside the register as add-risk candidates.'}
+            {thesisPace === 'through'
+              ? ' Run through does not wait at Checkpoint 1 or 2. House/risks still only via propose — you ACCEPT on glass.'
+              : ' Stop waits at Checkpoint 1 and 2.'}
+          </div>
+          {registerScope === 'pick' && (
+            <div className="rn-row">
+              {(ctx?.risks || []).length
+                ? ctx.risks.map((rk) => {
+                  const chip = riskChip(rk);
+                  const on = pickedIds.includes(chip.id);
+                  const st = String(rk.status || '').toLowerCase();
+                  const stCls = st === 'watch' ? 'watch' : st === 'fired' ? 'fired' : 'ok';
+                  return (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      className={`rn-chip${on ? ' on' : ''} ${stCls}`}
+                      disabled={busy || !!inflight}
+                      title={chip.id}
+                      onClick={() => setPickedIds((cur) => (
+                        cur.includes(chip.id) ? cur.filter((x) => x !== chip.id) : [...cur, chip.id]
+                      ))}
+                    >
+                      <b>{chip.short}</b> {chip.rest}
+                      <span className="st">{rk.status || '—'}</span>
+                    </button>
+                  );
+                })
+                : <span className="dim" style={{ fontSize: 11 }}>No register rows on pack yet.</span>}
+            </div>
+          )}
+          <div className="mode-grid">
+            {MODES.map((m) => (
               <button
-                key={m}
+                key={m.id}
                 type="button"
-                className="btn"
-                style={{ fontSize: 10, padding: '3px 8px', fontWeight: mode === m ? 700 : 400 }}
-                onClick={() => { setMode(m); startReport(m); }}
+                className="mode-tile"
+                disabled={busy || !!inflight}
+                onClick={() => startReport(m.id)}
               >
-                {m}
+                <b>{m.label}</b>
+                <span>{m.hint}</span>
               </button>
             ))}
           </div>
-        )}
-      </div>
-
-      <div className="sect" style={{ padding: '6px 16px 10px', fontSize: 11 }}>
-        <span className={`chipC${ctx?.houseStatus === 'CONFIRMED' ? ' ok' : ''}`}>
-          HOUSE {ctx?.houseStatus || '—'}
-        </span>
-        {ctx?.houseDate ? <span className="dim" style={{ marginLeft: 8 }}>{ctx.houseDate}</span> : null}
-        <span style={{ marginLeft: 10 }}><b style={{ color: 'var(--watch)' }}>{ctx?.watchN ?? '—'}</b> WATCH</span>
-        {lastComplete ? (
-          <span className="dim" style={{ marginLeft: 10 }}>last report {String(lastComplete.finished_at || lastComplete.started_at || '').slice(0, 10)}</span>
-        ) : null}
-        {pendingN > 0 ? (
-          <span
-            className="lnk"
-            style={{ marginLeft: 10, cursor: 'pointer' }}
-            onClick={() => { window.location.hash = `#/${slug}/risks`; }}
-          >
-            {pendingN} proposal{pendingN === 1 ? '' : 's'} pending
-          </span>
-        ) : null}
-      </div>
-
-      {empty && (
-        <div className="sect">
-          <div className="emptyD" style={{ padding: '16px' }}>
-            <div style={{ marginBottom: 8 }}>{list.reason || 'No reports yet.'}</div>
-            <div className="dim" style={{ fontSize: 11 }}>
-              NEW REPORT starts a checkpointed note. Compiles (if any) stay on the Compile room.
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16 }}>
+            <button type="button" className="btn" disabled={busy} onClick={openChat}>
+              Open Grok
+            </button>
+            {flash && <span className="dim" style={{ fontSize: 11 }}>{flash}</span>}
+          </div>
+          <div className="arm-row" style={{ paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
+            <button
+              type="button"
+              className={`arm-switch${sched?.armed ? ' on' : ''}`}
+              role="switch"
+              aria-checked={!!sched?.armed}
+              title="When a 10-Q or 10-K lands, prompt to start an earnings-update. Not a clock."
+              onClick={toggleArm}
+            >
+              <i />
+            </button>
+            <div>
+              <div style={{ fontWeight: 600 }}>Remind me after the next print</div>
+              <div className="dimmer" style={{ fontSize: 11, marginTop: 3 }}>
+                {printKnown
+                  ? `Last SEC print ${printDate} · ${sched.print.form}`
+                  : 'No dated 10-Q/10-K in cache yet — toggle still saves'}
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {lastFailed && lastFailed !== hero && (
+        <div className="sect" style={{ padding: '10px 16px 12px' }}>
+          <div style={{ fontSize: 12 }}>
+            Last attempt {whenLabel(lastFailed)} failed before PDF.
+          </div>
+          <div className="dimmer" style={{ fontSize: 11, margin: '4px 0 8px' }}>
+            {(detail?.error || lastFailed.error || 'Stopped before PDF').toString().split('\n')[0].slice(0, 160)}
+          </div>
+          <button type="button" className="btn" style={{ fontSize: 10, padding: '4px 10px' }} onClick={() => retryRun(lastFailed.run_id)}>
+            Retry
+          </button>
+        </div>
       )}
 
-      {!empty && (
+      {selected && failed && selected === lastFailed && !heroPdf && (
+        <div className="sect" style={{ padding: '10px 16px 12px' }}>
+          <Stepper checkpoint={checkpoint} failed />
+        </div>
+      )}
+
+      {runs.length > 0 && (
         <div className="sect">
           <div className="shd">
-            <span className="no">1</span>
-            <h2>RUNS</h2>
-            <span className="m">checkpointed notes</span>
+            <span className="no">·</span>
+            <h2>PAST NOTES</h2>
+            <span className="m">{runs.length}</span>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data" style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', color: 'var(--dim)', fontSize: 10 }}>
-                  <th style={{ padding: '6px 12px' }}>When</th>
-                  <th style={{ padding: '6px 12px' }}>Mode</th>
-                  <th style={{ padding: '6px 12px' }}>Status</th>
-                  <th style={{ padding: '6px 12px' }}>Artifact</th>
-                </tr>
-              </thead>
-              <tbody>
-                {runs.map((r) => (
-                  <tr
-                    key={r.run_id}
-                    style={{
-                      borderTop: '1px solid var(--line, #333)',
-                      cursor: 'pointer',
-                      background: runId === r.run_id ? 'rgba(123,135,232,0.12)' : undefined,
-                    }}
-                    onClick={() => setRunId(r.run_id)}
+          {runs.map((r) => {
+            const pdf = pdfRel(r);
+            const complete = r.status === 'complete' && pdf;
+            return (
+              <div
+                key={r.run_id}
+                className={`past-note${runId === r.run_id ? ' on' : ''}`}
+                onClick={() => setRunId(r.run_id)}
+              >
+                <span className="mono dim" style={{ width: '6.5rem', flex: 'none' }}>{dayLabel(r) || '—'}</span>
+                <span style={{ flex: 1 }}>
+                  {String(modeOf(r)).replace(/-/g, ' ')}
+                  {registerOf(r) && registerOf(r) !== 'all' ? (
+                    <span className="dimmer"> · {scopePhrase(registerOf(r), registerIdsOf(r))}</span>
+                  ) : null}
+                  {paceOf(r) === 'through' ? <span className="dimmer"> · through</span> : null}
+                </span>
+                <span className={`chipC${r.status === 'complete' ? ' ok' : r.status === 'failed' ? ' watch' : ''}`}>
+                  {r.status}
+                </span>
+                {complete ? (
+                  <a
+                    className="filing-link"
+                    href={fileHref(r.run_id, pdf)}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontSize: 11 }}
                   >
-                    <td style={{ padding: '8px 12px' }} className="mono">{whenLabel(r)}</td>
-                    <td style={{ padding: '8px 12px' }}>{r.thesis_mode || r.thesis?.mode || '—'}</td>
-                    <td style={{ padding: '8px 12px' }}>
-                      <span className={`chipC${statusClass(r)}`}>{statusLabel(r)}</span>
-                      {isInFlight(r) && (
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{ fontSize: 9, padding: '2px 7px', marginLeft: 6 }}
-                          onClick={(e) => { e.stopPropagation(); cancelRun(r.run_id); }}
-                        >
-                          CANCEL
-                        </button>
-                      )}
-                      {r.status === 'failed' && (
-                        <button
-                          type="button"
-                          className="btn"
-                          style={{ fontSize: 9, padding: '2px 7px', marginLeft: 6 }}
-                          onClick={(e) => { e.stopPropagation(); retryRun(r.run_id); }}
-                        >
-                          RETRY
-                        </button>
-                      )}
-                    </td>
-                    <td style={{ padding: '8px 12px' }} className="mono dim">
-                      {(r.pdfs && r.pdfs[0]) ? r.pdfs[0].replace(/^output\//, '') : (r.status === 'failed' ? 'none' : '—')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {inflight && (
-            <div className="dim" style={{ padding: '6px 16px 10px', fontSize: 11 }}>
-              queued · holds the report mutex — NEW REPORT blocked
-            </div>
-          )}
-        </div>
-      )}
-
-      {runId && detail && (
-        <div className="sect">
-          <div className="shd">
-            <span className="no">2</span>
-            <h2>REPORT</h2>
-            <span className="m">{detail.run_id} · {detail.thesis?.mode || mode}</span>
-          </div>
-          <div style={{ padding: '8px 16px 16px' }}>
-            <Stepper checkpoint={checkpoint} failed={failed} />
-            {failed ? (
-              <>
-                <DossierRow k="ARTIFACT">none — failed before render</DossierRow>
-                <DossierRow k="LAST LOG">
-                  <span className="mono" style={{ fontSize: 11 }}>
-                    {String(detail.error || detail.log_tail || 'no log').split('\n').slice(0, 2).join(' · ').slice(0, 220)}
-                  </span>
-                </DossierRow>
-                <DossierRow k="ACTIONS">
-                  <button type="button" className="btn" style={{ fontSize: 10, padding: '3px 8px' }} onClick={() => retryRun(runId)}>
-                    RETRY
-                  </button>
-                </DossierRow>
-              </>
-            ) : (
-              <>
-                <DossierRow k="ARTIFACT">
-                  {artifact ? (
-                    <>
-                      <a className="filing-link" href={fileHref(artifact)} target="_blank" rel="noreferrer">
-                        {artifact.replace(/^output\//, '')}
-                      </a>
-                      {' · '}
-                      <a className="filing-link" href={fileHref('baseline-anchors.md')} target="_blank" rel="noreferrer">
-                        anchors
-                      </a>
-                    </>
-                  ) : (
-                    <span className="dim">none yet</span>
-                  )}
-                </DossierRow>
-                <DossierRow k="DELTA">
-                  {summaryLine || <span className="dim">—</span>}
-                </DossierRow>
-                <DossierRow k="REGISTER">
-                  <span className="dim">tested on closeout · status is not evidence</span>
-                </DossierRow>
-                <DossierRow k="PROPOSALS">
-                  {pendingN > 0 ? (
-                    <span
-                      className="lnk"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => { window.location.hash = `#/${slug}/risks`; }}
-                    >
-                      {pendingN} pending → #{`/${slug}/risks`}
-                    </span>
-                  ) : (
-                    <span className="dim">—</span>
-                  )}
-                </DossierRow>
-                {pendingN > 0 && (
-                  <p style={{ color: 'var(--watch)', fontSize: 11, margin: '8px 0 0' }}>
-                    ⚠ proposals are not applied — human ACCEPTs on the Risks room
-                  </p>
+                    Open
+                  </a>
+                ) : (
+                  <span className="dim" style={{ fontSize: 11 }}> </span>
                 )}
-              </>
-            )}
-          </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

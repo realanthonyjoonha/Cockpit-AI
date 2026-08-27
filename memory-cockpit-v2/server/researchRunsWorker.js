@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { isThesisReportJob } from './researchRunsSchema.js';
 
 export const HEARTBEAT_STALE_MS = 5 * 60 * 1000;
 export const PID_DEAD_GRACE_MS = 15 * 1000;
@@ -80,6 +81,8 @@ export function heartbeatAgeMs(meta, now = Date.now()) {
 export function stalledOverlay(meta, now = Date.now()) {
   const st = meta?.status;
   if (st !== 'running' && st !== 'queued') return false;
+  // Thesis lane is interactive OPEN GROK — no headless pid/heartbeat.
+  if (isThesisReportJob(meta?.job) && !(meta?.worker?.pid)) return false;
   const age = heartbeatAgeMs(meta, now);
   if (age == null) return false;
   return age > HEARTBEAT_STALE_MS;
@@ -267,6 +270,10 @@ export function reconcileRun(ticker, meta, deps, now = Date.now()) {
   }
 
   if (!pid) {
+    // Interactive thesis_report stays queued with worker: null by design.
+    if (isThesisReportJob(meta.job)) {
+      return { stalled: false, meta };
+    }
     const started = meta.started_at ? Date.parse(meta.started_at) : now;
     if (now - started > ORPHAN_FAIL_MS) {
       const failed = deps.failResearchRun(ticker, meta.run_id, 'queued/running with no pid — auto-failed orphan');

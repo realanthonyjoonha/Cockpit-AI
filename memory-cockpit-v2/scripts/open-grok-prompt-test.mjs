@@ -192,18 +192,63 @@ try {
     desk: 'lly',
     thesis_mode: 'earnings-update',
   });
-  if (p !== '/cockpit-report lly earnings-update') throw new Error(p);
-  ok('thesis-report → /cockpit-report desk mode');
+  if (p !== '/cockpit-report lly earnings-update all stop') throw new Error(p);
+  ok('thesis-report → /cockpit-report desk mode all stop');
 } catch (e) {
   fail('thesis-report prompt', e);
 }
 
 try {
   const p = buildInitialPrompt({ action: 'thesis-report', desk: 'nvda' });
-  if (p !== '/cockpit-report nvda earnings-update') throw new Error(p);
-  ok('thesis-report default mode earnings-update');
+  if (p !== '/cockpit-report nvda earnings-update all stop') throw new Error(p);
+  ok('thesis-report default mode earnings-update all stop');
 } catch (e) {
   fail('thesis-report default mode', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
+    register_scope: 'pick', register_ids: ['R1', 'R9'],
+  });
+  if (p !== '/cockpit-report lly deep-dive pick R1,R9 stop') throw new Error(p);
+  ok('thesis-report pick ids in prompt');
+} catch (e) {
+  fail('thesis-report pick prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
+    register_scope: 'pick',
+    register_ids: ['lly-r1-tirzepatide-cash-engine-concentration-outgoing-mounjaro-zepbound', 'lly-r9-orforglipron'],
+  });
+  if (p !== '/cockpit-report lly deep-dive pick R1,R9 stop') throw new Error(p);
+  ok('thesis-report pick pack slugs compress to Rn');
+} catch (e) {
+  fail('thesis-report pick slug prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'initiation',
+    register_scope: 'house-only',
+  });
+  if (p !== '/cockpit-report lly initiation skim stop') throw new Error(p);
+  ok('thesis-report house-only → skim');
+} catch (e) {
+  fail('thesis-report skim prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
+    thesis_pace: 'through',
+  });
+  if (p !== '/cockpit-report lly deep-dive all through') throw new Error(p);
+  ok('thesis-report through pace in prompt');
+} catch (e) {
+  fail('thesis-report through prompt', e);
 }
 
 try {

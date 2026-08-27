@@ -64,6 +64,8 @@ See [`MULTI-INSTANCE.md`](./MULTI-INSTANCE.md). Lab defaults **never** bind 4681
 ```bash
 # Optional long-run lab glass (after image build / compose)
 ./scripts/lab-e2e.sh --glass
+# Fails closed if LAB_PORT (default 4690) is already bound — do not smoke a foreign glass.
+# LAB_PORT=4692 ./scripts/lab-e2e.sh --glass
 # or: docker compose -f docker/product-lab/docker-compose.yml --profile glass up glass
 ```
 

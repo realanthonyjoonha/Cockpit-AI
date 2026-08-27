@@ -249,6 +249,8 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/model/refresh', ja(withDesk(async (rt, req) => rt.model.workingModelRefresh(req.body || {}))));
   app.post('/api/:slug/model/print/arm', j(withDesk((rt, req) => rt.model.workingModelArm(req.body || {}))));
   app.post('/api/:slug/model/print/lock', j(withDesk((rt) => rt.model.workingModelLock())));
+  app.get('/api/:slug/reports/schedule', ja(withDesk((rt) => rt.model.reportSchedule())));
+  app.post('/api/:slug/reports/schedule', ja(withDesk((rt, req) => rt.model.reportScheduleSet(req.body || {}))));
   app.get('/api/:slug/research', j(withDesk((rt, req) => rt.model.researchList({
     lane: req.query.lane || req.query.job_lane || undefined,
   }))));
@@ -285,7 +287,7 @@ export function mountThinDesks(app, { j, ja }) {
   app.get('/api/:slug/book', j(withDesk((rt) => rt.model.book())));
   app.post('/api/:slug/book/refresh', j(withDesk((rt) => rt.model.refreshBook())));
   app.get('/api/:slug/compile', j(withDesk((rt) => rt.compileStatus())));
-  app.post('/api/:slug/compile', ja(withDesk((rt) => rt.compile())));
+  app.post('/api/:slug/compile', ja(withDesk((rt, req) => rt.compile(req.body || {}))));
   app.get('/api/:slug/ask', j(withDesk((rt, req) => rt.ask(String(req.query.q || '')))));
   app.post('/api/:slug/ask', j(withDesk((rt, req) => rt.ask(String((req.body && req.body.q) || '')))));
   app.get('/api/:slug/write-meta', j(withDesk((rt) => rt.model.writeMeta())));

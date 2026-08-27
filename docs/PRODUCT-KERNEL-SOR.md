@@ -49,6 +49,9 @@ memory-cockpit-v2/server/streetAgentSeed.js
 memory-cockpit-v2/server/thinDeskMount.js
 memory-cockpit-v2/server/sourceRead.js
 memory-cockpit-v2/server/sourceCatalog.js
+memory-cockpit-v2/server/packStale.js
+memory-cockpit-v2/server/thinCompile.js
+memory-cockpit-v2/scripts/pack-stale-test.mjs
 memory-cockpit-v2/scripts/source-catalog-test.mjs
 ontology/compile/from_sources.py
 memory-cockpit-v2/server/secEdgar.js
@@ -62,7 +65,11 @@ memory-cockpit-v2/src/pages/thin/GrokAgents.jsx
 memory-cockpit-v2/src/pages/thin/Street.jsx
 memory-cockpit-v2/src/pages/thin/Overview.jsx
 memory-cockpit-v2/src/pages/thin/House.jsx
+memory-cockpit-v2/server/houseProposals.js
+memory-cockpit-v2/scripts/house-proposal-review-test.mjs
 memory-cockpit-v2/src/pages/thin/Sources.jsx
+memory-cockpit-v2/server/reportSchedule.js
+memory-cockpit-v2/scripts/report-schedule-test.mjs
 memory-cockpit-v2/src/pages/thin/Model.jsx
 memory-cockpit-v2/src/pages/thin/Empty.jsx
 memory-cockpit-v2/src/pages/thin/filingLink.js

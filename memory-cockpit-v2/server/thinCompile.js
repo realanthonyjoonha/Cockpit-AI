@@ -9,6 +9,7 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { clearPackCache } from './pack.js';
+import { inspectPackStale } from './packStale.js';
 
 const SERVER_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // monorepo: memory-cockpit-v2/../ontology
@@ -46,12 +47,40 @@ export function createThinCompile(ticker, getBook) {
   let inflight = null;
   let lastRun = null;
 
-  async function compile() {
+  async function compile(opts = {}) {
+    const ifStale = !!(opts.if_stale || opts.ifStale);
+    if (ifStale) {
+      const wiki = resolveWiki();
+      const store = process.env.ONTOLOGY_STORE
+        || path.join(ONT_ROOT, 'store', 'by_ticker');
+      const probe = inspectPackStale({
+        ticker: TICKER,
+        vaultDir: wiki,
+        ontRoot: ONT_ROOT,
+        storeDir: store,
+      });
+      if (!probe.stale) {
+        return {
+          available: true,
+          ok: true,
+          ran: false,
+          stale: false,
+          busy: false,
+          ticker: TICKER,
+          reason: probe.reason,
+          newest_input: probe.newest_input,
+          compiled_at: getBook({ force: false }).compiled_at || null,
+          note: 'Pack already matches vault — skipped compile.',
+        };
+      }
+    }
+
     if (inflight) {
       return {
         available: true,
         ok: false,
         busy: true,
+        ran: false,
         error: 'compile already running — wait and try again',
         last_run: lastRun,
       };
@@ -59,7 +88,8 @@ export function createThinCompile(ticker, getBook) {
 
     inflight = runOnce();
     try {
-      return await inflight;
+      const out = await inflight;
+      return { ...out, ran: true, stale: ifStale ? true : undefined };
     } finally {
       inflight = null;
     }

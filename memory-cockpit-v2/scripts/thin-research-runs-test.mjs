@@ -30,7 +30,13 @@ const {
   isThesisReportJob,
   RESEARCH_JOBS,
   researchLane,
+  normalizeRegisterScope,
+  normalizeRegisterIds,
+  resolveThesisRegister,
+  normalizeThesisPace,
 } = await import(path.join(ROOT, 'server', 'researchRunsSchema.js'));
+const { writeResearchRunsAgentSeed } = await import(path.join(ROOT, 'server', 'researchRunsAgentSeed.js'));
+const { reconcileRun, ORPHAN_FAIL_MS } = await import(path.join(ROOT, 'server', 'researchRunsWorker.js'));
 
 let pass = 0;
 let fail = 0;
@@ -193,9 +199,28 @@ if (researchLane('thesis_report') !== 'reports' || researchLane('deep_compile') 
   bad('researchLane');
 } else ok('researchLane compile vs reports');
 
+if (normalizeRegisterScope('house-only') !== 'skim' || normalizeRegisterScope('ids') !== 'pick') {
+  bad('normalizeRegisterScope aliases');
+} else ok('normalizeRegisterScope aliases');
+if (normalizeRegisterIds('R1, r1, R9; nope!').join(',') !== 'R1,R9') bad('normalizeRegisterIds');
+else ok('normalizeRegisterIds dedupes');
+const longId = 'lly-r1-tirzepatide-cash-engine-concentration-outgoing-mounjaro-zepbound';
+if (normalizeRegisterIds(longId).join(',') !== longId) bad('normalizeRegisterIds dropped pack slug');
+else ok('normalizeRegisterIds keeps pack slug');
+if (resolveThesisRegister({ register_scope: 'pick' }).register_scope !== 'all') {
+  bad('pick with no ids should fall back to all');
+} else ok('pick empty → all');
+
 const th = startResearchRun('TEST', { job: 'thesis_report', thesis_mode: 'earnings-update' }, { desk: 'test' });
 if (!th.ok || !/_thesis_report_/i.test(th.run_id)) bad(`thesis start id ${th.run_id}`);
 else ok(`thesis start ${th.run_id}`);
+if (th.thesis?.register_scope !== 'all') bad(`thesis default register ${th.thesis?.register_scope}`);
+else ok('thesis default register_scope all');
+if (normalizeThesisPace('e2e') !== 'through' || normalizeThesisPace('gated') !== 'stop') {
+  bad('normalizeThesisPace aliases');
+} else ok('normalizeThesisPace aliases');
+if (th.thesis?.thesis_pace !== 'stop') bad(`thesis default pace ${th.thesis?.thesis_pace}`);
+else ok('thesis default thesis_pace stop');
 if (!th.interactive) bad('thesis start should be interactive (no headless worker)');
 else ok('thesis start interactive');
 const thDir = th.path;
@@ -223,13 +248,111 @@ else ok('compile lane mutex');
 const th2 = startResearchRun('TEST', { job: 'thesis_report', thesis_mode: 'deep-dive' }, { desk: 'test' });
 if (!th2.already_in_flight) bad('second thesis should mutex');
 else ok('reports lane mutex');
+if (dcWhileTh.run_id) cancelResearchRun('TEST', dcWhileTh.run_id);
+const thPick = startResearchRun('PICKTEST', {
+  job: 'thesis_report', thesis_mode: 'deep-dive',
+  register_scope: 'pick', register_ids: ['R1', 'R9', 'R1'],
+}, { desk: 'picktest' });
+if (!thPick.ok || thPick.already_in_flight) bad(`thesis pick start ${thPick.error || 'in flight'}`);
+else ok('thesis pick start');
+const thPickGet = getResearchRun('PICKTEST', thPick.run_id);
+if (thPickGet.thesis?.register_scope !== 'pick' || (thPickGet.thesis?.register_ids || []).join(',') !== 'R1,R9') {
+  bad(`thesis pick GET ${JSON.stringify(thPickGet.thesis)}`);
+} else ok('thesis pick persist R1,R9');
+const seedPick = writeResearchRunsAgentSeed('PICKTEST', {
+  mode: 'pipeline', run_id: thPick.run_id, job: 'thesis_report', thesis_mode: 'deep-dive',
+  register_scope: 'pick', register_ids: ['R1', 'R9'],
+});
+const seedTxt = seedPick.ok && seedPick.path ? fs.readFileSync(seedPick.path, 'utf8') : '';
+if (!seedTxt.includes('pick — deep only R1, R9') || !seedTxt.includes('House: always on')) {
+  bad(`thesis seed missing register scope (${seedPick.error || seedPick.path})`);
+} else ok('thesis seed register scope');
+const thSkim = startResearchRun('PICKTEST', { job: 'thesis_report', register_scope: 'skim' }, { desk: 'picktest' });
+if (!thSkim.already_in_flight) bad('skim should mutex with in-flight pick');
+else ok('skim mutex with pick in-flight');
+cancelResearchRun('PICKTEST', thPick.run_id);
+const thSlug = startResearchRun('SLUGTEST', {
+  job: 'thesis_report', register_scope: 'pick', register_ids: [longId],
+}, { desk: 'slugtest' });
+const thSlugGet = getResearchRun('SLUGTEST', thSlug.run_id);
+if (thSlugGet.thesis?.register_scope !== 'pick' || (thSlugGet.thesis?.register_ids || []).join(',') !== longId) {
+  bad(`thesis pack slug persist ${JSON.stringify(thSlugGet.thesis)}`);
+} else ok('thesis pick persists pack slug');
+cancelResearchRun('SLUGTEST', thSlug.run_id);
+const thThru = startResearchRun('THRUTEST', {
+  job: 'thesis_report', thesis_mode: 'deep-dive', thesis_pace: 'through',
+}, { desk: 'thrutest' });
+const thThruGet = getResearchRun('THRUTEST', thThru.run_id);
+if (thThruGet.thesis?.thesis_pace !== 'through') bad(`thesis through GET ${JSON.stringify(thThruGet.thesis)}`);
+else ok('thesis through persist');
+const seedThru = writeResearchRunsAgentSeed('THRUTEST', {
+  mode: 'pipeline', run_id: thThru.run_id, job: 'thesis_report', thesis_mode: 'deep-dive',
+  thesis_pace: 'through',
+});
+const seedThruTxt = seedThru.ok && seedThru.path ? fs.readFileSync(seedThru.path, 'utf8') : '';
+if (!seedThruTxt.includes('Pace: through') && !seedThruTxt.includes('do not wait at Checkpoint')) {
+  bad(`thesis through seed missing pace (${seedThru.error || seedThru.path})`);
+} else ok('thesis through seed pace');
+cancelResearchRun('THRUTEST', thThru.run_id);
 const laneComp = listResearchRuns('TEST', { desk: 'test', lane: 'compile' });
 const laneRep = listResearchRuns('TEST', { desk: 'test', lane: 'reports' });
 if (!laneComp.runs.every((r) => r.job !== 'thesis_report')) bad('compile lane leaked thesis');
 else ok('list lane=compile filters thesis');
 if (!laneRep.runs.every((r) => r.job === 'thesis_report')) bad('reports lane leaked compile');
 else ok('list lane=reports filters compile');
-if (dcWhileTh.run_id) cancelResearchRun('TEST', dcWhileTh.run_id);
+
+// Live meta.json must beat a stale index.json (thesis PDF closeout without index rebuild).
+const stale = startResearchRun('STALETEST', { job: 'thesis_report', thesis_mode: 'deep-dive' }, { desk: 'staletest' });
+if (!stale?.ok && !stale?.run_id) bad(`stale start ${stale?.error || 'no run_id'}`);
+else {
+  const dir = stale.path;
+  fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'output', 'note.pdf'), '%PDF-1.4\n');
+  const mp = path.join(dir, 'meta.json');
+  const m = JSON.parse(fs.readFileSync(mp, 'utf8'));
+  m.status = 'complete';
+  m.finished_at = new Date().toISOString();
+  m.error = null;
+  m.inputs = { ...(m.inputs || {}), checkpoint: 'closeout' };
+  m.thesis = { ...(m.thesis || {}), checkpoint: 'closeout', pdf_rel: 'output/note.pdf' };
+  fs.writeFileSync(mp, `${JSON.stringify(m, null, 2)}\n`);
+  const ip = path.join(tmpVault, 'cockpit', 'research', 'STALETEST', 'index.json');
+  const idx = JSON.parse(fs.readFileSync(ip, 'utf8'));
+  idx.runs = (idx.runs || []).map((r) => (
+    r.run_id === stale.run_id ? { ...r, status: 'failed', checkpoint: 'qa' } : r
+  ));
+  fs.writeFileSync(ip, `${JSON.stringify(idx, null, 2)}\n`);
+  const liveList = listResearchRuns('STALETEST', { desk: 'staletest', lane: 'reports' });
+  const liveRow = (liveList.runs || []).find((r) => r.run_id === stale.run_id);
+  if (!liveRow || liveRow.status !== 'complete' || !(liveRow.pdfs || [])[0]) {
+    bad(`stale index hid complete thesis (${liveRow?.status} pdfs=${(liveRow?.pdfs || []).join(',')})`);
+  } else ok('list overlays live meta over stale index');
+}
+
+const now = Date.now();
+const oldIso = new Date(now - ORPHAN_FAIL_MS - 60_000).toISOString();
+const thOrph = startResearchRun('THORPH', { job: 'thesis_report', thesis_mode: 'deep-dive' }, { desk: 'thorph' });
+patchRunMeta('THORPH', thOrph.run_id, (m) => ({ ...m, started_at: oldIso }));
+const recTh = reconcileRun('THORPH', getResearchRun('THORPH', thOrph.run_id), {
+  patchRunMeta, failResearchRun, findInFlightRun, attachWorker,
+}, now);
+const thAfter = getResearchRun('THORPH', thOrph.run_id);
+if (recTh.failed || thAfter.status === 'failed') bad(`thesis orphan auto-fail ${thAfter.status}`);
+else ok('thesis queued + no pid + 15m does not auto-fail');
+const thList = listResearchRuns('THORPH', { desk: 'thorph', lane: 'reports' });
+const thListRow = (thList.runs || []).find((r) => r.run_id === thOrph.run_id);
+if (!thListRow || thListRow.status === 'failed') bad(`thesis list reconcile failed ${thListRow?.status}`);
+else ok('list reconcile leaves aged thesis queued');
+cancelResearchRun('THORPH', thOrph.run_id);
+
+const dcOrph = startResearchRun('DCORPH', { job: 'deep_compile' }, { desk: 'dcorph' });
+patchRunMeta('DCORPH', dcOrph.run_id, (m) => ({ ...m, started_at: oldIso, worker: null }));
+const recDc = reconcileRun('DCORPH', getResearchRun('DCORPH', dcOrph.run_id), {
+  patchRunMeta, failResearchRun, findInFlightRun, attachWorker,
+}, now);
+const dcAfter = getResearchRun('DCORPH', dcOrph.run_id);
+if (!recDc.failed && dcAfter.status !== 'failed') bad(`compile orphan still ${dcAfter.status}`);
+else ok('compile queued + no pid + 15m still auto-fails');
 
 const forbidden = researchRunFile('TEST', th.run_id, '../meta.json');
 if (forbidden.ok) bad('researchRunFile must refuse ..');

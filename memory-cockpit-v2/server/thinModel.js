@@ -49,6 +49,7 @@ import {
 import { resolveOntRoot } from './monorepoPaths.js';
 import { tryGetThinDeskBundle } from './thinDeskProfiles.js';
 import { readCatalogSource } from './sourceRead.js';
+import { getReportSchedule, writeSchedule } from './reportSchedule.js';
 import { filterCatalogForDesk } from './sourceCatalog.js';
 
 // Prefer ONTOLOGY_ROOT → monorepo ontology/ → legacy ~/Trading/ontology
@@ -1096,6 +1097,11 @@ export function createThinModel(profile) {
       (body && (body.checkpoint || body.stage)) || 'scope',
       { note: body && body.note },
     ),
+    reportSchedule: () => getReportSchedule(TICKER, { desk: deskId }),
+    reportScheduleSet: async (body = {}) => {
+      writeSchedule(TICKER, body || {});
+      return getReportSchedule(TICKER, { desk: deskId });
+    },
     writeMeta,
   };
 }

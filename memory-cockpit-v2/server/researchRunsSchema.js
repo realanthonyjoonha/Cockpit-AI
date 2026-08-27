@@ -48,6 +48,155 @@ export function normalizeThesisCheckpoint(raw) {
   const c = String(raw || '').toLowerCase().trim();
   return THESIS_CHECKPOINTS.has(c) ? c : 'scope';
 }
+
+/** stop = wait at C1/C2. through = end-to-end, no conversational waits. */
+export const THESIS_PACES = new Set(['stop', 'through']);
+
+const THESIS_PACE_ALIAS = {
+  gated: 'stop',
+  checkpoints: 'stop',
+  interactive: 'stop',
+  e2e: 'through',
+  auto: 'through',
+  'run-through': 'through',
+  run_through: 'through',
+  runthrough: 'through',
+  unattended: 'through',
+  continuous: 'through',
+};
+
+export function normalizeThesisPace(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  const mapped = THESIS_PACE_ALIAS[s] || s;
+  return THESIS_PACES.has(mapped) ? mapped : 'stop';
+}
+
+export function describeThesisPace(raw) {
+  const p = normalizeThesisPace(raw);
+  if (p === 'through') {
+    return 'through — do not wait at Checkpoint 1 or 2; still POST each checkpoint; closeout via propose_* only';
+  }
+  return 'stop — wait at Checkpoint 1 and 2';
+}
+
+/** Register depth on a thesis note. House is always on — not a fourth option. */
+export const REGISTER_SCOPES = new Set(['all', 'pick', 'skim']);
+
+const REGISTER_SCOPE_ALIAS = {
+  ids: 'pick',
+  named: 'pick',
+  'house-only': 'skim',
+  house_only: 'skim',
+  houseonly: 'skim',
+  none: 'skim',
+};
+
+const RISK_ID_RE = /^[A-Za-z][A-Za-z0-9._-]{0,119}$/;
+
+export function normalizeRegisterScope(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  const mapped = REGISTER_SCOPE_ALIAS[s] || s;
+  return REGISTER_SCOPES.has(mapped) ? mapped : 'all';
+}
+
+export function normalizeRegisterIds(raw) {
+  const arr = Array.isArray(raw) ? raw : String(raw || '').split(/[\s,;]+/);
+  const out = [];
+  const seen = new Set();
+  for (const item of arr) {
+    const id = String(item || '').trim();
+    if (!id || !RISK_ID_RE.test(id)) continue;
+    const key = id.toUpperCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(id);
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+
+/**
+ * House is always on. Register: all | pick | skim.
+ * pick with no ids falls back to all (OPEN GROK from the agents menu is safe).
+ */
+export function resolveThesisRegister(raw = {}) {
+  let register_scope = normalizeRegisterScope(
+    raw.register_scope || raw.registerScope || raw.thesis_register || raw.thesisRegister,
+  );
+  let register_ids = normalizeRegisterIds(
+    raw.register_ids || raw.registerIds || raw.risk_ids || raw.riskIds,
+  );
+  if (register_scope === 'pick' && !register_ids.length) register_scope = 'all';
+  if (register_scope !== 'pick') register_ids = [];
+  return { register_scope, register_ids };
+}
+
+/** R1 from `R1` or `lly-r1-tirzepatide-…`. Unmatched ids pass through. */
+export function shortRegisterToken(id) {
+  const s = String(id || '').trim();
+  if (/^R\d{1,3}$/i.test(s)) return s.toUpperCase();
+  const m = s.match(/(?:^|[-_./])r(\d{1,3})(?:[-_./]|$)/i);
+  return m ? `R${m[1]}` : s;
+}
+
+export function describeRegisterScope(scope, ids) {
+  const { register_scope, register_ids } = resolveThesisRegister({
+    register_scope: scope,
+    register_ids: ids,
+  });
+  if (register_scope === 'skim') {
+    return 'skim — house-only; register is a titles+status table, no deep test';
+  }
+  if (register_scope === 'pick') {
+    const labels = [...new Set(register_ids.map(shortRegisterToken))];
+    return `pick — deep only ${labels.join(', ')}; other Rn not tested this note`;
+  }
+  return 'all — WATCH in depth, INTACT/FIRED short';
+}
+
+function collectThesisFields(raw, job, { complete = false } = {}) {
+  const focus = str(raw.focus || raw.inputs?.focus) || null;
+  const prior_run_id = str(raw.prior_run_id || raw.inputs?.prior_run_id) || null;
+  const as_of_request = str(raw.as_of_request || raw.inputs?.as_of_request).slice(0, 32) || null;
+  if (!isThesisReportJob(job)) {
+    return {
+      inputs: {
+        focus, prior_run_id, as_of_request,
+        thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null,
+      },
+      thesis: null,
+    };
+  }
+  const reg = resolveThesisRegister({
+    register_scope: raw.register_scope || raw.inputs?.register_scope || raw.thesis?.register_scope,
+    register_ids: raw.register_ids || raw.inputs?.register_ids || raw.thesis?.register_ids,
+  });
+  const checkpoint = normalizeThesisCheckpoint(
+    raw.checkpoint || raw.inputs?.checkpoint || raw.thesis?.checkpoint || (complete ? 'qa' : 'scope'),
+  );
+  const mode = normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode || raw.thesis?.mode);
+  const pace = normalizeThesisPace(raw.thesis_pace || raw.inputs?.thesis_pace || raw.thesis?.thesis_pace);
+  return {
+    inputs: {
+      focus,
+      prior_run_id,
+      as_of_request,
+      thesis_mode: mode,
+      checkpoint,
+      register_scope: reg.register_scope,
+      register_ids: reg.register_ids,
+      thesis_pace: pace,
+    },
+    thesis: {
+      mode,
+      checkpoint,
+      pdf_rel: str(raw.pdf_rel || raw.thesis?.pdf_rel).slice(0, 200) || null,
+      register_scope: reg.register_scope,
+      register_ids: reg.register_ids,
+      thesis_pace: pace,
+    },
+  };
+}
 export const RESEARCH_STATUSES = new Set([
   'queued', 'running', 'complete', 'failed', 'cancelled',
 ]);
@@ -323,11 +472,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
               ? Number(raw.compute.agent_calls) : null,
           }
           : { note: 'heavy', duration_sec: null, agent_calls: null },
-        inputs: raw.inputs && typeof raw.inputs === 'object' ? {
-          focus: str(raw.inputs.focus) || null,
-          prior_run_id: str(raw.inputs.prior_run_id) || null,
-          as_of_request: str(raw.inputs.as_of_request).slice(0, 32) || null,
-        } : { focus: null, prior_run_id: null, as_of_request: null },
+        inputs: collectThesisFields(raw, job, { complete: true }).inputs,
         summary: summary || null,
         sources,
         gaps,
@@ -352,11 +497,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
           model_pack_layers: false,
           notes: null,
         },
-        thesis: isThesisReportJob(job) ? {
-          mode: normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode),
-          checkpoint: normalizeThesisCheckpoint(raw.checkpoint || raw.inputs?.checkpoint || 'qa'),
-          pdf_rel: str(raw.pdf_rel).slice(0, 200) || null,
-        } : null,
+        thesis: collectThesisFields(raw, job, { complete: true }).thesis,
         immutable: true,
         decision_support_only: true,
       },
@@ -381,17 +522,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
       finished_at: str(raw.finished_at) || (status === 'running' || status === 'queued' ? null : now),
       trigger: str(raw.trigger) || 'user',
       compute: { note: 'heavy', duration_sec: null, agent_calls: null },
-      inputs: {
-        focus: str(raw.focus || raw.inputs?.focus) || null,
-        prior_run_id: str(raw.prior_run_id || raw.inputs?.prior_run_id) || null,
-        as_of_request: null,
-        thesis_mode: isThesisReportJob(job)
-          ? normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode)
-          : null,
-        checkpoint: isThesisReportJob(job)
-          ? normalizeThesisCheckpoint(raw.checkpoint || raw.inputs?.checkpoint)
-          : null,
-      },
+      inputs: collectThesisFields(raw, job).inputs,
       summary: null,
       sources: [],
       gaps: [],
@@ -404,11 +535,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
         model_pack_layers: false,
         notes: null,
       },
-      thesis: isThesisReportJob(job) ? {
-        mode: normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode),
-        checkpoint: normalizeThesisCheckpoint(raw.checkpoint || raw.inputs?.checkpoint),
-        pdf_rel: str(raw.pdf_rel).slice(0, 200) || null,
-      } : null,
+      thesis: collectThesisFields(raw, job).thesis,
       immutable: false,
       decision_support_only: true,
       error: str(raw.error) || null,
@@ -450,6 +577,15 @@ export function indexRowFromMeta(meta) {
     compute_note: meta.compute?.note || 'heavy',
     thesis_mode: str(meta.inputs?.thesis_mode || meta.thesis?.mode) || null,
     checkpoint: str(meta.inputs?.checkpoint || meta.thesis?.checkpoint) || null,
+    register_scope: isThesisReportJob(meta.job)
+      ? normalizeRegisterScope(meta.inputs?.register_scope || meta.thesis?.register_scope)
+      : null,
+    register_ids: isThesisReportJob(meta.job)
+      ? normalizeRegisterIds(meta.inputs?.register_ids || meta.thesis?.register_ids)
+      : null,
+    thesis_pace: isThesisReportJob(meta.job)
+      ? normalizeThesisPace(meta.inputs?.thesis_pace || meta.thesis?.thesis_pace)
+      : null,
     job_label: humanJobLabel(meta.job),
   };
 }

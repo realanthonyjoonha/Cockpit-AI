@@ -14,6 +14,8 @@ import {
   isThesisReportJob,
   normalizeThesisMode,
   normalizeThesisCheckpoint,
+  normalizeThesisPace,
+  resolveThesisRegister,
   researchLane,
   jobMatchesLane,
 } from './researchRunsSchema.js';
@@ -318,10 +320,21 @@ export function listResearchRuns(ticker, opts = {}) {
   const lane = opts.lane || null;
   const index = readResearchIndex(id);
   const metas = new Map(scanRunMetas(id).map((m) => [m.run_id, m]));
+  let indexDirty = false;
   let runs = (Array.isArray(index.runs) ? index.runs : []).map((row) => {
     const meta = metas.get(row.run_id);
+    const live = meta ? indexRowFromMeta({ ...meta, run_id: meta.run_id || row.run_id }) : null;
+    if (live && (live.status !== row.status || live.checkpoint !== row.checkpoint)) {
+      indexDirty = true;
+    }
     const merged = meta
-      ? { ...row, stalled: stalledOverlay(meta), worker_pid: meta.worker?.pid || null }
+      ? {
+          ...row,
+          ...(live || {}),
+          stalled: stalledOverlay(meta),
+          worker_pid: meta.worker?.pid || null,
+          error: meta.error || row.error || null,
+        }
       : row;
     if (isThesisReportJob(merged.job)) {
       const dir = researchRunDir(id, merged.run_id);
@@ -329,6 +342,9 @@ export function listResearchRuns(ticker, opts = {}) {
     }
     return merged;
   });
+  if (indexDirty) {
+    try { rebuildResearchIndex(id); } catch { /* live overlay already won */ }
+  }
   if (lane && String(lane).toLowerCase() !== 'all') {
     runs = runs.filter((r) => jobMatchesLane(r.job, lane));
   }
@@ -457,6 +473,11 @@ export function getResearchRun(ticker, runId, opts = {}) {
       checkpoint: meta.thesis?.checkpoint || meta.inputs?.checkpoint || 'scope',
       pdf_rel: meta.thesis?.pdf_rel || null,
       pdfs: listThesisPdfs(dir),
+      register_scope: (meta.thesis?.register_scope || meta.inputs?.register_scope || 'all'),
+      register_ids: Array.isArray(meta.thesis?.register_ids)
+        ? meta.thesis.register_ids
+        : (Array.isArray(meta.inputs?.register_ids) ? meta.inputs.register_ids : []),
+      thesis_pace: meta.thesis?.thesis_pace || meta.inputs?.thesis_pace || 'stop',
     } : null,
     decision_support_only: true,
     note: isThesisReportJob(meta.job)
@@ -515,6 +536,10 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   const thesisMode = isThesisReportJob(job)
     ? normalizeThesisMode(body.thesis_mode || body.thesisMode)
     : null;
+  const thesisRegister = isThesisReportJob(job) ? resolveThesisRegister(body) : null;
+  const thesisPace = isThesisReportJob(job)
+    ? normalizeThesisPace(body.thesis_pace || body.thesisPace)
+    : null;
   const meta = {
     schema_version: RESEARCH_RUNS_SCHEMA_VERSION,
     run_id,
@@ -532,11 +557,17 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       as_of_request: now.slice(0, 10),
       thesis_mode: thesisMode,
       checkpoint: isThesisReportJob(job) ? 'scope' : null,
+      register_scope: thesisRegister?.register_scope || null,
+      register_ids: thesisRegister?.register_ids || null,
+      thesis_pace: thesisPace,
     },
     thesis: isThesisReportJob(job) ? {
       mode: thesisMode,
       checkpoint: 'scope',
       pdf_rel: null,
+      register_scope: thesisRegister.register_scope,
+      register_ids: thesisRegister.register_ids,
+      thesis_pace: thesisPace,
     } : null,
     worker: null,
     promotion: {
@@ -718,6 +749,20 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
       desk: body.desk || opts.desk || existingMeta?.desk,
       started_at: body.started_at || existingMeta?.started_at,
       job: body.job || existingMeta?.job,
+      thesis_mode: body.thesis_mode || existingMeta?.inputs?.thesis_mode || existingMeta?.thesis?.mode,
+      checkpoint: body.checkpoint || existingMeta?.inputs?.checkpoint || existingMeta?.thesis?.checkpoint,
+      register_scope: body.register_scope
+        || body.inputs?.register_scope
+        || existingMeta?.inputs?.register_scope
+        || existingMeta?.thesis?.register_scope,
+      register_ids: body.register_ids
+        || body.inputs?.register_ids
+        || existingMeta?.inputs?.register_ids
+        || existingMeta?.thesis?.register_ids,
+      thesis_pace: body.thesis_pace
+        || body.inputs?.thesis_pace
+        || existingMeta?.inputs?.thesis_pace
+        || existingMeta?.thesis?.thesis_pace,
     },
     {
       ticker: id,

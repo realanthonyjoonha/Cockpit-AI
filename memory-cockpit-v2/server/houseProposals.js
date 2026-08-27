@@ -5,7 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { VAULT_DIR, isInsideVault } from './vault.js';
+import { VAULT_DIR, isInsideVault, renderMd, fm } from './vault.js';
 import { saveHouseMarkdown, readHouseMarkdown, HOUSE_MAX_BYTES } from './thinHouseSave.js';
 import { assertVaultWriteMatches } from './writeAssert.js';
 
@@ -62,6 +62,140 @@ function validateMarkdown(markdown) {
   if (!markdown.trim()) throw new Error('markdown empty');
   if (bytes > HOUSE_MAX_BYTES) throw new Error(`markdown exceeds ${HOUSE_MAX_BYTES} bytes`);
   return bytes;
+}
+
+function splitLines(s) {
+  return String(s || '').replace(/\r\n/g, '\n').split('\n');
+}
+
+function extractStance(body) {
+  const t = String(body || '');
+  const m = t.match(/\*\*Stance:\*\*\s*([\s\S]+?)(?=\n\n|\n>|\n#|\n\*\*Flip|\nFlip |\n---\s*$|$)/i)
+    || t.match(/Stance:\s*"([^"]+)"/)
+    || t.match(/stance\s+"([^"]+)"/i);
+  if (!m) return null;
+  return String(m[1] || '').replace(/\s+/g, ' ').replace(/^"|"$/g, '').trim().slice(0, 800);
+}
+
+function parseHouseParts(md) {
+  const { meta, body } = fm.parseFrontmatter(String(md || ''));
+  return {
+    status: meta.status ? String(meta.status).trim() : null,
+    updated: meta.updated ? String(meta.updated).trim() : null,
+    owner: meta.owner ? String(meta.owner).replace(/\s+/g, ' ').trim().slice(0, 240) : null,
+    stance: extractStance(body),
+    body: String(body || '').trim(),
+  };
+}
+
+function clip(s, n = 280) {
+  const t = String(s || '').trim();
+  if (t.length <= n) return t;
+  return `${t.slice(0, n - 1)}…`;
+}
+
+/** LCS line diff. Fine for house files (typically well under 800 lines). */
+export function diffLines(oldText, newText) {
+  const a = splitLines(oldText);
+  const b = splitLines(newText);
+  const n = a.length;
+  const m = b.length;
+  if (n + m === 0) return [];
+  if (n > 800 || m > 800) {
+    return [{ t: 'eq', s: '(draft too large to diff — open raw markdown)' }];
+  }
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = a[i] === b[j]
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const ops = [];
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (a[i] === b[j]) {
+      ops.push({ t: 'eq', s: a[i] });
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      ops.push({ t: 'del', s: a[i] });
+      i += 1;
+    } else {
+      ops.push({ t: 'add', s: b[j] });
+      j += 1;
+    }
+  }
+  while (i < n) {
+    ops.push({ t: 'del', s: a[i] });
+    i += 1;
+  }
+  while (j < m) {
+    ops.push({ t: 'add', s: b[j] });
+    j += 1;
+  }
+  return ops;
+}
+
+export function hunksFromOps(ops, context = 2, maxHunkLines = 80) {
+  const idx = [];
+  for (let k = 0; k < ops.length; k++) {
+    if (ops[k].t !== 'eq') idx.push(k);
+  }
+  if (!idx.length) return [];
+  const keep = new Set();
+  for (const k of idx) {
+    for (let x = Math.max(0, k - context); x <= Math.min(ops.length - 1, k + context); x++) {
+      keep.add(x);
+    }
+  }
+  const out = [];
+  let gap = false;
+  for (let k = 0; k < ops.length && out.length < maxHunkLines; k++) {
+    if (!keep.has(k)) {
+      gap = true;
+      continue;
+    }
+    if (gap && out.length) out.push({ t: 'gap', s: '…' });
+    gap = false;
+    out.push(ops[k]);
+  }
+  if (ops.length > maxHunkLines && idx.length) {
+    out.push({ t: 'gap', s: '…' });
+  }
+  return out;
+}
+
+/**
+ * Glass review payload: field deltas + body hunks + HTML of proposed body.
+ * Current house is compared so the reader is not dumped a YAML wall.
+ */
+export function reviewHouseProposal(currentMd, proposedMd) {
+  const cur = parseHouseParts(currentMd);
+  const next = parseHouseParts(proposedMd);
+  const fields = [];
+  for (const key of ['status', 'updated', 'stance']) {
+    const from = cur[key] || '';
+    const to = next[key] || '';
+    if (from !== to) {
+      fields.push({ key, from: clip(from || '—', 420), to: clip(to || '—', 420) });
+    }
+  }
+  const hunks = hunksFromOps(diffLines(cur.body, next.body));
+  let html = '';
+  try {
+    html = renderMd(next.body || '');
+  } catch {
+    html = '';
+  }
+  return {
+    fields,
+    hunks,
+    html,
+    unchanged: fields.length === 0 && hunks.length === 0,
+  };
 }
 
 /**
@@ -251,11 +385,23 @@ export function getHouseProposal(slug, id, opts = {}) {
   const store = readStore(slug);
   const p = store.proposals.find((x) => x.id === id);
   if (!p) return null;
+  let review = null;
+  try {
+    let current = opts.currentMarkdown;
+    if (current == null && p.house_file) {
+      const raw = readHouseMarkdown(p.house_file);
+      current = raw?.markdown || '';
+    }
+    review = reviewHouseProposal(current || '', p.markdown || '');
+  } catch {
+    review = null;
+  }
   return {
     available: true,
     proposal: {
       ...p,
       markdown: opts.includeMarkdown === false ? undefined : p.markdown,
+      review,
     },
   };
 }
