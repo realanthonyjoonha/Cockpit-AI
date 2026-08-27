@@ -82,7 +82,7 @@ if (desks.length === 0) {
   const dogfoodTickers = Object.keys(EXPECT);
   const hasFullDogfood = dogfoodTickers.every((t) => registryTickers.has(t));
   if (hasFullDogfood) {
-    const tiers = Object.values(got).map((s) => s.tier.tier);
+    const tiers = dogfoodTickers.map((t) => got[t]?.tier?.tier).filter(Boolean);
     check('tier census 5A/2B/2C on dogfood book',
       tiers.filter((x) => x === 'A').length === 5 && tiers.filter((x) => x === 'B').length === 2 && tiers.filter((x) => x === 'C').length === 2,
       JSON.stringify(tiers));

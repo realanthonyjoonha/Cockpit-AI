@@ -107,7 +107,7 @@ export function spawnRefuseReason(ticker, runId, deps) {
   if (spawnInProgress.has(id)) {
     return { refuse: true, already_in_flight: true, reason: 'spawn in progress', run_id: runId || null };
   }
-  const inflight = deps.findInFlightRun(id);
+  const inflight = deps.findInFlightRun(id, { lane: 'compile' });
   if (!inflight) return { refuse: false };
   const pid = inflight.worker?.pid;
   const live = pidAlive(pid);

@@ -33,6 +33,12 @@ FRIEND-UPGRADE.md
 scripts/friend-upgrade.sh
 scripts/ensure-thin-rooms.mjs
 memory-cockpit-v2/server/openGrok.js
+memory-cockpit-v2/server/thinResearchRuns.js
+memory-cockpit-v2/server/researchRunsSchema.js
+memory-cockpit-v2/server/researchRunsAgentSeed.js
+memory-cockpit-v2/src/pages/thin/Research.jsx
+memory-cockpit-v2/src/pages/thin/Reports.jsx
+.grok/skills/ib-report/SKILL.md
 memory-cockpit-v2/server/pack.js
 memory-cockpit-v2/server/thinDeskProfiles.js
 memory-cockpit-v2/server/thinModel.js

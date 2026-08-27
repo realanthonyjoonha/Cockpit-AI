@@ -249,7 +249,21 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/model/refresh', ja(withDesk(async (rt, req) => rt.model.workingModelRefresh(req.body || {}))));
   app.post('/api/:slug/model/print/arm', j(withDesk((rt, req) => rt.model.workingModelArm(req.body || {}))));
   app.post('/api/:slug/model/print/lock', j(withDesk((rt) => rt.model.workingModelLock())));
-  app.get('/api/:slug/research', j(withDesk((rt) => rt.model.researchList())));
+  app.get('/api/:slug/research', j(withDesk((rt, req) => rt.model.researchList({
+    lane: req.query.lane || req.query.job_lane || undefined,
+  }))));
+  app.get('/api/:slug/research/runs/:runId/file', (req, res) => {
+    try {
+      const rt = resolveThinDesk(req.params.slug);
+      if (!rt) deskNotFound(req.params.slug);
+      const out = rt.model.researchFile(req.params.runId, req.query.rel);
+      if (!out?.ok) return res.status(404).json({ ok: false, error: out?.error || 'not found' });
+      return res.sendFile(out.abs);
+    } catch (e) {
+      const status = e.status || 500;
+      return res.status(status).json({ ok: false, error: e.message || String(e) });
+    }
+  });
   app.get('/api/:slug/research/runs/:runId', j(withDesk((rt, req) => rt.model.researchGet(req.params.runId))));
   app.post('/api/:slug/research/runs', j(withDesk((rt, req) => rt.model.researchStart(req.body || {}))));
   app.post('/api/:slug/research/runs/:runId/publish', j(withDesk((rt, req) => rt.model.researchPublish(req.params.runId, req.body || {}))));
@@ -257,6 +271,7 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/research/runs/:runId/heartbeat', j(withDesk((rt, req) => rt.model.researchHeartbeat(req.params.runId))));
   app.post('/api/:slug/research/runs/:runId/retry', j(withDesk((rt, req) => rt.model.researchRetry(req.params.runId, req.body || {}))));
   app.post('/api/:slug/research/runs/:runId/acquire', ja(withDesk(async (rt, req) => rt.model.researchAcquire(req.params.runId, req.body || {}))));
+  app.post('/api/:slug/research/runs/:runId/checkpoint', j(withDesk((rt, req) => rt.model.researchCheckpoint(req.params.runId, req.body || {}))));
   // Deep-compile pipeline stages 0+1 (SEC EDGAR resolve + filing index) — plan 2026-08-19.
   // Read-only for the book: cache lane cockpit/compile/{TICKER}/ only; never pack/house SoR.
   app.get('/api/:slug/pipeline', ja(withDesk(async (rt) => pipelineSnapshot(rt.desk.ticker, {

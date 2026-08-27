@@ -8,11 +8,14 @@ import {
   assertExpectRoot,
   assertDeskAllowed,
   assertMcpPin,
+  assertVaultUnderRepo,
+  vaultBelongsToRepo,
   allowedSlugSet,
   realpathSafe,
   scenarioPinPreamble,
   isAgentAcceptEnabled,
   assertAgentAcceptAllowed,
+  displayMonorepoRoot,
 } from '../server/mcpPinGuard.js';
 import fs from 'fs';
 import os from 'os';
@@ -65,6 +68,38 @@ function ok(name) {
   assert.ok(threw);
   ok('foreign desk mu rejected');
   delete process.env.COCKPIT_ALLOWED_SLUGS;
+}
+
+// vault pin: in-tree vs sibling cockpit-vault vs foreign
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-pin-'));
+  const repo = path.join(tmp, 'cockpit');
+  const sibling = path.join(tmp, 'cockpit-vault');
+  const foreign = path.join(tmp, 'other-wiki');
+  fs.mkdirSync(repo);
+  fs.mkdirSync(sibling);
+  fs.mkdirSync(foreign);
+  const inTree = path.join(repo, 'research-wiki');
+  fs.mkdirSync(inTree);
+
+  assert.strictEqual(vaultBelongsToRepo(repo, inTree), true);
+  assert.strictEqual(assertVaultUnderRepo(repo, inTree).ok, true);
+  ok('in-tree research-wiki allowed');
+
+  assert.strictEqual(vaultBelongsToRepo(repo, sibling), true);
+  assert.strictEqual(assertVaultUnderRepo(repo, sibling).ok, true);
+  ok('sibling cockpit-vault allowed');
+
+  let threw = false;
+  try {
+    assertVaultUnderRepo(repo, foreign);
+  } catch (e) {
+    threw = /contamination/i.test(String(e.message));
+  }
+  assert.ok(threw);
+  ok('foreign vault rejected');
+
+  fs.rmSync(tmp, { recursive: true, force: true });
 }
 
 // full pin
@@ -122,6 +157,23 @@ function ok(name) {
   assert.ok(denied);
   ok('agent accept denied when 0');
   delete process.env.COCKPIT_AGENT_ACCEPT;
+}
+
+// display path: symlink spelling, not realpath
+{
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-disp-'));
+  const real = path.join(tmp, 'real-repo');
+  const link = path.join(tmp, 'cockpit-kernel');
+  fs.mkdirSync(real);
+  fs.symlinkSync(real, link);
+  process.env.COCKPIT_EXPECT_ROOT = link;
+  assert.strictEqual(displayMonorepoRoot(real), path.resolve(link));
+  ok('display prefers EXPECT_ROOT symlink over realpath');
+  delete process.env.COCKPIT_EXPECT_ROOT;
+  const shown = displayMonorepoRoot(real, { aliases: [link] });
+  assert.strictEqual(shown, path.resolve(link));
+  ok('display prefers kernel alias when it realpaths to repo');
+  fs.rmSync(tmp, { recursive: true, force: true });
 }
 
 console.log(`\nmcp-pin-guard-test PASS (${passed})`);

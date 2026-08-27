@@ -106,6 +106,7 @@ app.post('/api/open-grok', (req, res) => {
       mode: body.mode, // street: pipeline | chat
       run_id: body.run_id || body.runId, // research-compile: target run (was dropped — 2026-08-20 fix)
       job: body.job,
+      thesis_mode: body.thesis_mode || body.thesisMode,
     });
     return res.json(out);
   } catch (e) {

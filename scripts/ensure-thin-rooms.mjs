@@ -17,6 +17,7 @@ const REQUIRED = [
   'street',
   'model',
   'research',
+  'reports',
   'ask',
   'update',
 ];

@@ -8,6 +8,7 @@ import ThinSources from './Sources.jsx';
 import ThinStreet from './Street.jsx';
 import ThinModel from './Model.jsx';
 import ThinResearch from './Research.jsx';
+import ThinReports from './Reports.jsx';
 import ThinAsk from './Ask.jsx';
 import UpdateMetaOnly from './UpdateMetaOnly.jsx';
 import ThinEmpty from './Empty.jsx';
@@ -35,6 +36,7 @@ export default function DeskRouter({ desk, route }) {
   if (sub.startsWith('street')) return <ThinStreet desk={desk} />;
   if (sub.startsWith('model')) return <ThinModel desk={desk} />;
   if (sub.startsWith('research')) return <ThinResearch desk={desk} />;
+  if (sub.startsWith('reports')) return <ThinReports desk={desk} />;
   if (sub.startsWith('ask')) return <ThinAsk desk={desk} />;
   if (sub.startsWith('update')) {
     return <UpdateMetaOnly desk={desk.slug} ticker={desk.ticker} label={desk.label} />;

@@ -26,6 +26,9 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
 
   const mode = normalizeMode(opts.mode);
   const job = String(opts.job || 'deep_compile');
+  const thesisMode = job === 'thesis_report'
+    ? String(opts.thesis_mode || opts.thesisMode || 'earnings-update')
+    : null;
   const list = listResearchRuns(id.ticker, { desk: id.slug });
   const runId = opts.run_id ? String(opts.run_id) : (list.latest?.run_id || null);
   const run = runId ? getResearchRun(id.ticker, runId, { desk: id.slug }) : null;
@@ -45,28 +48,45 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
     ? `research-wiki/cockpit/research/${id.ticker}/runs/${runId}/`
     : `research-wiki/cockpit/research/${id.ticker}/runs/{run_id}/`;
 
-  const jobBlock = mode === 'pipeline'
+  const jobBlock = job === 'thesis_report'
     ? [
-      '## Open mode: PIPELINE',
+      '## Open mode: THESIS REPORT (checkpointed — not deep compile)',
       '',
-      'Glass: **NEW COMPILE**. Execute the research job — do not stop at a menu.',
+      'Execute **`.grok/skills/ib-report/SKILL.md`**. This is judgment-shaped. Distinct from `/cockpit-research-compile`.',
       '',
-      `1. **Job:** ${job} (${humanJobLabel(job)})`,
-      runId ? `2. **run_id (required):** \`${runId}\` — glass created meta status=queued until worker attach` : '2. If no run_id, create via POST /api/{slug}/research/runs then use returned run_id',
-      '3. Research public filings / IR only — primary first; soft press → [soft]; missing → GAP',
-      '4. Fetch primaries via POST `/api/{slug}/research/runs/{run_id}/acquire` `{url, filename_hint}` (timeout, EDGAR HTML fallback). 403/block → GAP, do not hang. Files land in `acquired/` — never `cockpit/compile/`.',
-      '5. Write **only** under the run folder (meta, summary.md, sources.json, gaps.json, extracts/*, acquired/*)',
-      '6. Publish complete via POST `/api/{slug}/research/runs/{run_id}/publish`. Financials/guide need source_ids + excerpt that appears in acquired/. Grade A requires an acquired primary. Do not copy prior-run numbers as A without a new fetch.',
-      '7. Do **not** write house, risks SoR, ontology/store, model user_case, or Street',
-      '8. Do **not** COMPILE BOOK unless user later asks promote',
-      '9. Report: n sources, n claims, gaps, path — promote options only',
+      `1. **Job:** thesis_report (${humanJobLabel('thesis_report')}) · **mode:** ${thesisMode || 'earnings-update'}`,
+      runId ? `2. **run_id (required):** \`${runId}\` — write under \`${vaultRel}\`` : '2. If no run_id, POST /api/{slug}/research/runs `{ job: "thesis_report", thesis_mode }` then use returned run_id',
+      '3. START: MCP `get_house_view` + `get_pack_snapshot` + `get_risk_sor` for WATCH. Steelman → delta → red-team.',
+      '4. STOP at CHECKPOINT 1 (verdict, delta, contested, grades) until Anthony nods.',
+      '5. Draft sections in `sections/`; `config.py` new (do not copy fixtures/two-section/config.py). FIGMAP empty-or-real. Exec last.',
+      '6. Render: `python3 ~/Desktop/cockpit-kernel/scripts/report/build.py --config $RUN/config.py`',
+      '7. STOP at CHECKPOINT 2 (QA). PDF is **ops, never pack SoR**.',
+      '8. Closeout only after nod: vault claims → `./ont compile && ./ont verify` exit 0 → **propose_*** only.',
+      '9. Checkpoint glass: POST `/api/{slug}/research/runs/{run_id}/checkpoint` `{ checkpoint: scope|research|draft|qa|closeout }`',
+      '10. Do **not** write house, 08-risks, ontology/store, or product desks. Initiation = structure, not a rating.',
     ].join('\n')
-    : [
-      '## Open mode: CHAT',
-      '',
-      'Brief run list + last run status in 3–6 lines, then follow user (re-read run, promote, re-run).',
-      'Never arm/lock model print. Never fill YOUR CASE. Never silent house/risk write.',
-    ].join('\n');
+    : (mode === 'pipeline'
+      ? [
+        '## Open mode: PIPELINE',
+        '',
+        'Glass: **NEW COMPILE**. Execute the research job — do not stop at a menu.',
+        '',
+        `1. **Job:** ${job} (${humanJobLabel(job)})`,
+        runId ? `2. **run_id (required):** \`${runId}\` — glass created meta status=queued until worker attach` : '2. If no run_id, create via POST /api/{slug}/research/runs then use returned run_id',
+        '3. Research public filings / IR only — primary first; soft press → [soft]; missing → GAP',
+        '4. Fetch primaries via POST `/api/{slug}/research/runs/{run_id}/acquire` `{url, filename_hint}` (timeout, EDGAR HTML fallback). 403/block → GAP, do not hang. Files land in `acquired/` — never `cockpit/compile/`.',
+        '5. Write **only** under the run folder (meta, summary.md, sources.json, gaps.json, extracts/*, acquired/*)',
+        '6. Publish complete via POST `/api/{slug}/research/runs/{run_id}/publish`. Financials/guide need source_ids + excerpt that appears in acquired/. Grade A requires an acquired primary. Do not copy prior-run numbers as A without a new fetch.',
+        '7. Do **not** write house, risks SoR, ontology/store, model user_case, or Street',
+        '8. Do **not** COMPILE BOOK unless user later asks promote',
+        '9. Report: n sources, n claims, gaps, path — promote options only',
+      ].join('\n')
+      : [
+        '## Open mode: CHAT',
+        '',
+        'Brief run list + last run status in 3–6 lines, then follow user (re-read run, promote, re-run).',
+        'Never arm/lock model print. Never fill YOUR CASE. Never silent house/risk write.',
+      ].join('\n'));
 
   const lines = [
     `# Research compile agent seed — ${id.label} (${id.ticker})`,
@@ -133,9 +153,13 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
     }, null, 2),
     '```',
     '',
-    `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/publish\``,
+    job === 'thesis_report'
+      ? `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/checkpoint\`  then closeout via propose_* (PDF in output/)`
+      : `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/publish\``,
     '',
-    'End seed. Proceed with `/cockpit-research-compile`.',
+    job === 'thesis_report'
+      ? 'End seed. Proceed with `/cockpit-report`. Stop at checkpoints. Decision-support only.'
+      : 'End seed. Proceed with `/cockpit-research-compile`.',
   ];
 
   const text = lines.join('\n');
@@ -165,6 +189,7 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
     mode,
     run_id: runId,
     job,
+    thesis_mode: thesisMode,
     n_runs: list.runs?.length || 0,
   };
 }

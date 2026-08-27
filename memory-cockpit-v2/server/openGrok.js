@@ -129,7 +129,14 @@ export const GROK_AGENTS = [
   {
     action: 'research-compile',
     label: 'Research compile',
-    hint: 'Deep compile archive · Research room · heavy compute',
+    hint: 'Deep compile archive · Compile room · heavy compute',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'thesis-report',
+    label: 'Thesis report',
+    hint: 'Checkpointed IB note + PDF · Reports room',
     needs_desk: true,
     variants: ['desk'],
   },
@@ -345,6 +352,18 @@ export function buildInitialPrompt(opts = {}) {
           core = parts.join(' ');
           break;
         }
+        case 'thesis-report':
+        {
+          const tMode = String(opts.thesis_mode || opts.thesisMode || '').toLowerCase().trim();
+          const reportMode = (
+            tMode === 'deep-dive' || tMode === 'initiation' || tMode === 'earnings-update'
+          ) ? tMode : 'earnings-update';
+          const parts = ['/cockpit-report'];
+          if (desk) parts.push(desk);
+          parts.push(reportMode);
+          core = parts.join(' ');
+          break;
+        }
         case 'coverage':
           core = withDesk('/cockpit-coverage');
           break;
@@ -485,14 +504,15 @@ export function openGrokBuild(opts = {}) {
     }
   }
 
-  // Research runs: deep compile archive seed.
+  // Research runs: deep compile archive seed, or thesis-lane seed.
   let research_seed = null;
-  if (action === 'research-compile') {
+  if (action === 'research-compile' || action === 'thesis-report') {
     try {
       research_seed = writeResearchRunsAgentSeed(opts.desk || ticker || '', {
         mode: opts.mode || 'chat',
         run_id: opts.run_id || opts.runId || null,
-        job: opts.job || 'deep_compile',
+        job: action === 'thesis-report' ? 'thesis_report' : (opts.job || 'deep_compile'),
+        thesis_mode: opts.thesis_mode || opts.thesisMode || null,
       });
     } catch (e) {
       research_seed = { ok: false, error: e.message || String(e) };
@@ -503,12 +523,22 @@ export function openGrokBuild(opts = {}) {
   // or the agent stops at a menu, the execute directive + seed path are still in the
   // prompt itself (2026-08-20 — NEW COMPILE opened Grok idle; fire-and-forget hardening).
   let launchPrompt = initial;
-  const researchPipeline = !!(research_seed?.ok && research_seed.mode === 'pipeline');
+  // Thesis report is interactive (checkpoints). Never headless deep-compile worker.
+  const researchPipeline = !!(
+    research_seed?.ok
+    && research_seed.mode === 'pipeline'
+    && research_seed.job !== 'thesis_report'
+  );
   if (researchPipeline) {
     launchPrompt = `${initial}\n\nPIPELINE MODE — execute the research job now; do not stop at a menu or ask which desk. `
       + `First read the seed file: ${research_seed.path} . `
       + `run_id ${research_seed.run_id || '(in seed)'} is already created (status=queued until worker attach); `
       + `write only under that run folder and publish via the API in the seed. Decision-support only.`;
+  } else if (research_seed?.ok && research_seed.job === 'thesis_report') {
+    launchPrompt = `${initial}\n\nTHESIS LANE — execute /cockpit-report; do not stop at a menu. `
+      + `First read the seed file: ${research_seed.path} . `
+      + `run_id ${research_seed.run_id || '(in seed)'} is already created. `
+      + `STOP at skill checkpoints. PDF is ops, never pack SoR. Decision-support only.`;
   }
 
   // Research PIPELINE: OS-agnostic headless spawn. Canonical artifacts live in the run
@@ -591,6 +621,8 @@ end tell`;
       note = `Opened Terminal → Grok Build with Street seed (${street_seed.mode || 'chat'} · page + house + risks). Agent: /cockpit-street.`;
     } else if (model_seed?.ok) {
       note = `Opened Terminal → Grok Build with Model seed (${model_seed.mode || 'chat'} · assumptions + house + risks). Agent: /cockpit-model.`;
+    } else if (research_seed?.ok && research_seed.job === 'thesis_report') {
+      note = `Opened Terminal → Grok Build with thesis-report seed (${research_seed.thesis_mode || 'earnings-update'} · run ${research_seed.run_id || '—'}). Agent: /cockpit-report. PDF is ops, not pack.`;
     } else if (research_seed?.ok) {
       note = `Opened Terminal → Grok Build with Research seed (${research_seed.mode || 'chat'} · run ${research_seed.run_id || '—'}). Agent: /cockpit-research-compile.`;
     }

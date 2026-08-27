@@ -20,6 +20,8 @@ import {
   heartbeatResearchRun,
   retryResearchRun,
   acquireResearchSource,
+  setThesisCheckpoint,
+  researchRunFile,
 } from './thinResearchRuns.js';
 import { liveUsEquity } from './quotes.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
@@ -147,11 +149,11 @@ export function createThinModel(profile) {
 
   function thinDeskContract() {
     return {
-      version: '1.1',
+      version: '1.2',
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'ask', 'update'],
+      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'reports', 'ask', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
@@ -1079,7 +1081,8 @@ export function createThinModel(profile) {
     workingModelRefresh: async (body = {}) => refreshWorkingModel(TICKER, body || {}, { desk: deskId }),
     workingModelArm: (body = {}) => armWorkingModelPrint(TICKER, body || {}, { desk: deskId }),
     workingModelLock: () => lockWorkingModelPrint(TICKER, { desk: deskId }),
-    researchList: () => listResearchRuns(TICKER, { desk: deskId }),
+    researchList: (opts = {}) => listResearchRuns(TICKER, { desk: deskId, lane: opts.lane }),
+    researchFile: (runId, rel) => researchRunFile(TICKER, runId, rel),
     researchGet: (runId) => getResearchRun(TICKER, runId, { desk: deskId }),
     researchStart: (body = {}) => startResearchRun(TICKER, body || {}, { desk: deskId }),
     researchPublish: (runId, body = {}) => publishResearchRun(TICKER, runId, body || {}, { desk: deskId }),
@@ -1087,6 +1090,12 @@ export function createThinModel(profile) {
     researchHeartbeat: (runId) => heartbeatResearchRun(TICKER, runId),
     researchRetry: (runId, body = {}) => retryResearchRun(TICKER, runId, body || {}),
     researchAcquire: (runId, body = {}) => acquireResearchSource(TICKER, runId, body || {}),
+    researchCheckpoint: (runId, body = {}) => setThesisCheckpoint(
+      TICKER,
+      runId,
+      (body && (body.checkpoint || body.stage)) || 'scope',
+      { note: body && body.note },
+    ),
     writeMeta,
   };
 }

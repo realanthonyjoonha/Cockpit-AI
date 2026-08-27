@@ -19,7 +19,8 @@ A desk that ships without these items is **not** a thin desk — it is incomplet
 | Sources | Pack source catalog |
 | Street | Published third-party firm models (vault `cockpit/street/{TICKER}.json`; not house PT). Shared UI: **REFRESH STREET** (agent pipeline + vault poll) · **OPEN GROK** (chat). EMPTY until first publish |
 | Model | User working assumptions + bridge (vault `cockpit/model/{TICKER}.json`; not pack/house/Street). Shared UI: **UPDATE MODEL** · **OPEN GROK**. EMPTY until first publish. Illustration only — not PT |
-| Research | Saved on-demand deep compiles (vault `cockpit/research/{TICKER}/runs/`). Shared UI: **NEW COMPILE** · list/detail. Draft archive — not live pack until promote |
+| Research (nav **Compile**) | Saved on-demand deep compiles (vault `cockpit/research/{TICKER}/runs/`, compile-lane jobs). Shared UI: **NEW COMPILE** · list/detail. Draft archive — not live pack until promote |
+| Reports | Checkpointed thesis notes + PDF (`job: thesis_report` in the same runs folder). Shared UI: **NEW REPORT** · dossier. PDF is ops — never pack SoR. Closeout via propose_* then glass ACCEPT |
 | Ask | Pack-only deterministic Q&A |
 | Update | Write path per `write_path_mode` (v1.1 default **meta_only**; pins = future optional) |
 
@@ -63,7 +64,9 @@ For desk slug `D` and ticker `T`:
 - `POST /api/D/model/refresh` — format-gated publish of Model vault (assumptions + bridge; not pack/house)  
 - `GET /api/D/research` — list research runs or EMPTY  
 - `GET /api/D/research/runs/:runId` — one run detail (reconciles in-flight; stalled overlay)  
-- `POST /api/D/research/runs` — start run (meta=`queued`; `{ launch: true }` spawns worker). Same-desk in-flight → `already_in_flight` (no second grok)  
+- `GET /api/D/research?lane=compile|reports` — filter by room (same vault folder)
+- `GET /api/D/research/runs/:runId/file?rel=` — allowlisted PDF / anchors under the run
+- `POST /api/D/research/runs` — start run (meta=`queued`; `{ launch: true }` spawns worker for compile only). **Per-lane mutex:** one in-flight compile AND one in-flight report, independently. Same lane in-flight → `already_in_flight`  
 - `POST /api/D/research/runs/:runId/publish` — format-gated complete publish (truth gate: source_ids + acquired excerpt for financials/guide)  
 - `POST /api/D/research/runs/:runId/cancel` — cancel queued/running and kill worker  
 - `POST /api/D/research/runs/:runId/heartbeat` — optional agent ping (log mtime is the real heartbeat)  
@@ -92,11 +95,11 @@ Each thin desk `GET /api/<desk>/meta` **must** include:
 ```json
 {
   "thin_desk_contract": {
-    "version": "1.1",
+    "version": "1.2",
     "desk": "nebius",
     "ticker": "NBIS",
     "parity_group": "thin_ontology_v1",
-    "rooms": ["overview", "risks", "house", "sources", "street", "model", "research", "ask", "update"],
+    "rooms": ["overview", "risks", "house", "sources", "street", "model", "research", "reports", "ask", "update"],
     "capabilities": {
       "compile_book": true,
       "refresh_book": true,

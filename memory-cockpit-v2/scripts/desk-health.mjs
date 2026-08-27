@@ -134,6 +134,16 @@ async function healthOne(slug, opts = {}) {
     add('S6_research_room', true, 'rooms not declared at top-level (skip)');
   }
 
+  if (rooms.length && !rooms.includes('reports')) {
+    add('S6_reports_room', false, 'top-level rooms[] missing reports (soft factory warn)');
+    failed -= 1;
+    checks[checks.length - 1].soft = true;
+  } else if (rooms.includes('reports')) {
+    add('S6_reports_room', true, 'rooms includes reports');
+  } else {
+    add('S6_reports_room', true, 'rooms not declared at top-level (skip)');
+  }
+
   let live = null;
   if (opts.baseUrl) {
     live = { baseUrl: opts.baseUrl, routes: {} };

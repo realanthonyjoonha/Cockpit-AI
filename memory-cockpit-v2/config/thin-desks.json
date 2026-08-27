@@ -1,7 +1,7 @@
 {
   "parity_group": "thin_ontology_v1",
   "write_path_mode": "meta_only",
-  "contract_version": "1.1",
+  "contract_version": "1.2",
   "rooms": [
     "overview",
     "risks",
@@ -11,7 +11,8 @@
     "ask",
     "update",
     "model",
-    "research"
+    "research",
+    "reports"
   ],
   "desks": []
 }

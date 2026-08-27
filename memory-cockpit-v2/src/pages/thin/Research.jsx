@@ -1,6 +1,6 @@
-// Shared thin Research room — archive of on-demand deep compiles.
-// Notebook-first: surface pack-grounded claims densely (not a thin tab shell).
-// Draft archive only — not live pack/house. Decision-support only.
+// Shared thin Compile room (`#/{desk}/research`) — deep-compile claim notebook.
+// Thesis notes live on Reports (`#/{desk}/reports`). Draft archive — not live pack.
+// Decision-support only.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, apiPost } from '../../api.js';
 import { filingDocLabel, companyEdgarUrl } from './filingLink.js';
@@ -277,6 +277,8 @@ export default function ThinResearch({ desk }) {
   const [tab, setTab] = useState('all');
   const [job, setJob] = useState('deep_compile');
   const [busy, setBusy] = useState(false);
+  const [edgarOpen, setEdgarOpen] = useState(false);
+  const [overflow, setOverflow] = useState(false);
   const [polling, setPolling] = useState(false);
   const [flash, setFlash] = useState(null);
   const [compareId, setCompareId] = useState('');
@@ -306,7 +308,7 @@ export default function ThinResearch({ desk }) {
   }, []);
 
   const loadList = useCallback(() => {
-    return api(`${slug}/research`)
+    return api(`${slug}/research?lane=compile`)
       .then((payload) => {
         setList(payload);
         // Prefer newest complete run with the most claims (not a thin fixture / empty extract)
@@ -387,7 +389,7 @@ export default function ThinResearch({ desk }) {
           }
           return;
         }
-        const payload = await api(`${slug}/research`);
+        const payload = await api(`${slug}/research?lane=compile`);
         const fp = listFingerprint(payload);
         setList(payload);
         if (fp !== baselineFp) {
@@ -425,7 +427,9 @@ export default function ThinResearch({ desk }) {
     } catch (e) { setFlash(e.message || String(e)); }
   };
 
-  const startCompile = async () => {
+  const startCompile = async (jobOverride) => {
+    const useJob = jobOverride || job || 'deep_compile';
+    setJob(useJob);
     const runs = list?.runs || [];
     const inFlight = runs.find((r) => isInFlight(r));
     if (inFlight) {
@@ -465,7 +469,7 @@ export default function ThinResearch({ desk }) {
     setFlash(null);
     try {
       const baselineFp = listFingerprint(list);
-      const started = await apiPost(`${slug}/research/runs`, { job, launch: true });
+      const started = await apiPost(`${slug}/research/runs`, { job: useJob, launch: true });
       if (started?.already_in_flight && started.run_id) {
         setList(started);
         setRunId(started.run_id);
@@ -522,6 +526,7 @@ export default function ThinResearch({ desk }) {
   const runs = list?.runs || [];
   const empty = !list?.available || !runs.length;
   const primaryBusy = busy || polling;
+  const showPromoted = runs.some((r) => r.promoted);
 
   const counts = useMemo(() => {
     const fin = detail?.extracts?.financials?.length || 0;
@@ -553,37 +558,23 @@ export default function ThinResearch({ desk }) {
   return (
     <div>
       <div className="crumb">
-        {label} · RESEARCH · {empty ? <b>EMPTY</b> : <b>{runs.length} RUN{runs.length === 1 ? '' : 'S'}</b>}
+        {label} · COMPILE · {empty ? <b>EMPTY</b> : <b>{runs.length} RUN{runs.length === 1 ? '' : 'S'}</b>}
         {list.n_complete != null && !empty ? ` · ${list.n_complete} COMPLETE` : ''}
         {detail?.status === 'complete' && counts.total > 0 ? (
-          <span> · <b>{counts.total} CLAIMS</b> open</span>
+          <span> · <b>{counts.total} CLAIMS</b></span>
         ) : null}
         {polling ? (
-          <span style={{ color: 'var(--sec-2)', marginLeft: 6 }}> · <b>WAITING FOR RUN</b></span>
+          <span style={{ color: 'var(--sec-2)', marginLeft: 6 }}> · <b>WAITING</b></span>
         ) : null}
       </div>
 
       <div className="sect" style={{ padding: '8px 16px 10px' }}>
-        <div className="dim" style={{ fontSize: 11, lineHeight: 1.5, marginBottom: 10 }}>
-          Saved <b>deep compiles</b> — pack-grounded claim notebook for this desk. Draft archive — <b>not</b> live pack/house.
-          Prefer <b>reopening</b> a dense run instead of re-spending compute.
-        </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <select
-            value={job}
-            onChange={(e) => setJob(e.target.value)}
-            style={{ fontSize: 11, padding: '3px 6px' }}
-            title="Compile job type"
-          >
-            <option value="deep_compile">Deep compile</option>
-            <option value="print_package">Print package</option>
-            <option value="pack_refresh">Pack refresh</option>
-          </select>
           <button
             type="button"
             className="btn"
             disabled={primaryBusy}
-            onClick={startCompile}
+            onClick={() => startCompile('deep_compile')}
             style={{ fontSize: 10, padding: '4px 10px' }}
           >
             {polling ? 'WAITING…' : busy ? '…' : 'NEW COMPILE'}
@@ -603,7 +594,16 @@ export default function ThinResearch({ desk }) {
             onClick={() => loadList()}
             style={{ fontSize: 10, padding: '4px 10px' }}
           >
-            REFRESH LIST
+            REFRESH
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setOverflow((v) => !v)}
+            style={{ fontSize: 10, padding: '4px 8px' }}
+            title="Print package / pack refresh"
+          >
+            ⋯
           </button>
           {polling && (
             <button
@@ -617,81 +617,95 @@ export default function ThinResearch({ desk }) {
           )}
           {flash && <span className="dim" style={{ fontSize: 10 }}>{flash}</span>}
         </div>
+        {overflow && (
+          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => { setOverflow(false); startCompile('print_package'); }}
+            >
+              Print package
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ fontSize: 10, padding: '3px 8px' }}
+              onClick={() => { setOverflow(false); startCompile('pack_refresh'); }}
+            >
+              Pack refresh
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="sect">
-        <div className="shd">
-          <span className="no">▤</span>
-          <h2>PIPELINE · SEC EDGAR</h2>
-          <span className="m">
-            stage 0+1 · resolve + filing watch · keyless · not pack SoR
-            {pipe?.stale ? ' · CACHE STALE (EDGAR unreachable)' : ''}
-            {pipe?.cik && companyEdgarUrl(pipe.cik) ? (
-              <>
-                {' · '}
-                <a className="filing-link" href={companyEdgarUrl(pipe.cik)} target="_blank" rel="noopener noreferrer">
-                  company filings
-                </a>
-              </>
-            ) : null}
-          </span>
-        </div>
-        {!pipe ? (
-          <div className="emptyD">{pipeBusy ? 'Resolving entity…' : 'Pipeline unavailable.'}</div>
-        ) : !pipe.available ? (
-          <div className="emptyD">{pipe.reason || 'Pipeline unavailable for this desk.'}</div>
-        ) : (
-          <div style={{ padding: '4px 16px 10px' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', paddingBottom: 6 }}>
-              <span className={`chipC${pipe.tier?.tier === 'A' ? ' ok' : pipe.tier?.tier === 'D' ? ' watch' : ''}`} title={(pipe.tier?.reasons || []).join(' · ')}>
-                TIER {pipe.tier?.tier} · {pipe.tier?.label}
+      <div className="sect" style={{ padding: '6px 16px 10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: 11 }}>
+          {pipe?.available ? (
+            <>
+              <span className={`chipC${pipe.tier?.tier === 'A' ? ' ok' : pipe.tier?.tier === 'D' ? ' watch' : ''}`}>
+                TIER {pipe.tier?.tier}
               </span>
-              <span className="chipC mono">CIK {pipe.cik}</span>
-              {pipe.entity?.fiscal_year_end && <span className="chipC">FYE {pipe.entity.fiscal_year_end}</span>}
-              {pipe.entity?.sic_description && <span className="chipC" title={`SIC ${pipe.entity.sic}`}>{pipe.entity.sic_description}</span>}
+              <span>
+                {pipe.since_compile?.material_count != null
+                  ? <><b>{pipe.since_compile.material_count}</b> material since book compile</>
+                  : (pipe.since_compile?.note || 'EDGAR')}
+              </span>
+              {(pipe.since_compile?.material_items || []).slice(0, 2).map((f) => (
+                <span key={f.accession} className="dim mono">{f.form} {String(f.filed || '').slice(5)}</span>
+              ))}
+              <button
+                type="button"
+                className="btn"
+                style={{ fontSize: 10, padding: '2px 8px', marginLeft: 'auto' }}
+                onClick={() => setEdgarOpen((v) => !v)}
+              >
+                {edgarOpen ? 'collapse' : 'expand ▾'}
+              </button>
               <button
                 type="button"
                 className="btn"
                 disabled={pipeBusy}
                 onClick={() => loadPipeline(true)}
-                style={{ fontSize: 10, padding: '3px 9px' }}
-                title="Force re-fetch from SEC EDGAR (60s cooldown)"
+                style={{ fontSize: 10, padding: '2px 8px' }}
               >
-                {pipeBusy ? '…' : 'REFRESH EDGAR'}
+                {pipeBusy ? '…' : 'refresh edgar'}
               </button>
-            </div>
+            </>
+          ) : (
+            <span className="dim">{pipeBusy ? 'Resolving EDGAR…' : (pipe?.reason || 'EDGAR unavailable')}</span>
+          )}
+        </div>
+        {edgarOpen && pipe?.available && (
+          <div style={{ paddingTop: 8 }}>
             <div className="dim" style={{ fontSize: 11, paddingBottom: 6 }}>
-              {pipe.entity?.name} · {pipe.filings_total_recent} recent filings on file · fetched {String(pipe.fetched_at || '').slice(0, 16).replace('T', ' ')}Z
-              {(pipe.tier?.reasons || []).length ? ` · ${pipe.tier.reasons[0]}` : ''}
+              {pipe.entity?.name} · CIK {pipe.cik}
+              {pipe.entity?.fiscal_year_end ? ` · FYE ${pipe.entity.fiscal_year_end}` : ''}
+              {pipe.entity?.sic_description ? ` · ${pipe.entity.sic_description}` : ''}
+              {pipe.filings_total_recent != null ? ` · ${pipe.filings_total_recent} recent filings` : ''}
+              {pipe.cik && companyEdgarUrl(pipe.cik) ? (
+                <>
+                  {' · '}
+                  <a className="filing-link" href={companyEdgarUrl(pipe.cik)} target="_blank" rel="noopener noreferrer">company filings</a>
+                </>
+              ) : null}
             </div>
-            {pipe.since_compile?.count > 0 ? (
-              <>
-                <div className="dim" style={{ fontSize: 11, paddingBottom: 4 }}>
-                  <b>{pipe.since_compile.material_count}</b> material · {pipe.since_compile.routine_count} routine since book compile ({String(pipe.since_compile.baseline_compiled_at || '').slice(0, 10)})
-                </div>
-                {pipe.since_compile.material_count > 0 && (
-                  <table className="data" style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                    <tbody>
-                      {pipe.since_compile.material_items.slice(0, 8).map((f) => (
-                        <tr key={f.accession}>
-                          <td className="idc" style={{ whiteSpace: 'nowrap' }}><b>{f.form}</b></td>
-                          <td className="idc mono" style={{ whiteSpace: 'nowrap' }}>{f.filed}</td>
-                          <td>
-                            <a className="filing-link" href={f.url} target="_blank" rel="noopener noreferrer">
-                              {filingDocLabel(f)}
-                            </a>
-                            {f.items ? <span className="dimmer mono" style={{ fontSize: 10, marginLeft: 6 }}>{f.items}</span> : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </>
-            ) : pipe.since_compile?.count === 0 ? (
-              <div className="dim" style={{ fontSize: 11 }}>Book current vs EDGAR — nothing filed since compile.</div>
-            ) : (
-              <div className="dim" style={{ fontSize: 11 }}>{pipe.since_compile?.note || 'No compile baseline.'}</div>
+            {(pipe.since_compile?.material_items || []).length > 0 && (
+              <table className="data" style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <tbody>
+                  {pipe.since_compile.material_items.slice(0, 8).map((f) => (
+                    <tr key={f.accession}>
+                      <td className="idc" style={{ whiteSpace: 'nowrap' }}><b>{f.form}</b></td>
+                      <td className="idc mono" style={{ whiteSpace: 'nowrap' }}>{f.filed}</td>
+                      <td>
+                        <a className="filing-link" href={f.url} target="_blank" rel="noopener noreferrer">
+                          {filingDocLabel(f)}
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         )}
@@ -704,8 +718,7 @@ export default function ThinResearch({ desk }) {
               {list.reason || 'No research runs yet for this desk.'}
             </div>
             <div className="dim" style={{ fontSize: 11, lineHeight: 1.45 }}>
-              Click <b>NEW COMPILE</b> — opens Grok to research public filings and write a saved run under
-              the vault. You can reopen it anytime without re-running.
+              No compiles yet. <b>NEW COMPILE</b> builds the claim notebook from filings.
             </div>
           </div>
         </div>
@@ -716,17 +729,16 @@ export default function ThinResearch({ desk }) {
           <div className="shd">
             <span className="no">1</span>
             <h2>RUNS</h2>
-            <span className="m">{ticker} · click densest complete run · newest first</span>
+            <span className="m">draft archive · click densest complete run</span>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table className="data" style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--dim)', fontSize: 10 }}>
                   <th style={{ padding: '6px 12px' }}>When</th>
-                  <th style={{ padding: '6px 12px' }}>Job</th>
                   <th style={{ padding: '6px 12px' }}>Status</th>
                   <th style={{ padding: '6px 12px' }}>Depth</th>
-                  <th style={{ padding: '6px 12px' }}>Promoted</th>
+                  {showPromoted ? <th style={{ padding: '6px 12px' }}>Promoted</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -747,7 +759,6 @@ export default function ThinResearch({ desk }) {
                       <td style={{ padding: '8px 12px' }} className="mono">
                         {String(r.finished_at || r.started_at || '').slice(0, 16).replace('T', ' ')}
                       </td>
-                      <td style={{ padding: '8px 12px' }}>{r.label || r.job}</td>
                       <td style={{ padding: '8px 12px' }}>
                         <span
                           className={`chipC${r.status === 'complete' ? ' ok' : (r.status === 'failed' || isStalled(r)) ? ' watch' : ''}`}
@@ -778,10 +789,15 @@ export default function ThinResearch({ desk }) {
                           </button>
                         )}
                       </td>
-                      <td style={{ padding: '8px 12px' }} className="mono" title={r.run_id}>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }} className="mono" title={r.run_id}>
                         {depthLabel(r)}
+                        {r.job && r.job !== 'deep_compile' ? (
+                          <span className="dim" style={{ marginLeft: 6 }}>{r.label || r.job}</span>
+                        ) : null}
                       </td>
-                      <td style={{ padding: '8px 12px' }} className="dim">{r.promoted ? 'yes' : 'no'}</td>
+                      {showPromoted ? (
+                        <td style={{ padding: '8px 12px' }} className="dim">{r.promoted ? 'yes' : 'no'}</td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -799,10 +815,7 @@ export default function ThinResearch({ desk }) {
             <span className="m">{detail.run_id} · {detail.status}</span>
           </div>
           <div style={{ padding: '8px 16px', fontSize: 11 }} className="dim">
-            {detail.job_label || detail.job}
-            {detail.started_at ? ` · started ${String(detail.started_at).slice(0, 19)}` : ''}
-            {detail.finished_at ? ` · finished ${String(detail.finished_at).slice(0, 19)}` : ''}
-            {detail.compute?.note ? ` · ${detail.compute.note}` : ''}
+            {detail.run_id} · {detail.status}
             {detail.immutable ? ' · immutable' : ''}
           </div>
 
@@ -930,7 +943,10 @@ export default function ThinResearch({ desk }) {
 
           {tab === 'promote' && (
             <div style={{ padding: '8px 16px 16px', fontSize: 12, lineHeight: 1.55 }}>
-              <p className="dim" style={{ marginTop: 0 }}>
+              <p style={{ marginTop: 0, color: 'var(--watch)', fontSize: 11 }}>
+                ⚠ promote writes proposals — human ACCEPTs on glass
+              </p>
+              <p className="dim">
                 This run is a <b>draft archive</b>. Promotion is human-gated — nothing auto-writes house or risks.
               </p>
               <ul style={{ paddingLeft: 18 }}>

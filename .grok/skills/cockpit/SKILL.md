@@ -6,7 +6,7 @@ description: >
   list proposals, multi-desk thin companies from registry (list_desks). Triggers: /cockpit,
   cockpit, house view, pack snapshot, daily report, daily brief, risk check, risk DD,
   propose house, WATCH risks, steelman vs pack, thin desk. Decision-support only — no buy/sell/PT/sizing.
-argument-hint: "[desk] [daily|risk-check|steelman|match|propose|pending|desks]"
+argument-hint: "[desk] [daily|report|steelman|feature|ship|desks]"
 user-invocable: true
 ---
 
@@ -20,16 +20,22 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 
 | Command | Action |
 |---------|--------|
+| `/cockpit-feature [goal]` | **Build PLATFORM** — factory-scalable (`docs/EASY.md`) |
+| `/cockpit-ship [push?]` | **Ship to friends** — lab-e2e + release-check; push only if you say push |
 | `/cockpit-desks` | List thin desks |
 | `/cockpit-new-desk [TICKER]` | Underwrite **new** desk — **deep parallel research default** (START → Build next company; `--light` opt-out) |
 | `/cockpit-daily` | Daily brief: **what moved** + house + pack; optional `--save` |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research after user question; **ask to save** → write note + **`./ont compile`** so Sources updates |
 | `/cockpit-coverage [desk] [scope?]` | Coverage / initiating-style note from pack+house; optional save+compile → Sources |
+| `/cockpit-report [desk] [mode]` | **Thesis lane** — checkpointed IB report (deep-dive / earnings-update / initiation) + PDF |
 | `/cockpit-comps [desk]` | Peer comps (user peers/metrics); optional save+compile |
 | `/cockpit-model-bridge [desk]` | FCF/assumptions bridge (no PT advice); optional save+compile |
 | `/cockpit-model-audit [desk]` | Audit model paste vs pack; optional save+compile |
 | `/cockpit-ebitda-bridge [desk]` | Revenue→EBITDA bridge; optional save+compile |
 | `/cockpit-ebitda-quality [desk]` | Adj. EBITDA quality / adjustments audit; optional save+compile |
+| `/cockpit-model [desk]` | Model desk (glass `#/{slug}/model`) — not PT |
+| `/cockpit-research-compile [desk]` | Deep compile archive (glass Research) — not thesis-lane |
+| `/cockpit-street [desk]` | Street agent |
 | `/cockpit-risk-check` | Risk DD: direction vs tripwires (no status write) |
 | `/cockpit-risk-add` | Research + propose NEW risk (glass ACCEPT) |
 | `/cockpit-risk-tripwires` | Tripwire research + user cull → propose |
@@ -37,10 +43,13 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-match` | Verify house labels vs pack WATCH |
 | `/cockpit-propose` | Propose house draft → glass ACCEPT |
 | `/cockpit-pending` | List pending house proposals |
-| `/cockpit` | Show menu + default steelman |
+| `/cockpit` | **Menu only.** Print pin (`list_desks`) + this table. Wait. Do **not** steelman unless they named a desk **and** asked steelman/daily/report/… |
 
-Default desk if omitted: `list_desks` → ask once from **that** registry, then remember in-session.  
-**MCP monorepo:** use tools from **`cockpit-research`**. `list_desks` returns `monorepo_root` — it must match the glass/cwd monorepo (project pin). If desk missing, OPEN GROK again from the glass for that monorepo (rewrites project MCP) or re-run `./scripts/install-grok-mcp.sh` **inside that monorepo**.
+Bare `/cockpit` (no desk, no action): show menu + compact pin (`monorepo_root` / vault / `pin_ok` / `agent_accept`). **Do not** start steelman, daily, or a report.  
+If they named a desk **and** an action in the same message, run that action.  
+If they named a desk only, ask which command — do not default to steelman.
+
+**MCP:** one server named `cockpit-research`. github / edgartools / tasks are unrelated. `list_desks.monorepo_root` is the human tree (`~/Desktop/cockpit-kernel`); `monorepo_real` is the inode if that path is a symlink — **same tree**, not a second product. If `pin_ok` is false, STOP. Re-run `./scripts/install-grok-mcp.sh` from kernel or OPEN GROK from kernel glass.
 
 ## MCP tools
 
@@ -115,4 +124,4 @@ Default desk if omitted: `list_desks` → ask once from **that** registry, then 
 
 ## Default `/cockpit` with a desk
 
-Run **steelman** for that desk (`/cockpit-steelman`).
+**Do not** auto-steelman. Ask once which command, or run the action they named (`daily`, `report`, `steelman`, …).

@@ -2,6 +2,7 @@
 // Prevents wrong-vault house/risks/pack when multiple Cockpit folders exist on one Mac.
 // Decision-support only.
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 /**
@@ -15,6 +16,30 @@ export function realpathSafe(p) {
   } catch {
     return abs;
   }
+}
+
+/**
+ * Human-facing monorepo path. Prefer COCKPIT_EXPECT_ROOT / ~/Desktop/cockpit-kernel
+ * when they realpath to the same inode as repoRoot. Stops agents treating
+ * Trading/cockpit vs Desktop/cockpit-kernel as two products.
+ * Pin *comparison* still uses realpathSafe.
+ */
+export function displayMonorepoRoot(repoRoot, opts = {}) {
+  const real = realpathSafe(repoRoot);
+  const expect = opts.expectRoot != null ? opts.expectRoot : process.env.COCKPIT_EXPECT_ROOT;
+  if (expect && String(expect).trim() && realpathSafe(expect) === real) {
+    return path.resolve(String(expect).trim());
+  }
+  const aliases = Array.isArray(opts.aliases) && opts.aliases.length
+    ? opts.aliases
+    : [path.join(os.homedir(), 'Desktop', 'cockpit-kernel')];
+  for (const a of aliases) {
+    if (!a) continue;
+    try {
+      if (fs.existsSync(a) && realpathSafe(a) === real) return path.resolve(a);
+    } catch { /* skip */ }
+  }
+  return real;
 }
 
 /**
@@ -88,17 +113,34 @@ export function assertExpectRoot(repoRoot) {
 }
 
 /**
- * Assert vault path sits under monorepo root (basic contamination guard).
+ * True if vault is this monorepo's book:
+ *   - in-tree (…/research-wiki), or
+ *   - sibling …/cockpit-vault (2026-08-20 code/content split).
+ * Any other path is contamination (wrong clone, tribal ~/Trading/research-wiki, etc.).
+ */
+export function vaultBelongsToRepo(repoRoot, vault) {
+  if (!vault) return true;
+  const root = realpathSafe(repoRoot);
+  const v = realpathSafe(vault);
+  if (v === root || v.startsWith(root + path.sep)) return true;
+  const sibling = realpathSafe(path.join(path.dirname(root), 'cockpit-vault'));
+  if (v === sibling || v.startsWith(sibling + path.sep)) return true;
+  return false;
+}
+
+/**
+ * Assert vault is in-tree or sibling cockpit-vault (contamination guard).
  * @param {string} repoRoot
  * @param {string} vault
  */
 export function assertVaultUnderRepo(repoRoot, vault) {
   if (!vault) return { ok: true };
+  if (vaultBelongsToRepo(repoRoot, vault)) return { ok: true };
   const root = realpathSafe(repoRoot);
   const v = realpathSafe(vault);
-  if (v === root || v.startsWith(root + path.sep)) return { ok: true };
   throw new Error(
-    `MCP vault not under monorepo (contamination risk): vault=${v} monorepo=${root}. ` +
+    `MCP vault not pinned to this monorepo (contamination risk): vault=${v} monorepo=${root}. ` +
+      `Allowed: ${path.join(root, 'research-wiki')} or sibling ${path.join(path.dirname(root), 'cockpit-vault')}. ` +
       `Re-install MCP from the correct monorepo.`,
   );
 }
@@ -131,13 +173,17 @@ export function assertMcpPin(opts = {}) {
   assertExpectRoot(repoRoot);
   assertVaultUnderRepo(repoRoot, opts.vault || process.env.COCKPIT_VAULT || '');
   if (opts.deskSlug) assertDeskAllowed(opts.deskSlug);
+  const real = realpathSafe(repoRoot);
+  const display = displayMonorepoRoot(repoRoot);
   return {
     ok: true,
-    monorepo_root: realpathSafe(repoRoot),
+    monorepo_root: display,
+    monorepo_real: real,
     expect_root: process.env.COCKPIT_EXPECT_ROOT || null,
     allowed_slugs: process.env.COCKPIT_ALLOWED_SLUGS || null,
     scenario: process.env.COCKPIT_SCENARIO_NAME || null,
     agent_accept: isAgentAcceptEnabled(),
+    same_tree: display === real ? true : realpathSafe(display) === real,
   };
 }
 

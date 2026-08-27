@@ -21,9 +21,15 @@ const {
   findInFlightRun,
   patchRunMeta,
   attachWorker,
+  setThesisCheckpoint,
+  researchRunFile,
 } = await import(path.join(ROOT, 'server', 'thinResearchRuns.js'));
 const {
   validateResearchRunPublish,
+  humanJobLabel,
+  isThesisReportJob,
+  RESEARCH_JOBS,
+  researchLane,
 } = await import(path.join(ROOT, 'server', 'researchRunsSchema.js'));
 
 let pass = 0;
@@ -175,6 +181,88 @@ else ok('fail of complete rejected (extracts intact)');
 const still = getResearchRun('TEST', runId);
 if (!still.summary || still.status !== 'complete') bad('complete extracts survived fail attempt');
 else ok('complete extracts survived fail attempt');
+
+// thesis_report job (Phase 3) — not deep compile
+if (!RESEARCH_JOBS.has('thesis_report')) bad('RESEARCH_JOBS missing thesis_report');
+else ok('thesis_report in RESEARCH_JOBS');
+if (humanJobLabel('thesis_report') !== 'Thesis report') bad('humanJobLabel thesis');
+else ok('humanJobLabel Thesis report');
+if (!isThesisReportJob('thesis_report') || isThesisReportJob('deep_compile')) bad('isThesisReportJob');
+else ok('isThesisReportJob');
+if (researchLane('thesis_report') !== 'reports' || researchLane('deep_compile') !== 'compile') {
+  bad('researchLane');
+} else ok('researchLane compile vs reports');
+
+const th = startResearchRun('TEST', { job: 'thesis_report', thesis_mode: 'earnings-update' }, { desk: 'test' });
+if (!th.ok || !/_thesis_report_/i.test(th.run_id)) bad(`thesis start id ${th.run_id}`);
+else ok(`thesis start ${th.run_id}`);
+if (!th.interactive) bad('thesis start should be interactive (no headless worker)');
+else ok('thesis start interactive');
+const thDir = th.path;
+if (!fs.existsSync(path.join(thDir, 'sections')) || !fs.existsSync(path.join(thDir, 'output'))) {
+  bad('thesis folders sections/output');
+} else ok('thesis folders sections + output');
+const thGet = getResearchRun('TEST', th.run_id);
+if (thGet.thesis?.mode !== 'earnings-update' || thGet.thesis?.checkpoint !== 'scope') {
+  bad(`thesis GET ${JSON.stringify(thGet.thesis)}`);
+} else ok('thesis GET checkpoint scope');
+
+const cp = setThesisCheckpoint('TEST', th.run_id, 'research');
+if (!cp.ok || cp.checkpoint !== 'research') bad(`checkpoint ${cp.error}`);
+else ok('setThesisCheckpoint research');
+const cpBad = setThesisCheckpoint('TEST', runId, 'qa');
+if (cpBad.ok) bad('checkpoint on deep_compile must reject');
+else ok('checkpoint rejected on non-thesis job');
+
+const dcWhileTh = startResearchRun('TEST', { job: 'deep_compile' }, { desk: 'test' });
+if (!dcWhileTh.ok || dcWhileTh.already_in_flight) bad('compile must not be blocked by in-flight thesis');
+else ok('compile mutex independent of thesis');
+const dcWhileTh2 = startResearchRun('TEST', { job: 'deep_compile' }, { desk: 'test' });
+if (!dcWhileTh2.already_in_flight) bad('second compile should mutex');
+else ok('compile lane mutex');
+const th2 = startResearchRun('TEST', { job: 'thesis_report', thesis_mode: 'deep-dive' }, { desk: 'test' });
+if (!th2.already_in_flight) bad('second thesis should mutex');
+else ok('reports lane mutex');
+const laneComp = listResearchRuns('TEST', { desk: 'test', lane: 'compile' });
+const laneRep = listResearchRuns('TEST', { desk: 'test', lane: 'reports' });
+if (!laneComp.runs.every((r) => r.job !== 'thesis_report')) bad('compile lane leaked thesis');
+else ok('list lane=compile filters thesis');
+if (!laneRep.runs.every((r) => r.job === 'thesis_report')) bad('reports lane leaked compile');
+else ok('list lane=reports filters compile');
+if (dcWhileTh.run_id) cancelResearchRun('TEST', dcWhileTh.run_id);
+
+const forbidden = researchRunFile('TEST', th.run_id, '../meta.json');
+if (forbidden.ok) bad('researchRunFile must refuse ..');
+else ok('researchRunFile refuses path escape');
+
+const thPubBody = {
+  schema_version: 1,
+  run_id: th.run_id,
+  ticker: 'TEST',
+  job: 'thesis_report',
+  status: 'complete',
+  thesis_mode: 'earnings-update',
+  checkpoint: 'qa',
+  summary: 'Verdict: cash engine prints; succession not started. Decision-support only.',
+  sources: [],
+  financials: [],
+  risks: [],
+  narrative: [],
+  guide: [],
+  gaps: ['Bridge not in this print'],
+};
+const thVal = validateResearchRunPublish(thPubBody, { ticker: 'TEST', run_id: th.run_id });
+if (!thVal.ok) bad(`thesis validate ${thVal.errors?.join('; ')}`);
+else ok('thesis complete publish validates without extracts');
+const thPack = validateResearchRunPublish(
+  { ...thPubBody, promotion: { pack_claims: true } },
+  { ticker: 'TEST', run_id: th.run_id },
+);
+if (thPack.ok) bad('pack_claims on thesis must fail');
+else ok('thesis pack_claims rejected');
+const thPub = publishResearchRun('TEST', th.run_id, thPubBody, { desk: 'test' });
+if (!thPub.ok) bad(`thesis publish ${thPub.error}`);
+else ok('thesis publish complete');
 
 try { fs.rmSync(tmpVault, { recursive: true, force: true }); } catch { /* */ }
 

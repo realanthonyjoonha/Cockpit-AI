@@ -6,7 +6,48 @@ import path from 'path';
 
 export const RESEARCH_RUNS_SCHEMA_VERSION = 1;
 
-export const RESEARCH_JOBS = new Set(['deep_compile', 'print_package', 'pack_refresh']);
+export const RESEARCH_JOBS = new Set([
+  'deep_compile', 'print_package', 'pack_refresh', 'thesis_report',
+]);
+
+/** Thesis-lane modes (ib-report skill). Not a coverage rating. */
+export const THESIS_MODES = new Set(['earnings-update', 'deep-dive', 'initiation']);
+/** Conversational checkpoints stored on run meta (glass-visible). */
+export const THESIS_CHECKPOINTS = new Set(['scope', 'research', 'draft', 'qa', 'closeout']);
+
+export function isThesisReportJob(job) {
+  return String(job || '') === 'thesis_report';
+}
+
+/** Compile-lane jobs (Research room). Thesis is the Reports room. */
+export const COMPILE_JOBS = new Set(['deep_compile', 'print_package', 'pack_refresh']);
+
+/** @returns {'compile'|'reports'} */
+export function researchLane(job) {
+  return isThesisReportJob(job) ? 'reports' : 'compile';
+}
+
+/**
+ * @param {string} job
+ * @param {string} [lane] compile | reports | all
+ */
+export function jobMatchesLane(job, lane) {
+  const l = String(lane || '').toLowerCase().trim();
+  if (!l || l === 'all') return true;
+  if (l === 'reports' || l === 'thesis' || l === 'thesis_report') return isThesisReportJob(job);
+  if (l === 'compile' || l === 'research') return !isThesisReportJob(job);
+  return true;
+}
+
+export function normalizeThesisMode(raw) {
+  const m = String(raw || '').toLowerCase().trim();
+  return THESIS_MODES.has(m) ? m : 'earnings-update';
+}
+
+export function normalizeThesisCheckpoint(raw) {
+  const c = String(raw || '').toLowerCase().trim();
+  return THESIS_CHECKPOINTS.has(c) ? c : 'scope';
+}
 export const RESEARCH_STATUSES = new Set([
   'queued', 'running', 'complete', 'failed', 'cancelled',
 ]);
@@ -239,7 +280,12 @@ export function validateResearchRunPublish(raw, opts = {}) {
         ? raw.extracts.guide.map(normalizeClaimLine).filter(Boolean)
         : []);
 
-    if (!summary && !financials.length && !narrative.length) {
+    if (isThesisReportJob(job)) {
+      if (!summary) errors.push('complete thesis_report needs a summary (verdict / QA note)');
+      if (raw.promotion && raw.promotion.pack_claims) {
+        errors.push('thesis_report PDF is ops — never pack SoR');
+      }
+    } else if (!summary && !financials.length && !narrative.length) {
       errors.push('complete run needs summary or extract claims');
     }
     if (summary && adviceHit(summary)) errors.push('summary contains advice language');
@@ -293,10 +339,10 @@ export function validateResearchRunPublish(raw, opts = {}) {
         },
         promotion: raw.promotion && typeof raw.promotion === 'object' ? {
           status: str(raw.promotion.status) || 'none',
-          pack_claims: !!raw.promotion.pack_claims,
+          pack_claims: isThesisReportJob(job) ? false : !!raw.promotion.pack_claims,
           risks_proposed: !!raw.promotion.risks_proposed,
           house_proposed: !!raw.promotion.house_proposed,
-          model_pack_layers: !!raw.promotion.model_pack_layers,
+          model_pack_layers: isThesisReportJob(job) ? false : !!raw.promotion.model_pack_layers,
           notes: str(raw.promotion.notes).slice(0, 400) || null,
         } : {
           status: 'none',
@@ -306,6 +352,11 @@ export function validateResearchRunPublish(raw, opts = {}) {
           model_pack_layers: false,
           notes: null,
         },
+        thesis: isThesisReportJob(job) ? {
+          mode: normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode),
+          checkpoint: normalizeThesisCheckpoint(raw.checkpoint || raw.inputs?.checkpoint || 'qa'),
+          pdf_rel: str(raw.pdf_rel).slice(0, 200) || null,
+        } : null,
         immutable: true,
         decision_support_only: true,
       },
@@ -334,6 +385,12 @@ export function validateResearchRunPublish(raw, opts = {}) {
         focus: str(raw.focus || raw.inputs?.focus) || null,
         prior_run_id: str(raw.prior_run_id || raw.inputs?.prior_run_id) || null,
         as_of_request: null,
+        thesis_mode: isThesisReportJob(job)
+          ? normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode)
+          : null,
+        checkpoint: isThesisReportJob(job)
+          ? normalizeThesisCheckpoint(raw.checkpoint || raw.inputs?.checkpoint)
+          : null,
       },
       summary: null,
       sources: [],
@@ -347,6 +404,11 @@ export function validateResearchRunPublish(raw, opts = {}) {
         model_pack_layers: false,
         notes: null,
       },
+      thesis: isThesisReportJob(job) ? {
+        mode: normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode),
+        checkpoint: normalizeThesisCheckpoint(raw.checkpoint || raw.inputs?.checkpoint),
+        pdf_rel: str(raw.pdf_rel).slice(0, 200) || null,
+      } : null,
       immutable: false,
       decision_support_only: true,
       error: str(raw.error) || null,
@@ -386,6 +448,9 @@ export function indexRowFromMeta(meta) {
     n_claims,
     promoted: !!(meta.promotion && meta.promotion.status && meta.promotion.status !== 'none'),
     compute_note: meta.compute?.note || 'heavy',
+    thesis_mode: str(meta.inputs?.thesis_mode || meta.thesis?.mode) || null,
+    checkpoint: str(meta.inputs?.checkpoint || meta.thesis?.checkpoint) || null,
+    job_label: humanJobLabel(meta.job),
   };
 }
 
@@ -393,5 +458,6 @@ export function humanJobLabel(job) {
   const j = str(job);
   if (j === 'print_package') return 'Print package';
   if (j === 'pack_refresh') return 'Pack refresh';
+  if (j === 'thesis_report') return 'Thesis report';
   return 'Deep compile';
 }

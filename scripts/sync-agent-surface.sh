@@ -105,6 +105,7 @@ FILES=(
   "memory-cockpit-v2/server/researchAcquire.js"
   "memory-cockpit-v2/server/operateGlance.js"
   "memory-cockpit-v2/src/pages/thin/Research.jsx"
+  "memory-cockpit-v2/src/pages/thin/Reports.jsx"
   "memory-cockpit-v2/src/pages/Start.jsx"
   "scripts/templates/Start.kernel.jsx"
   "memory-cockpit-v2/scripts/thin-research-runs-test.mjs"
@@ -209,6 +210,9 @@ if [ -f "$SRC/.grok/skills/cockpit/SKILL.md" ]; then
 fi
 if [ -f "$SRC/.grok/skills/cockpit-session/SKILL.md" ]; then
   copy_one ".grok/skills/cockpit-session/SKILL.md"
+fi
+if [ -f "$SRC/.grok/skills/ib-report/SKILL.md" ]; then
+  copy_one ".grok/skills/ib-report/SKILL.md"
 fi
 
 # Friend upgrade helpers

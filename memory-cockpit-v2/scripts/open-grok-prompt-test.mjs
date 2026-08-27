@@ -187,11 +187,34 @@ try {
 }
 
 try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report',
+    desk: 'lly',
+    thesis_mode: 'earnings-update',
+  });
+  if (p !== '/cockpit-report lly earnings-update') throw new Error(p);
+  ok('thesis-report → /cockpit-report desk mode');
+} catch (e) {
+  fail('thesis-report prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'thesis-report', desk: 'nvda' });
+  if (p !== '/cockpit-report nvda earnings-update') throw new Error(p);
+  ok('thesis-report default mode earnings-update');
+} catch (e) {
+  fail('thesis-report default mode', e);
+}
+
+try {
   const desk = listGrokAgents({ variant: 'desk' });
   if (!desk.agents.some((a) => a.action === 'research-compile')) {
     throw new Error('research-compile missing from desk variant');
   }
-  ok('desk variant includes research-compile');
+  if (!desk.agents.some((a) => a.action === 'thesis-report')) {
+    throw new Error('thesis-report missing from desk variant');
+  }
+  ok('desk variant includes research-compile + thesis-report');
 } catch (e) {
   fail('desk research-compile catalog', e);
 }
