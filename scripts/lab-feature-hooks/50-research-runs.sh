@@ -11,6 +11,9 @@ grep -q 'research/runs/:runId/checkpoint' "$ROOT/memory-cockpit-v2/server/thinDe
 grep -q 'thesis_report' "$ROOT/memory-cockpit-v2/server/researchRunsSchema.js"
 grep -q 'reports' "$ROOT/memory-cockpit-v2/src/pages/thin/DeskRouter.jsx"
 test -f "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
+test -f "$ROOT/memory-cockpit-v2/src/pages/thin/compileRunList.js"
+grep -q 'Show all' "$ROOT/memory-cockpit-v2/src/pages/thin/Research.jsx"
+(cd "$ROOT/memory-cockpit-v2" && node scripts/compile-run-list-test.mjs)
 grep -q 'researchLane' "$ROOT/memory-cockpit-v2/server/researchRunsSchema.js"
 grep -q 'isThesisReportJob' "$ROOT/memory-cockpit-v2/server/researchRunsWorker.js"
 grep -q 'Stopped before PDF' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"

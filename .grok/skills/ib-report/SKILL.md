@@ -25,7 +25,7 @@ Decision-support only: no buy/sell/hold, no price target, no sizing. **Initiatio
 
 1. **START** — load this desk’s CONFIRMED house (+ version) **and** the risk register (pack/SoR). Protocol: **steelman house → delta vs house → red-team → flag contradictions loudly.**
 2. **REGISTER AS CO-INPUT** — depth is a **glass/arg choice** (`all` | `pick` | `skim`). House is never off. Status is **TESTED, never cited as evidence**. Propose only A/B-anchored moves — else **GAP**. Never silent-write.
-3. **REPORT STRUCTURE** — risk section is the **register UPDATED** (in-scope Rn → test → evidence → tripwires), never a fresh risks essay. Out-of-scope Rn: one line `not tested this note`. **Delta vs house is mandatory.**
+3. **REPORT STRUCTURE** — on `all`/`pick`, risk section is the **register UPDATED** (in-scope Rn → test → evidence → tripwires), never a fresh risks essay. Out-of-scope Rn: one line `not tested this note`. On **`skim` (House only): omit `register-updated` from ORDER** — no register chapter, no WATCH table, no per-Rn essay. **Delta vs house is mandatory in every mode.**
 4. **CLOSEOUT (fail-closed)** — file anchors per vault claim format → `./ont compile TICKER && ./ont verify TICKER` exit 0 → house/risk implications **only** via `propose_*` MCP → PDF in the run archive. **PDF is ops, never pack SoR.**
 
 ---
@@ -57,18 +57,28 @@ Ask only what is still open:
 3. **Page budget** — default: earnings-update **8–12**; deep-dive **15–25**; initiation **20–30**  
 4. **Section ORDER** — propose the default below; get a nod or edits  
 5. **Focus** — optional (one print, one product, one Rn)  
-6. **Register scope** — `all` (default: WATCH in depth, INTACT/FIRED short) · `pick` + ids · `skim` (titles+status table). **House is never off.** If the seed already set this, print it and continue.  
+6. **Register scope** — `all` (default: WATCH in depth, INTACT/FIRED short) · `pick` + ids · `skim` (**House only: no register chapter**). **House is never off.** If the seed already set this, print it and continue.  
 7. **Pace** — `stop` (default: wait at Checkpoint 1 and 2) · `through` (end to end, no conversational waits). If the seed already set this, print it and continue.
 
-Then print the scope block (include register scope + pace) and proceed only if desk+mode are set. On **through**, do not wait for an ORDER nod — print defaults and go.
+Then print the scope block (include register scope + pace) and proceed only if desk+mode are set. On **through**, do not wait for an ORDER nod — print defaults and go. If the seed lists **ORDER (required)**, that list wins — do not add `register-updated` on skim.
 
 ### Default ORDER (exec always drafted last)
 
+If the seed / glass set **`skim` (House only)**, use **only** the skim table. Do not start from the all/pick table and “drop later.” Publish + `build.py` refuse a register chapter on skim.
+
+**all / pick**
+
 **earnings-update:** `print-vs-house` · `register-updated` · `tripwires` · `gaps` · `exec`  
 **deep-dive:** `setup` · `delta-vs-house` · `register-updated` · `mechanism` · `monitorables` · `exec`  
-**initiation:** `spine` · `delta-vs-house` · `financials` · `register-updated` · `monitorables` · `exec`
+**initiation:** `spine` · `delta-vs-house` · `financials` · `register-updated` · `monitorables` · `exec`  
 
-`delta-vs-house` and `register-updated` are mandatory in every mode (`print-vs-house` counts as delta for earnings-update). On **skim**, `register-updated` is the titles+status table — not a mechanism essay.
+**skim (House only) — no register chapter**
+
+**earnings-update:** `print-vs-house` · `gaps` · `exec`  
+**deep-dive:** `setup` · `delta-vs-house` · `mechanism` · `monitorables` · `exec`  
+**initiation:** `spine` · `delta-vs-house` · `financials` · `monitorables` · `exec`
+
+`delta-vs-house` is mandatory in every mode (`print-vs-house` counts as delta for earnings-update). `register-updated` is mandatory on **`all`** and **`pick`**. On **`skim`**, never write `register-updated` / `tripwires` into `config.py` ORDER or `sections/`. One line in setup is enough: `Register not in this note (glass: house only).` Do not add a register table or “how house reads this register” section.
 
 ### Per-Rn (in-scope only)
 
@@ -81,7 +91,7 @@ Each in-scope Rn in `register-updated` / anchors:
 5. **GAP** if unverified  
 
 Out of scope: `Rn Title — not tested this note.`  
-**skim:** id · name · pack status. Still print the WATCH title list. No deep test.  
+**skim:** no register chapter. Do not deep-test Rn. Do not print a WATCH table in the PDF. House via `delta-vs-house` only.  
 **all:** WATCH in depth; INTACT/FIRED short; still hunt add-risk *candidates* outside the register.
 
 ---
@@ -110,7 +120,7 @@ $COCKPIT_VAULT/cockpit/research/{TICKER}/runs/{YYYYMMDDTHHMMSSZ}_thesis_report_{
 1. `list_desks` if desk is uncertain.  
 2. `get_house_view` — stance, status, version/date, flip triggers.  
 3. `get_pack_snapshot` — house_prior, **SoR-aware** WATCH/INTACT/FIRED, claims, gaps. Copy WATCH **titles** from pack; never invent.  
-4. Tripwires: MCP `get_risk_sor` per **in-scope** Rn (`all` → every WATCH plus any FIRED in play; `pick` → listed ids; `skim` → skip deep SoR, still list WATCH titles). If that fails, read vault `raw/{slug}-research/08-risks-catalysts.md` — do not invent tables.  
+4. Tripwires: MCP `get_risk_sor` per **in-scope** Rn (`all` → every WATCH plus any FIRED in play; `pick` → listed ids; `skim` → skip `get_risk_sor` and skip a register section). If that fails, read vault `raw/{slug}-research/08-risks-catalysts.md` — do not invent tables.  
 5. Short “context loaded” blurb: house status + WATCH list + register scope. **No web yet** if scope is still open.  
 6. If `list_desks` does not include this desk, **stop** — MCP is pinned to the wrong tree. Re-run `./scripts/install-grok-mcp.sh` from kernel (or OPEN GROK from kernel glass). Do not silently use another vault.
 

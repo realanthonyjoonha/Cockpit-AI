@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, apiPost } from '../../api.js';
 import { filingDocLabel, companyEdgarUrl } from './filingLink.js';
+import { visibleCompileRuns } from './compileRunList.js';
 
 const POLL_MS = 2500;
 
@@ -285,6 +286,7 @@ export default function ThinResearch({ desk }) {
   const [compare, setCompare] = useState(null);
   const [pipe, setPipe] = useState(null);
   const [pipeBusy, setPipeBusy] = useState(false);
+  const [showAllRuns, setShowAllRuns] = useState(false);
   const pollRef = useRef(null);
 
   const loadPipeline = useCallback((force) => {
@@ -359,6 +361,9 @@ export default function ThinResearch({ desk }) {
     setCompare(null);
     setCompareId('');
     setTab('all');
+    let all = false;
+    try { all = localStorage.getItem(`cockpit.compileList.${slug}`) === 'all'; } catch { /* */ }
+    setShowAllRuns(all);
   }, [slug, stopPoll]);
 
   useEffect(() => {
@@ -524,7 +529,12 @@ export default function ThinResearch({ desk }) {
   };
 
   const runs = list?.runs || [];
+  const visibleRuns = useMemo(
+    () => visibleCompileRuns(runs, { showAll: showAllRuns, selectedId: runId }),
+    [runs, showAllRuns, runId],
+  );
   const empty = !list?.available || !runs.length;
+  const listTrimmed = !showAllRuns && visibleRuns.length < runs.length;
   const primaryBusy = busy || polling;
   const showPromoted = runs.some((r) => r.promoted);
 
@@ -729,7 +739,26 @@ export default function ThinResearch({ desk }) {
           <div className="shd">
             <span className="no">1</span>
             <h2>RUNS</h2>
-            <span className="m">draft archive · click densest complete run</span>
+            <span className="m">
+              {listTrimmed ? `${visibleRuns.length} of ${runs.length}` : 'draft archive'}
+              {' · click densest complete run'}
+            </span>
+            {runs.length > visibleRuns.length || showAllRuns ? (
+              <button
+                type="button"
+                className="btn"
+                style={{ fontSize: 9, padding: '2px 8px' }}
+                onClick={() => {
+                  const next = !showAllRuns;
+                  setShowAllRuns(next);
+                  try {
+                    localStorage.setItem(`cockpit.compileList.${slug}`, next ? 'all' : 'recent');
+                  } catch { /* */ }
+                }}
+              >
+                {showAllRuns ? 'Show recent' : 'Show all'}
+              </button>
+            ) : null}
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table className="data" style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
@@ -742,7 +771,7 @@ export default function ThinResearch({ desk }) {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((r) => {
+                {visibleRuns.map((r) => {
                   const thin = r.status === 'running'
                     || (r.status === 'complete' && !(r.n_claims > 0 || r.n_sources > 0));
                   return (

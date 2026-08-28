@@ -17,7 +17,7 @@ export default function ThinEmpty({ desk, path = '' }) {
       <div className="sect">
         <p className="dimmer" style={{ maxWidth: '40rem', lineHeight: 1.55, padding: '8px 16px 16px' }}>
           Route <span className="mono">#{base.slice(1)}/{path || '…'}</span> is not a known thin room.
-          Valid rooms: overview · risks · house · sources · street · model · <b>compile</b> (`research`) · <b>reports</b> · ask · update.
+          Valid rooms: overview · risks · house · sources · street · model · <b>compile</b> (`research`) · <b>reports</b> · update.
           Hard-refresh (Cmd+Shift+R) if you just upgraded and still see this for a valid room.
         </p>
         <div className="pagechips" style={{ paddingBottom: 16 }}>

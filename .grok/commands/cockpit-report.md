@@ -13,8 +13,8 @@ Parse `$ARGUMENTS`: desk (slug/ticker) · mode (`deep-dive` | `earnings-update` 
 
 1. Decision-support only — no buy/sell/hold, PT, sizing. Initiation = structure, not a rating.  
 2. START: `get_house_view` + `get_pack_snapshot` (+ risks SoR). Steelman → delta vs house → red-team.  
-3. Register depth follows glass/args (`all` / `pick` / `skim`). In-scope Rn: mechanism · tripwires · evidence · INTACT/WATCH/FIRED *test* · GAP. Out of scope: one line. Status is **not evidence**. House is never off.  
-4. Report: **delta vs house** + **register UPDATED** (not a new risks essay). Skim = titles+status table.  
+3. Register depth follows glass/args (`all` / `pick` / `skim`). In-scope Rn: mechanism · tripwires · evidence · INTACT/WATCH/FIRED *test* · GAP. Out of scope: one line. **skim:** omit the register chapter. Status is **not evidence**. House is never off.  
+4. Report: **delta vs house** always. **register UPDATED** on all/pick only — not a new risks essay. Skim = no register section.  
 5. One `baseline-anchors.md` per run; no number absent from it; grades `[A|B|C]`.  
 6. **CHECKPOINT 1** — on `stop`, wait for Anthony (verdict, delta, contested facts, grade mix). On `through`, record and continue.  
 7. Draft exec last; 0.6× merge guard; mode-discipline grep (`overweight|buy rating|price target|fair value` only in the disclaimer).  

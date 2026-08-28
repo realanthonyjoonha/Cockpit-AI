@@ -139,13 +139,92 @@ export function shortRegisterToken(id) {
   return m ? `R${m[1]}` : s;
 }
 
+/** Section ORDER for config.py. skim drops register-updated and tripwires. */
+export function defaultThesisOrder(mode, registerScope) {
+  const m = normalizeThesisMode(mode);
+  const skim = normalizeRegisterScope(registerScope) === 'skim';
+  if (m === 'earnings-update') {
+    return skim
+      ? ['print-vs-house', 'gaps', 'exec']
+      : ['print-vs-house', 'register-updated', 'tripwires', 'gaps', 'exec'];
+  }
+  if (m === 'initiation') {
+    return skim
+      ? ['spine', 'delta-vs-house', 'financials', 'monitorables', 'exec']
+      : ['spine', 'delta-vs-house', 'financials', 'register-updated', 'monitorables', 'exec'];
+  }
+  return skim
+    ? ['setup', 'delta-vs-house', 'mechanism', 'monitorables', 'exec']
+    : ['setup', 'delta-vs-house', 'register-updated', 'mechanism', 'monitorables', 'exec'];
+}
+
+export function formatThesisOrder(order) {
+  const o = Array.isArray(order) ? order.map((s) => String(s || '').trim()).filter(Boolean) : [];
+  return o.join(' · ');
+}
+
+export function orderOmitsRegister(order) {
+  const o = Array.isArray(order) ? order : [];
+  return !o.includes('register-updated') && !o.includes('tripwires');
+}
+
+const REGISTER_SECTION_IDS = new Set(['register-updated', 'tripwires']);
+
+/** Parse ORDER = ["a", "b"] from a thesis config.py (agent-authored). */
+export function parseConfigPyOrder(text) {
+  const m = String(text || '').match(/ORDER\s*=\s*\[([^\]]*)\]/m);
+  if (!m) return null;
+  return [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((x) => x[1]);
+}
+
+/**
+ * Fail-closed skim checks: ORDER + on-disk sections/config must omit register.
+ * @param {{ register_scope?: string, order?: string[], runDir?: string|null }} opts
+ * @returns {string[]} errors
+ */
+export function skimThesisViolations(opts = {}) {
+  const errors = [];
+  if (normalizeRegisterScope(opts.register_scope) !== 'skim') return errors;
+
+  const order = Array.isArray(opts.order) ? opts.order.map((s) => String(s || '').trim()).filter(Boolean) : [];
+  if (order.length && !orderOmitsRegister(order)) {
+    errors.push('skim: ORDER must omit register-updated and tripwires');
+  }
+
+  const runDir = opts.runDir ? String(opts.runDir) : '';
+  if (!runDir) return errors;
+
+  try {
+    const cfgPath = path.join(runDir, 'config.py');
+    if (fs.existsSync(cfgPath)) {
+      const parsed = parseConfigPyOrder(fs.readFileSync(cfgPath, 'utf8'));
+      if (parsed && !orderOmitsRegister(parsed)) {
+        errors.push('skim: config.py ORDER still includes a register chapter');
+      }
+    }
+    for (const sid of REGISTER_SECTION_IDS) {
+      for (const rel of [`sections/${sid}.md`, `output/sections/${sid}.md`]) {
+        const p = path.join(runDir, rel);
+        if (fs.existsSync(p)) {
+          let size = 0;
+          try { size = fs.statSync(p).size; } catch { size = 1; }
+          if (size > 0) errors.push(`skim: ${rel} must not exist`);
+        }
+      }
+    }
+  } catch (e) {
+    errors.push(`skim: could not verify run folder (${e.message || e})`);
+  }
+  return errors;
+}
+
 export function describeRegisterScope(scope, ids) {
   const { register_scope, register_ids } = resolveThesisRegister({
     register_scope: scope,
     register_ids: ids,
   });
   if (register_scope === 'skim') {
-    return 'skim — house-only; register is a titles+status table, no deep test';
+    return 'skim — house only; omit register-updated from ORDER (no register chapter)';
   }
   if (register_scope === 'pick') {
     const labels = [...new Set(register_ids.map(shortRegisterToken))];
@@ -162,7 +241,7 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
     return {
       inputs: {
         focus, prior_run_id, as_of_request,
-        thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null,
+        thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
       },
       thesis: null,
     };
@@ -176,6 +255,9 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
   );
   const mode = normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode || raw.thesis?.mode);
   const pace = normalizeThesisPace(raw.thesis_pace || raw.inputs?.thesis_pace || raw.thesis?.thesis_pace);
+  const order = Array.isArray(raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order)
+    ? (raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order)
+    : defaultThesisOrder(mode, reg.register_scope);
   return {
     inputs: {
       focus,
@@ -186,6 +268,7 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
       register_scope: reg.register_scope,
       register_ids: reg.register_ids,
       thesis_pace: pace,
+      thesis_order: order,
     },
     thesis: {
       mode,
@@ -194,6 +277,7 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
       register_scope: reg.register_scope,
       register_ids: reg.register_ids,
       thesis_pace: pace,
+      order,
     },
   };
 }
@@ -434,6 +518,12 @@ export function validateResearchRunPublish(raw, opts = {}) {
       if (raw.promotion && raw.promotion.pack_claims) {
         errors.push('thesis_report PDF is ops — never pack SoR');
       }
+      const thesisBits = collectThesisFields(raw, job, { complete: true });
+      errors.push(...skimThesisViolations({
+        register_scope: thesisBits.inputs.register_scope,
+        order: thesisBits.inputs.thesis_order,
+        runDir: opts.runDir || null,
+      }));
     } else if (!summary && !financials.length && !narrative.length) {
       errors.push('complete run needs summary or extract claims');
     }

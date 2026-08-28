@@ -34,6 +34,10 @@ const {
   normalizeRegisterIds,
   resolveThesisRegister,
   normalizeThesisPace,
+  defaultThesisOrder,
+  orderOmitsRegister,
+  skimThesisViolations,
+  parseConfigPyOrder,
 } = await import(path.join(ROOT, 'server', 'researchRunsSchema.js'));
 const { writeResearchRunsAgentSeed } = await import(path.join(ROOT, 'server', 'researchRunsAgentSeed.js'));
 const { reconcileRun, ORPHAN_FAIL_MS } = await import(path.join(ROOT, 'server', 'researchRunsWorker.js'));
@@ -294,6 +298,77 @@ if (!seedThruTxt.includes('Pace: through') && !seedThruTxt.includes('do not wait
   bad(`thesis through seed missing pace (${seedThru.error || seedThru.path})`);
 } else ok('thesis through seed pace');
 cancelResearchRun('THRUTEST', thThru.run_id);
+const thSkimSeed = startResearchRun('SKIMSEED', {
+  job: 'thesis_report', thesis_mode: 'deep-dive', register_scope: 'skim',
+}, { desk: 'skimseed' });
+const seedSkim = writeResearchRunsAgentSeed('SKIMSEED', {
+  mode: 'pipeline', run_id: thSkimSeed.run_id, job: 'thesis_report',
+  thesis_mode: 'deep-dive', register_scope: 'skim',
+});
+const seedSkimTxt = seedSkim.ok && seedSkim.path ? fs.readFileSync(seedSkim.path, 'utf8') : '';
+if (!seedSkimTxt.includes('omit `register-updated`') || !seedSkimTxt.includes('No register chapter')) {
+  bad(`skim seed still asks for register chapter (${seedSkim.error || 'no match'})`);
+} else ok('skim seed omits register chapter');
+const skimOrder = defaultThesisOrder('deep-dive', 'skim');
+if (!orderOmitsRegister(skimOrder) || skimOrder.includes('register-updated')) {
+  bad(`deep-dive skim ORDER ${skimOrder.join(',')}`);
+} else ok('deep-dive skim ORDER has no register-updated');
+if (!orderOmitsRegister(defaultThesisOrder('earnings-update', 'house-only'))) {
+  bad('earnings-update skim still has register');
+} else ok('earnings-update skim ORDER omits register');
+if (orderOmitsRegister(defaultThesisOrder('deep-dive', 'all'))) {
+  bad('deep-dive all lost register-updated');
+} else ok('deep-dive all still has register-updated');
+if (!seedSkimTxt.includes(skimOrder.join(' · '))) {
+  bad('skim seed missing exact ORDER list');
+} else ok('skim seed lists exact ORDER');
+const skimGet = getResearchRun('SKIMSEED', thSkimSeed.run_id);
+if ((skimGet.thesis?.order || []).join(',') !== skimOrder.join(',')) {
+  bad(`skim persist ORDER ${JSON.stringify(skimGet.thesis)}`);
+} else ok('skim run persists ORDER');
+
+if (parseConfigPyOrder('ORDER = ["setup", "register-updated", "exec"]')?.join(',') !== 'setup,register-updated,exec') {
+  bad('parseConfigPyOrder');
+} else ok('parseConfigPyOrder');
+if (skimThesisViolations({ register_scope: 'skim', order: skimOrder }).length) {
+  bad('clean skim ORDER should pass');
+} else ok('skimThesisViolations clean ORDER');
+if (!skimThesisViolations({
+  register_scope: 'skim',
+  order: ['setup', 'register-updated', 'exec'],
+}).some((e) => /ORDER/.test(e))) {
+  bad('bad ORDER not rejected');
+} else ok('skimThesisViolations rejects register ORDER');
+
+const skimGate = startResearchRun('SKIMGATE', {
+  job: 'thesis_report', thesis_mode: 'deep-dive', register_scope: 'skim',
+}, { desk: 'skimgate' });
+if (!skimGate?.run_id) bad(`skimgate start ${skimGate?.error}`);
+else {
+  const gateDir = skimGate.path;
+  fs.writeFileSync(path.join(gateDir, 'config.py'), 'ORDER = ["setup", "register-updated", "exec"]\n', 'utf8');
+  fs.mkdirSync(path.join(gateDir, 'sections'), { recursive: true });
+  fs.writeFileSync(path.join(gateDir, 'sections', 'register-updated.md'), '# register\n', 'utf8');
+  const diskHits = skimThesisViolations({
+    register_scope: 'skim',
+    order: skimOrder,
+    runDir: gateDir,
+  });
+  if (!diskHits.some((e) => /config\.py/.test(e)) || !diskHits.some((e) => /register-updated\.md/.test(e))) {
+    bad(`disk skim gate ${JSON.stringify(diskHits)}`);
+  } else ok('skimThesisViolations rejects config.py + section file');
+  const pubBad = publishResearchRun('SKIMGATE', skimGate.run_id, {
+    status: 'complete',
+    job: 'thesis_report',
+    summary: 'House-only note. Decision-support only.',
+    register_scope: 'skim',
+    thesis_mode: 'deep-dive',
+  }, { desk: 'skimgate' });
+  if (pubBad?.ok) bad('publish must fail on skim register chapter');
+  else ok('publish refuses skim with register chapter on disk');
+  cancelResearchRun('SKIMGATE', skimGate.run_id);
+}
+cancelResearchRun('SKIMSEED', thSkimSeed.run_id);
 const laneComp = listResearchRuns('TEST', { desk: 'test', lane: 'compile' });
 const laneRep = listResearchRuns('TEST', { desk: 'test', lane: 'reports' });
 if (!laneComp.runs.every((r) => r.job !== 'thesis_report')) bad('compile lane leaked thesis');

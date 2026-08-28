@@ -18,13 +18,17 @@ const REQUIRED = [
   'model',
   'research',
   'reports',
-  'ask',
   'update',
 ];
+/** Ask is API/CLI-only — strip from advertised rooms on upgrade. */
+const DROP = ['ask'];
 
 function mergeRooms(existing) {
   const list = Array.isArray(existing) ? existing.map(String) : [];
-  const out = [...list];
+  const out = [];
+  for (const r of list) {
+    if (!DROP.includes(r) && !out.includes(r)) out.push(r);
+  }
   for (const r of REQUIRED) {
     if (!out.includes(r)) out.push(r);
   }

@@ -16,6 +16,8 @@ export default function ThinRisk({ desk, id }) {
   const [rationale, setRationale] = useState('');
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [activeProposal, setActiveProposal] = useState(null);
+  const [showRaw, setShowRaw] = useState(false);
 
   const loadRisk = useCallback(() => {
     setR(null);
@@ -58,8 +60,33 @@ export default function ThinRisk({ desk, id }) {
       .catch(() => { /* keep optimistic rows if reload fails */ });
   }, [slug, matchesThisRisk]);
 
-  useEffect(() => { loadRisk(); }, [loadRisk]);
+  useEffect(() => {
+    setActiveProposal(null);
+    setShowRaw(false);
+    loadRisk();
+  }, [loadRisk]);
   useEffect(() => { if (r) loadPending(); }, [r, loadPending]);
+
+  const btnSm = { padding: '3px 8px', fontSize: 10 };
+
+  async function openProposal(pid) {
+    if (busy || !pid) return;
+    setBusy(true);
+    setBanner(null);
+    try {
+      const out = await api(`${slug}/risks/proposals/${encodeURIComponent(pid)}`);
+      if (!out?.proposal) {
+        setBanner(out?.error || 'proposal not found');
+        return;
+      }
+      setShowRaw(false);
+      setActiveProposal(out.proposal);
+    } catch (e) {
+      setBanner(e.message || 'load failed');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function proposeStatus() {
     if (busy || !r) return;
@@ -129,6 +156,8 @@ export default function ThinRisk({ desk, id }) {
           note += ' · compile failed — use COMPILE BOOK';
         }
         setBanner(note);
+        setActiveProposal(null);
+        setShowRaw(false);
         setPending((prev) => prev.filter((p) => p.id !== pid));
         await loadPending();
         await loadRisk();
@@ -149,6 +178,10 @@ export default function ThinRisk({ desk, id }) {
       if (!out?.ok) setBanner(out?.error || 'reject failed');
       else {
         setPending((prev) => prev.filter((p) => p.id !== pid));
+        if (activeProposal?.id === pid) {
+          setActiveProposal(null);
+          setShowRaw(false);
+        }
         setBanner('Rejected');
         await loadPending();
       }
@@ -314,9 +347,9 @@ export default function ThinRisk({ desk, id }) {
           </button>
         </div>
 
-        {pending.length > 0 && (
+        {(pending.length > 0 || activeProposal) && (
           <div style={{ padding: '0 16px 12px' }}>
-            {pending.map((p) => (
+            {pending.length > 0 && !activeProposal && pending.map((p) => (
               <div
                 key={p.id}
                 style={{
@@ -330,31 +363,120 @@ export default function ThinRisk({ desk, id }) {
               >
                 <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>PENDING</span>
                 <span>
-                  {(p.from_status || '?')} → <b>{p.to_status}</b>
+                  {(p.from_status || '?')} → <b>{p.to_status || '?'}</b>
                 </span>
                 {p.rationale && <span className="dim">{p.rationale.slice(0, 60)}</span>}
                 <button
                   type="button"
                   className="desk-btn on"
                   disabled={busy}
-                  onClick={() => acceptProposal(p.id)}
-                  style={{ padding: '3px 8px', fontSize: 10 }}
+                  onClick={() => openProposal(p.id)}
+                  style={btnSm}
                   title={p.id}
                 >
-                  ACCEPT
+                  REVIEW
                 </button>
                 <button
                   type="button"
                   className="desk-btn"
                   disabled={busy}
                   onClick={() => rejectProposal(p.id)}
-                  style={{ padding: '3px 8px', fontSize: 10 }}
+                  style={btnSm}
                   title={p.id}
                 >
                   REJECT
                 </button>
               </div>
             ))}
+            {activeProposal && (
+              <div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
+                  <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>REVIEW</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
+                    {activeProposal.review?.title
+                      || `${activeProposal.from_status || '?'} → ${activeProposal.to_status || '?'}`}
+                  </span>
+                </div>
+                {(activeProposal.review?.rationale || activeProposal.rationale) ? (
+                  <div className="house-review-lede">
+                    {activeProposal.review?.rationale || activeProposal.rationale}
+                  </div>
+                ) : null}
+                {Array.isArray(activeProposal.review?.fields) && activeProposal.review.fields.length > 0 && (
+                  <div className="house-changes">
+                    <div className="house-changes-k">WHAT CHANGES</div>
+                    {activeProposal.review.fields.map((f) => (
+                      <div key={f.key} className="house-change-row">
+                        <div className="k">{String(f.key).toUpperCase()}</div>
+                        <div className="from">{f.from}</div>
+                        <div className="arrow">→</div>
+                        <div className="to">{f.to}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {Array.isArray(activeProposal.review?.blocks) && activeProposal.review.blocks.map((b) => (
+                  <div key={b.k} className="house-review-prose">
+                    <div className="house-changes-k">{b.k}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{b.text}</div>
+                  </div>
+                ))}
+                {Array.isArray(activeProposal.review?.tripwires) && activeProposal.review.tripwires.length > 0 && (
+                  <div className="house-diff">
+                    <div className="house-changes-k">MONITORS</div>
+                    {activeProposal.review.tripwires.map((row, i) => (
+                      <div key={`${row.t}-${i}`} className={`house-diff-line ${row.t}`}>
+                        <span className="mark">{row.t === 'add' ? '+' : row.t === 'del' ? '−' : ' '}</span>
+                        <span>{row.s}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showRaw && activeProposal.section_markdown ? (
+                  <pre className="house-review-raw">{activeProposal.section_markdown}</pre>
+                ) : null}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="desk-btn on"
+                    disabled={busy}
+                    onClick={() => acceptProposal(activeProposal.id)}
+                    style={btnSm}
+                  >
+                    {busy ? '…' : 'ACCEPT'}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-btn"
+                    disabled={busy}
+                    onClick={() => rejectProposal(activeProposal.id)}
+                    style={btnSm}
+                  >
+                    REJECT
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-btn"
+                    disabled={busy}
+                    onClick={() => { setShowRaw(false); setActiveProposal(null); }}
+                    style={btnSm}
+                  >
+                    BACK
+                  </button>
+                  {activeProposal.section_markdown ? (
+                    <button
+                      type="button"
+                      className="desk-btn"
+                      disabled={busy}
+                      onClick={() => setShowRaw((v) => !v)}
+                      style={btnSm}
+                    >
+                      {showRaw ? 'Hide raw' : 'Raw markdown'}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

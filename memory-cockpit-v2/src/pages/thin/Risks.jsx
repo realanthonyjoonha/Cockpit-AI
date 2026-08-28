@@ -29,6 +29,8 @@ export default function ThinRisks({ desk }) {
   const [pending, setPending] = useState([]);
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState(null);
+  const [activeProposal, setActiveProposal] = useState(null);
+  const [showRaw, setShowRaw] = useState(false);
 
   const load = useCallback(() => {
     api(`${slug}/risks`).then(setD).catch(() => setD({ available: false, risks: [] }));
@@ -40,7 +42,46 @@ export default function ThinRisks({ desk }) {
       .catch(() => setPending([]));
   }, [slug]);
 
-  useEffect(() => { load(); loadPending(); }, [load, loadPending]);
+  useEffect(() => {
+    setActiveProposal(null);
+    setShowRaw(false);
+    load();
+    loadPending();
+  }, [load, loadPending]);
+
+  const btnSm = { padding: '3px 8px', fontSize: 10 };
+
+  function pendingSummary(p) {
+    if (p.kind === 'add_risk') {
+      const bits = [p.risk_name || p.title || 'New risk', p.to_status || 'WATCH'];
+      if (p.grade && p.grade !== '—') bits.push(`[${p.grade}]`);
+      return bits.filter(Boolean).join(' · ');
+    }
+    if (p.kind === 'set_tripwires') {
+      const nTw = p.tripwire_count ?? (p.tripwires || []).length;
+      return `${p.risk_name || 'Risk'} · ${nTw} monitors`;
+    }
+    return `${p.risk_name || 'Risk'} · ${(p.from_status || '?')} → ${p.to_status || '?'}`;
+  }
+
+  async function openProposal(pid) {
+    if (busy || !pid) return;
+    setBusy(true);
+    setBanner(null);
+    try {
+      const out = await api(`${slug}/risks/proposals/${encodeURIComponent(pid)}`);
+      if (!out?.proposal) {
+        setBanner(out?.error || 'proposal not found');
+        return;
+      }
+      setShowRaw(false);
+      setActiveProposal(out.proposal);
+    } catch (e) {
+      setBanner(e.message || 'load failed');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function acceptProposal(pid) {
     if (busy || !pid) return;
@@ -62,6 +103,8 @@ export default function ThinRisks({ desk }) {
           note += ' · compile failed — use COMPILE BOOK';
         }
         setBanner(note);
+        setActiveProposal(null);
+        setShowRaw(false);
         setPending((prev) => prev.filter((p) => p.id !== pid));
         await loadPending();
         load();
@@ -82,6 +125,10 @@ export default function ThinRisks({ desk }) {
       if (!out?.ok) setBanner(out?.error || 'reject failed');
       else {
         setPending((prev) => prev.filter((p) => p.id !== pid));
+        if (activeProposal?.id === pid) {
+          setActiveProposal(null);
+          setShowRaw(false);
+        }
         setBanner(null);
         await loadPending();
       }
@@ -90,47 +137,6 @@ export default function ThinRisks({ desk }) {
     } finally {
       setBusy(false);
     }
-  }
-
-  /** One quiet PENDING row: kind · label · ACCEPT · REJECT */
-  function pendingRow(p, label) {
-    return (
-      <div
-        key={p.id}
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 8,
-          alignItems: 'center',
-          marginBottom: 6,
-          fontSize: 11,
-        }}
-      >
-        <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>PENDING</span>
-        <span className="dim" style={{ fontSize: 9 }}>{kindLabel(p.kind)}</span>
-        <span>{label}</span>
-        <button
-          type="button"
-          className="desk-btn on"
-          disabled={busy}
-          onClick={() => acceptProposal(p.id)}
-          style={{ padding: '3px 8px', fontSize: 10 }}
-          title={p.id}
-        >
-          ACCEPT
-        </button>
-        <button
-          type="button"
-          className="desk-btn"
-          disabled={busy}
-          onClick={() => rejectProposal(p.id)}
-          style={{ padding: '3px 8px', fontSize: 10 }}
-          title={p.id}
-        >
-          REJECT
-        </button>
-      </div>
-    );
   }
 
   if (!d) return <div className="crumb">LOADING…</div>;
@@ -172,30 +178,146 @@ export default function ThinRisks({ desk }) {
         </div>
       )}
 
-      {pending.length > 0 && (
+      {(pending.length > 0 || activeProposal) && (
         <div className="sect">
           <div className="shd">
             <span className="no">P</span>
             <h2>PENDING</h2>
-            <span className="m">{pending.length}</span>
+            <span className="m">{activeProposal ? 'review' : pending.length}</span>
           </div>
           <div style={{ padding: '8px 16px 12px' }}>
-            {orderedPending.map((p) => {
-              if (p.kind === 'add_risk') {
-                const bits = [p.risk_name || p.title || 'New risk', p.to_status || 'WATCH'];
-                if (p.grade && p.grade !== '—') bits.push(`[${p.grade}]`);
-                return pendingRow(p, bits.filter(Boolean).join(' · '));
-              }
-              if (p.kind === 'set_tripwires') {
-                const nTw = p.tripwire_count ?? (p.tripwires || []).length;
-                return pendingRow(p, `${p.risk_name || 'Risk'} · ${nTw} monitors`);
-              }
-              // status_change (default)
-              return pendingRow(
-                p,
-                `${p.risk_name || 'Risk'} · ${(p.from_status || '?')} → ${p.to_status || '?'}`,
-              );
-            })}
+            {pending.length > 0 && !activeProposal && orderedPending.map((p) => (
+              <div
+                key={p.id}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                  alignItems: 'center',
+                  marginBottom: 6,
+                  fontSize: 11,
+                }}
+              >
+                <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>PENDING</span>
+                <span className="dim" style={{ fontSize: 9 }}>{kindLabel(p.kind)}</span>
+                <span style={{ flex: 1, minWidth: 120 }}>{pendingSummary(p)}</span>
+                <button
+                  type="button"
+                  className="desk-btn on"
+                  disabled={busy}
+                  onClick={() => openProposal(p.id)}
+                  style={btnSm}
+                  title={p.id}
+                >
+                  REVIEW
+                </button>
+                <button
+                  type="button"
+                  className="desk-btn"
+                  disabled={busy}
+                  onClick={() => rejectProposal(p.id)}
+                  style={btnSm}
+                  title={p.id}
+                >
+                  REJECT
+                </button>
+              </div>
+            ))}
+            {activeProposal && (
+              <div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'baseline', marginBottom: 8 }}>
+                  <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>REVIEW</span>
+                  <span className="dim" style={{ fontSize: 9 }}>{kindLabel(activeProposal.kind)}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
+                    {activeProposal.review?.title || pendingSummary(activeProposal)}
+                  </span>
+                </div>
+                {activeProposal.review?.rationale || activeProposal.rationale ? (
+                  <div className="house-review-lede">
+                    {activeProposal.review?.rationale || activeProposal.rationale}
+                  </div>
+                ) : null}
+                {activeProposal.review?.unchanged ? (
+                  <div className="dim" style={{ fontSize: 12, margin: '0 0 10px' }}>
+                    Status unchanged. Nothing to apply unless you still want ACCEPT.
+                  </div>
+                ) : null}
+                {Array.isArray(activeProposal.review?.fields) && activeProposal.review.fields.length > 0 && (
+                  <div className="house-changes">
+                    <div className="house-changes-k">WHAT CHANGES</div>
+                    {activeProposal.review.fields.map((f) => (
+                      <div key={f.key} className="house-change-row">
+                        <div className="k">{String(f.key).toUpperCase()}</div>
+                        <div className="from">{f.from}</div>
+                        <div className="arrow">→</div>
+                        <div className="to">{f.to}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {Array.isArray(activeProposal.review?.blocks) && activeProposal.review.blocks.map((b) => (
+                  <div key={b.k} className="house-review-prose">
+                    <div className="house-changes-k">{b.k}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{b.text}</div>
+                  </div>
+                ))}
+                {Array.isArray(activeProposal.review?.tripwires) && activeProposal.review.tripwires.length > 0 && (
+                  <div className="house-diff">
+                    <div className="house-changes-k">MONITORS</div>
+                    {activeProposal.review.tripwires.map((row, i) => (
+                      <div key={`${row.t}-${i}`} className={`house-diff-line ${row.t}`}>
+                        <span className="mark">{row.t === 'add' ? '+' : row.t === 'del' ? '−' : ' '}</span>
+                        <span>{row.s}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showRaw && activeProposal.section_markdown ? (
+                  <pre className="house-review-raw">{activeProposal.section_markdown}</pre>
+                ) : null}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="desk-btn on"
+                    disabled={busy}
+                    onClick={() => acceptProposal(activeProposal.id)}
+                    style={btnSm}
+                    title={activeProposal.id}
+                  >
+                    {busy ? '…' : 'ACCEPT'}
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-btn"
+                    disabled={busy}
+                    onClick={() => rejectProposal(activeProposal.id)}
+                    style={btnSm}
+                  >
+                    REJECT
+                  </button>
+                  <button
+                    type="button"
+                    className="desk-btn"
+                    disabled={busy}
+                    onClick={() => { setShowRaw(false); setActiveProposal(null); }}
+                    style={btnSm}
+                  >
+                    BACK
+                  </button>
+                  {activeProposal.section_markdown ? (
+                    <button
+                      type="button"
+                      className="desk-btn"
+                      disabled={busy}
+                      onClick={() => setShowRaw((v) => !v)}
+                      style={btnSm}
+                    >
+                      {showRaw ? 'Hide raw' : 'Raw markdown'}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

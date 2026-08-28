@@ -40,6 +40,7 @@ import {
   proposeRiskTripwires,
   listRiskProposals,
   getRiskProposal,
+  reviewRiskProposal,
   acceptRiskProposal,
   rejectRiskProposal,
   readSorStatusMap,
@@ -154,7 +155,7 @@ export function createThinModel(profile) {
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'reports', 'ask', 'update'],
+      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'reports', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
@@ -759,8 +760,20 @@ export function createThinModel(profile) {
   function riskProposalGet(id) {
     try {
       const p = getRiskProposal(slug, id);
-      if (!p) return null;
-      return { ...p, desk: deskId, ticker: TICKER, decision_support_only: true };
+      if (!p) return { available: false, ok: false, error: 'proposal not found', desk: deskId, ticker: TICKER };
+      let review = null;
+      try {
+        review = reviewRiskProposal(p);
+      } catch {
+        review = null;
+      }
+      return {
+        available: true,
+        proposal: { ...p, review },
+        desk: deskId,
+        ticker: TICKER,
+        decision_support_only: true,
+      };
     } catch (e) {
       return { available: false, ok: false, error: e.message || String(e) };
     }
@@ -1028,7 +1041,7 @@ export function createThinModel(profile) {
         'Hand-edit ontology/store/by_ticker/*.json',
         'Save research to Desktop/Downloads',
         'Chat-only (no file) — will not appear on glass',
-        'Auto-confirm house view without Anthony saying save/confirm',
+        'Silent-write house or risks — Grok proposes; glass ACCEPT only',
         neverGen,
       ],
       commands: {
@@ -1040,15 +1053,15 @@ export function createThinModel(profile) {
       glass: {
         compile: `POST /api/${slug}/compile or COMPILE BOOK`,
         refresh: `POST /api/${slug}/book/refresh or REFRESH (re-read only)`,
-        verify: [`#/${slug}/overview`, `#/${slug}/risks`, `#/${slug}/ask`, `#/${slug}/house`],
+        verify: [`#/${slug}/overview`, `#/${slug}/risks`, `#/${slug}/house`],
       },
       success_criteria: [
         { id: 'S1', text: 'Get a new fact or risk change from research' },
         { id: 'S2', text: 'Land it in the correct file with graded format' },
-        { id: 'S3', text: `Run ./ont compile ${TICKER}` },
+        { id: 'S3', text: 'Hit COMPILE BOOK on glass (preferred) or ./ont compile' },
         { id: 'S4', text: 'Hit REFRESH BOOK on the glass' },
-        { id: 'S5', text: 'See the change on Risks / Ask / Overview' },
-        { id: 'S6', text: 'House view untouched unless you said confirm' },
+        { id: 'S5', text: 'See the change on Risks / Overview' },
+        { id: 'S6', text: 'House / risks only via glass ACCEPT of a proposal (or explicit save)' },
       ],
     };
   }

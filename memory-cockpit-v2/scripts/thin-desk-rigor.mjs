@@ -32,7 +32,7 @@ const VT = 9000; // virtual-time-budget ms — pack fetch + React mount
 
 const REG = JSON.parse(readFileSync(path.join(ROOT, 'config/thin-desks.json'), 'utf8'));
 const DESKS = REG.desks || [];
-const ROOMS = REG.rooms || ['overview', 'risks', 'house', 'sources', 'ask', 'update'];
+const ROOMS = REG.rooms || ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'reports', 'update'];
 
 let pass = 0;
 let fail = 0;
@@ -473,12 +473,16 @@ async function layerDom() {
       `${d.label} Risks`,
       `${d.label} House`,
       `${d.label} Sources`,
-      `${d.label} Ask`,
+      `${d.label} Street`,
+      `${d.label} Model`,
+      `${d.label} Compile`,
+      `${d.label} Reports`,
       `${d.label} Update`,
     ];
     for (const t of need) {
       if (!dom.includes(t)) return `rail title missing: ${t}`;
     }
+    if (dom.includes(`${d.label} Ask`)) return 'Ask still on rail (API/CLI only)';
     // class ric for rail icons
     if (!/class="ric/.test(dom)) return 'no .ric rail icons';
     return '';

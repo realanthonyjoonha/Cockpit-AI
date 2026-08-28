@@ -16,6 +16,7 @@ import {
   normalizeThesisCheckpoint,
   normalizeThesisPace,
   resolveThesisRegister,
+  defaultThesisOrder,
   researchLane,
   jobMatchesLane,
 } from './researchRunsSchema.js';
@@ -478,6 +479,9 @@ export function getResearchRun(ticker, runId, opts = {}) {
         ? meta.thesis.register_ids
         : (Array.isArray(meta.inputs?.register_ids) ? meta.inputs.register_ids : []),
       thesis_pace: meta.thesis?.thesis_pace || meta.inputs?.thesis_pace || 'stop',
+      order: Array.isArray(meta.thesis?.order || meta.inputs?.thesis_order)
+        ? (meta.thesis?.order || meta.inputs?.thesis_order)
+        : null,
     } : null,
     decision_support_only: true,
     note: isThesisReportJob(meta.job)
@@ -540,6 +544,9 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   const thesisPace = isThesisReportJob(job)
     ? normalizeThesisPace(body.thesis_pace || body.thesisPace)
     : null;
+  const thesisOrder = isThesisReportJob(job)
+    ? defaultThesisOrder(thesisMode, thesisRegister.register_scope)
+    : null;
   const meta = {
     schema_version: RESEARCH_RUNS_SCHEMA_VERSION,
     run_id,
@@ -560,6 +567,7 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       register_scope: thesisRegister?.register_scope || null,
       register_ids: thesisRegister?.register_ids || null,
       thesis_pace: thesisPace,
+      thesis_order: thesisOrder,
     },
     thesis: isThesisReportJob(job) ? {
       mode: thesisMode,
@@ -568,6 +576,7 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       register_scope: thesisRegister.register_scope,
       register_ids: thesisRegister.register_ids,
       thesis_pace: thesisPace,
+      order: thesisOrder,
     } : null,
     worker: null,
     promotion: {
@@ -769,6 +778,7 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
       run_id: rid,
       requireComplete: body.status !== 'failed' && body.status !== 'cancelled',
       acquiredDir: fs.existsSync(acquiredDir) ? acquiredDir : null,
+      runDir: dir,
     },
   );
 

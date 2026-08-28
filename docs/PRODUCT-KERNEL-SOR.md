@@ -37,6 +37,8 @@ memory-cockpit-v2/server/thinResearchRuns.js
 memory-cockpit-v2/server/researchRunsSchema.js
 memory-cockpit-v2/server/researchRunsAgentSeed.js
 memory-cockpit-v2/src/pages/thin/Research.jsx
+memory-cockpit-v2/src/pages/thin/compileRunList.js
+memory-cockpit-v2/scripts/compile-run-list-test.mjs
 memory-cockpit-v2/src/pages/thin/Reports.jsx
 .grok/skills/ib-report/SKILL.md
 memory-cockpit-v2/server/pack.js
@@ -67,6 +69,12 @@ memory-cockpit-v2/src/pages/thin/Overview.jsx
 memory-cockpit-v2/src/pages/thin/House.jsx
 memory-cockpit-v2/server/houseProposals.js
 memory-cockpit-v2/scripts/house-proposal-review-test.mjs
+memory-cockpit-v2/scripts/risk-proposal-review-test.mjs
+memory-cockpit-v2/src/pages/thin/Risks.jsx
+memory-cockpit-v2/src/pages/thin/Risk.jsx
+memory-cockpit-v2/server/riskProposals.js
+memory-cockpit-v2/src/pages/thin/UpdateMetaOnly.jsx
+scripts/report/build.py
 memory-cockpit-v2/src/pages/thin/Sources.jsx
 memory-cockpit-v2/server/reportSchedule.js
 memory-cockpit-v2/scripts/report-schedule-test.mjs
@@ -78,6 +86,7 @@ memory-cockpit-v2/src/theme.css
 memory-cockpit-v2/scripts/source-read-test.mjs
 memory-cockpit-v2/src/pages/thin/DeskRouter.jsx
 memory-cockpit-v2/src/thinDesks.js
+memory-cockpit-v2/scripts/thin-rail-test.mjs
 memory-cockpit-v2/scripts/*street*
 memory-cockpit-v2/scripts/desk-health.mjs
 memory-cockpit-v2/scripts/thin-slug-resolve-test.mjs

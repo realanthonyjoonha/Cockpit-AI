@@ -6,7 +6,7 @@ import path from 'path';
 import { loadPack } from './pack.js';
 import { listResearchRuns, getResearchRun, researchRunDir } from './thinResearchRuns.js';
 import { resolveDeskIdentity } from './streetAgentSeed.js';
-import { humanJobLabel, resolveThesisRegister, describeRegisterScope, normalizeThesisPace, describeThesisPace } from './researchRunsSchema.js';
+import { humanJobLabel, resolveThesisRegister, describeRegisterScope, normalizeThesisPace, describeThesisPace, defaultThesisOrder, formatThesisOrder } from './researchRunsSchema.js';
 
 function normalizeMode(mode) {
   const m = String(mode || '').toLowerCase().trim();
@@ -73,12 +73,16 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
       runId ? `2. **run_id (required):** \`${runId}\` — write under \`${vaultRel}\`` : '2. If no run_id, POST /api/{slug}/research/runs `{ job: "thesis_report", thesis_mode }` then use returned run_id',
       '3. **House: always on.** MCP `get_house_view` + `get_pack_snapshot`. Steelman → delta vs house → red-team. Not a toggle.',
       `4. **Register scope (glass chose — do not re-ask):** ${describeRegisterScope(thesisRegister.register_scope, thesisRegister.register_ids)}`,
+      `   **ORDER (required — write this exact list in config.py; do not add sections):** ${formatThesisOrder(defaultThesisOrder(thesisMode, thesisRegister.register_scope))}`,
+      thesisRegister.register_scope === 'skim'
+        ? '   Do **not** add `register-updated` or `tripwires`. No register chapter, no WATCH table.'
+        : null,
       thesisRegister.register_scope === 'pick' && thesisRegister.register_ids.length
         ? `   - pack ids (use with get_risk_sor): ${thesisRegister.register_ids.map((x) => `\`${x}\``).join(', ')}`
         : null,
       '   - **all:** WATCH in depth (mechanism, tripwires, evidence, INTACT/WATCH/FIRED *test*, GAP). INTACT/FIRED short. Hunt outside register as add-risk candidates.',
       '   - **pick:** deep only the listed Rn. Other Rn: one line `not tested this note.` Still print the WATCH title list.',
-      '   - **skim:** titles + pack status table only. No deep test. Still print WATCH titles so the note does not pretend the register is empty.',
+      '   - **skim (House only):** omit `register-updated` and `tripwires` from ORDER. No register chapter, no WATCH table, no per-Rn essay. House via delta-vs-house only. One setup line: `Register not in this note (glass: house only).`',
       '   Status is TESTED, never cited as evidence. Never silent-write house/risks.',
       `5. **Pace (glass chose — do not re-ask):** ${describeThesisPace(thesisPace)}`,
       through

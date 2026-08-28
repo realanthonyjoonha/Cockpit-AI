@@ -1,6 +1,6 @@
 // Shared thin-desk Update — write_path_mode: meta_only (UP-C v1.1).
-// Paths + ritual + COMPILE BOOK via BookStrip. No propose/accept pins (future optional).
-// Decision-support only. House never written from glass.
+// Paths + ritual + COMPILE BOOK via BookStrip.
+// House/risks: Grok propose_* → glass ACCEPT (never silent write).
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 import BookStrip from './BookStrip.jsx';
@@ -153,8 +153,8 @@ export default function UpdateMetaOnly({ desk, ticker, label }) {
       <div className="sect">
         <div className="emptyD" style={{ padding: '12px 16px' }}>
           <b>write_path_mode: meta_only</b> (all thin desks). Edit entity / risks SoR on disk, then{' '}
-          <b>COMPILE BOOK</b>. House only on your explicit confirm in chat/wiki.
-          Propose/accept pins are parked for a future optional capability — not v1 core.
+          <b>COMPILE BOOK</b>. House and register writes: Grok <span className="mono">propose_*</span>
+          {' '}→ glass <b>ACCEPT</b> on House / Risks — never silent write, never hand-edit the pack store.
         </div>
       </div>
     </div>

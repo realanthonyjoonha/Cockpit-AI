@@ -8,6 +8,7 @@ grep -q 'Remind me after the next print' "$ROOT/memory-cockpit-v2/src/pages/thin
 grep -q 'Open PDF' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
 grep -q 'register_scope' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
 grep -q 'House only' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
+grep -q 'No register chapter' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
 grep -q 'Run through' "$ROOT/memory-cockpit-v2/src/pages/thin/Reports.jsx"
 grep -q 'thesis_pace' "$ROOT/memory-cockpit-v2/server/researchRunsSchema.js"
 grep -q 'resolveThesisRegister' "$ROOT/memory-cockpit-v2/server/researchRunsSchema.js"

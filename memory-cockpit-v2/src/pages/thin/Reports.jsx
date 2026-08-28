@@ -13,7 +13,7 @@ const MODES = [
 const REGISTER_CHOICES = [
   { id: 'all', label: 'All', hint: 'WATCH in depth · INTACT short' },
   { id: 'pick', label: 'Pick', hint: 'Named Rn only' },
-  { id: 'skim', label: 'House only', hint: 'Register skim table' },
+  { id: 'skim', label: 'House only', hint: 'No register chapter' },
 ];
 const PACE_CHOICES = [
   { id: 'stop', label: 'Stop at checkpoints', hint: 'Wait at Checkpoint 1 and 2' },
@@ -470,7 +470,7 @@ export default function ThinReports({ desk }) {
           </div>
           <div className="scope-hint">
             {registerScope === 'skim'
-              ? 'Register is a titles + status table. No deep test. House still required.'
+              ? 'No register chapter in the PDF. House + delta only.'
               : registerScope === 'pick'
                 ? 'Deep only the risks you tick. Others get one line: not tested this note.'
                 : 'WATCH in depth · INTACT short. Hunt outside the register as add-risk candidates.'}

@@ -61,7 +61,7 @@ lab_seal_materialize() {
   local td="$dest/memory-cockpit-v2/config/thin-desks.json"
   mkdir -p "$(dirname "$td")"
   if [ ! -f "$td" ]; then
-    printf '%s\n' '{"parity_group":"thin_ontology_v1","write_path_mode":"meta_only","contract_version":"1.1","rooms":["overview","risks","house","sources","street","ask","update"],"desks":[]}' >"$td"
+    printf '%s\n' '{"parity_group":"thin_ontology_v1","write_path_mode":"meta_only","contract_version":"1.1","rooms":["overview","risks","house","sources","street","model","research","reports","update"],"desks":[]}' >"$td"
   fi
   node -e "
     const fs=require('fs');
@@ -80,7 +80,7 @@ lab_seal_materialize() {
       mark: String(id).slice(0,1),
       house_file: 'house-view-'+slug+'.md',
       name: 'Sealed instance '+id,
-      rooms: j.rooms || ['overview','risks','house','sources','street','ask','update'],
+      rooms: j.rooms || ['overview','risks','house','sources','street','model','research','reports','update'],
       profile: {
         displayName: 'Sealed instance '+id,
         entitySlug: slug,

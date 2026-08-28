@@ -34,6 +34,7 @@ export default function ThinOverview({ desk }) {
     return (
       <div>
         <div className="crumb">{label} · <b>PACK UNAVAILABLE</b></div>
+        <BookStrip desk={slug} ticker={ticker} compact />
         <div className="sect">
           <div className="phd">
             <div>
@@ -43,8 +44,8 @@ export default function ThinOverview({ desk }) {
             <span className="pill warn">NO PACK</span>
           </div>
           <p className="dimmer" style={{ maxWidth: '40rem', lineHeight: 1.55, padding: '12px 16px' }}>
-            {d.reason || 'Compiled pack not found.'} Run{' '}
-            <span className="mono">cd ~/Trading/ontology && ./ont compile {ticker}</span> then reload.
+            {d.reason || 'Compiled pack not found.'}{' '}
+            Hit <b>COMPILE BOOK</b> above (or open Grok to underwrite), then reload.
             We do not invent claims or risks.
           </p>
         </div>
@@ -151,7 +152,6 @@ export default function ThinOverview({ desk }) {
           <span className="pchip" onClick={() => { window.location.hash = `${base}/research`; }}><b>»</b> compile</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/reports`; }}><b>»</b> reports</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/sources`; }}><b>»</b> sources catalog</span>
-          <span className="pchip" onClick={() => { window.location.hash = `${base}/ask`; }}><b>»</b> ask the book</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/update`; }}><b>»</b> update / write path</span>
         </div>
       </div>
