@@ -149,7 +149,6 @@ export default function ThinOverview({ desk }) {
           <span className="pchip" onClick={() => { window.location.hash = `${base}/risks`; }}><b>»</b> risk register</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/street`; }}><b>»</b> street models</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/model`; }}><b>»</b> working model</span>
-          <span className="pchip" onClick={() => { window.location.hash = `${base}/research`; }}><b>»</b> compile</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/reports`; }}><b>»</b> reports</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/sources`; }}><b>»</b> sources catalog</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/update`; }}><b>»</b> update / write path</span>

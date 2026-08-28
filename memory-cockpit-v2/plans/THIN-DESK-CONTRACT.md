@@ -19,9 +19,11 @@ A desk that ships without these items is **not** a thin desk — it is incomplet
 | Sources | Pack source catalog |
 | Street | Published third-party firm models (vault `cockpit/street/{TICKER}.json`; not house PT). Shared UI: **REFRESH STREET** (agent pipeline + vault poll) · **OPEN GROK** (chat). EMPTY until first publish |
 | Model | User working assumptions + bridge (vault `cockpit/model/{TICKER}.json`; not pack/house/Street). Shared UI: **UPDATE MODEL** · **OPEN GROK**. EMPTY until first publish. Illustration only — not PT |
-| Research (nav **Compile**) | Saved on-demand deep compiles (vault `cockpit/research/{TICKER}/runs/`, compile-lane jobs). Shared UI: **NEW COMPILE** · list/detail. Draft archive — not live pack until promote |
 | Reports | Checkpointed thesis notes + PDF (`job: thesis_report` in the same runs folder). Shared UI: **NEW REPORT** · dossier. PDF is ops — never pack SoR. Closeout via propose_* then glass ACCEPT |
-| Ask | Pack-only deterministic Q&A |
+| Model read | On-demand taught PDF of the working Model (`job: model_read`, lane `model`). Graph jail `numbers-graph.json`. **READ MODEL** + Open PDF on Model. Not thesis. No house/risk writes. |
+| Ask | Pack-only deterministic Q&A (API/CLI; not on the rail) |
+
+**Retired from glass:** Compile room (`#/{desk}/research`, `job: deep_compile`). Run folder + APIs stay for Reports / model_read. **COMPILE BOOK** on Update is unrelated.
 | Update | Write path per `write_path_mode` (v1.1 default **meta_only**; pins = future optional) |
 
 Honest EMPTY only for rooms explicitly parked — never silent redirect to Overview.

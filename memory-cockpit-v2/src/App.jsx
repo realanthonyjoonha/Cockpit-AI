@@ -34,7 +34,6 @@ function activeThinRoom(hash, slug) {
   if (hash.startsWith(`#/${slug}/sources`)) return `#/${slug}/sources`;
   if (hash.startsWith(`#/${slug}/street`)) return `#/${slug}/street`;
   if (hash.startsWith(`#/${slug}/model`)) return `#/${slug}/model`;
-  if (hash.startsWith(`#/${slug}/research`)) return `#/${slug}/research`;
   if (hash.startsWith(`#/${slug}/reports`)) return `#/${slug}/reports`;
   if (hash.startsWith(`#/${slug}/ask`)) return `#/${slug}/ask`;
   if (hash.startsWith(`#/${slug}/update`)) return `#/${slug}/update`;

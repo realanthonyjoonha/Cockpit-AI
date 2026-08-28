@@ -32,7 +32,7 @@ const VT = 9000; // virtual-time-budget ms — pack fetch + React mount
 
 const REG = JSON.parse(readFileSync(path.join(ROOT, 'config/thin-desks.json'), 'utf8'));
 const DESKS = REG.desks || [];
-const ROOMS = REG.rooms || ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'reports', 'update'];
+const ROOMS = REG.rooms || ['overview', 'risks', 'house', 'sources', 'street', 'model', 'reports', 'update'];
 
 let pass = 0;
 let fail = 0;

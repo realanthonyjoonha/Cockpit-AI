@@ -62,6 +62,42 @@ def to_pdf(html: Path, pdf: Path) -> None:
     subprocess.check_call(cmd)
 
 
+MODEL_READ_ORDER = (
+    "thermometer",
+    "print-vs-guide",
+    "quality",
+    "new-guide",
+    "still-gap",
+    "next-print",
+)
+
+
+def assert_model_read_order(cfg, run: Path) -> None:
+    """model_read: refuse a thesis ORDER or extra chapters."""
+    meta_path = run / "meta.json"
+    if not meta_path.is_file():
+        return
+    try:
+        import json
+
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        raise SystemExit(f"model_read gate: cannot read meta.json: {e}") from e
+    job = str(meta.get("job") or "")
+    if job != "model_read":
+        return
+    order = [str(s) for s in list(getattr(cfg, "ORDER", []) or [])]
+    if tuple(order) != MODEL_READ_ORDER:
+        raise SystemExit(
+            "model_read: ORDER must be "
+            + " · ".join(MODEL_READ_ORDER)
+            + f" (got {', '.join(order) or 'empty'})."
+        )
+    graph = run / "numbers-graph.json"
+    if not graph.is_file():
+        raise SystemExit("model_read: numbers-graph.json missing — refuse to invent.")
+
+
 def assert_skim_register_omitted(cfg, run: Path) -> None:
     """House-only (skim): refuse ORDER/sections that still ship a register chapter."""
     meta_path = run / "meta.json"
@@ -109,6 +145,7 @@ def main() -> int:
 
     run = Path(getattr(cfg, "RUN", cfg_path.parent)).resolve()
     assert_skim_register_omitted(cfg, run)
+    assert_model_read_order(cfg, run)
     outdir = Path(getattr(cfg, "OUTDIR", run / "output"))
     outdir.mkdir(parents=True, exist_ok=True)
     diagrams = Path(getattr(cfg, "DIAGRAMS", run / "diagrams")).resolve()

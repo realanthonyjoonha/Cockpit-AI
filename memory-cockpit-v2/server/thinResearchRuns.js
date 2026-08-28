@@ -12,6 +12,8 @@ import {
   indexRowFromMeta,
   humanJobLabel,
   isThesisReportJob,
+  isModelReadJob,
+  isInteractiveResearchJob,
   normalizeThesisMode,
   normalizeThesisCheckpoint,
   normalizeThesisPace,
@@ -32,6 +34,8 @@ import {
 } from './researchRunsWorker.js';
 import { acquireUrlToRun } from './researchAcquire.js';
 import { writeResearchRunsAgentSeed } from './researchRunsAgentSeed.js';
+import { buildNumbersGraph, writeNumbersGraph, MODEL_READ_ORDER } from './modelReadGraph.js';
+import { readWorkingModelSnapshot } from './thinWorkingModel.js';
 
 function vaultRoot() {
   return resolveVaultDir();
@@ -82,7 +86,7 @@ function listThesisPdfs(dir) {
   }
 }
 
-const RUN_FILE_OK = /^(output\/[A-Za-z0-9._-]+\.(pdf|html|md)|baseline-anchors\.md|seed\.md)$/i;
+const RUN_FILE_OK = /^(output\/[A-Za-z0-9._-]+\.(pdf|html|md)|baseline-anchors\.md|seed\.md|numbers-graph\.json)$/i;
 
 /**
  * Allowlisted file under a run folder (PDF / anchors). Fail-closed path.
@@ -337,7 +341,7 @@ export function listResearchRuns(ticker, opts = {}) {
           error: meta.error || row.error || null,
         }
       : row;
-    if (isThesisReportJob(merged.job)) {
+    if (isThesisReportJob(merged.job) || isModelReadJob(merged.job)) {
       const dir = researchRunDir(id, merged.run_id);
       merged.pdfs = dir ? listThesisPdfs(dir) : [];
     }
@@ -349,16 +353,19 @@ export function listResearchRuns(ticker, opts = {}) {
   if (lane && String(lane).toLowerCase() !== 'all') {
     runs = runs.filter((r) => jobMatchesLane(r.job, lane));
   }
-  const reports = String(lane || '').toLowerCase() === 'reports'
-    || String(lane || '').toLowerCase() === 'thesis';
+  const laneKey = String(lane || '').toLowerCase();
+  const reports = laneKey === 'reports' || laneKey === 'thesis';
+  const modelLane = laneKey === 'model' || laneKey === 'model_read' || laneKey === 'model-read';
   const emptyReason = reports
     ? 'No reports yet. NEW REPORT starts a checkpointed note against the house.'
-    : 'No compiles yet. NEW COMPILE builds the claim notebook from filings.';
+    : modelLane
+      ? 'No model reads yet. READ MODEL on the Model page explains the ledger as a PDF.'
+      : 'No compiles yet. NEW COMPILE builds the claim notebook from filings.';
   return {
     available: runs.length > 0,
     desk: opts.desk || null,
     ticker: id,
-    lane: reports ? 'reports' : (lane ? 'compile' : 'all'),
+    lane: reports ? 'reports' : (modelLane ? 'model' : (lane ? 'compile' : 'all')),
     path: researchRoot(id),
     schema_version: RESEARCH_RUNS_SCHEMA_VERSION,
     runs,
@@ -469,6 +476,14 @@ export function getResearchRun(ticker, runId, opts = {}) {
     stalled,
     heartbeat_age_ms: heartbeatAgeMs(meta),
     log_tail: readLogTail(meta.worker?.log),
+    model_read: isModelReadJob(meta.job) ? {
+      order: Array.isArray(meta.model_read?.order || meta.inputs?.model_read_order)
+        ? (meta.model_read?.order || meta.inputs?.model_read_order)
+        : MODEL_READ_ORDER,
+      pdf_rel: meta.model_read?.pdf_rel || null,
+      pdfs: listThesisPdfs(dir),
+      graph_ok: fs.existsSync(path.join(dir, 'numbers-graph.json')),
+    } : null,
     thesis: isThesisReportJob(meta.job) ? {
       mode: meta.thesis?.mode || meta.inputs?.thesis_mode || null,
       checkpoint: meta.thesis?.checkpoint || meta.inputs?.checkpoint || 'scope',
@@ -486,7 +501,9 @@ export function getResearchRun(ticker, runId, opts = {}) {
     decision_support_only: true,
     note: isThesisReportJob(meta.job)
       ? 'Thesis-lane ops archive — PDF is not pack SoR. Closeout via propose_* only.'
-      : 'Draft archive — not live book. Promote via existing gates only.',
+      : isModelReadJob(meta.job)
+        ? 'Model-read ops archive — PDF explains the ledger. Not pack SoR. Does not write house/risks.'
+        : 'Draft archive — not live book. Promote via existing gates only.',
   };
 }
 
@@ -529,10 +546,21 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   fs.mkdirSync(dir, { recursive: true });
   fs.mkdirSync(path.join(dir, 'extracts'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'acquired'), { recursive: true });
-  if (isThesisReportJob(job)) {
+  if (isThesisReportJob(job) || isModelReadJob(job)) {
     fs.mkdirSync(path.join(dir, 'sections'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'diagrams'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
+  }
+
+  let modelGraph = null;
+  if (isModelReadJob(job)) {
+    const loaded = readWorkingModelSnapshot(id);
+    const house = loaded.snapshot?.house_touch || null;
+    modelGraph = buildNumbersGraph(loaded.available ? loaded.snapshot : null, {
+      ticker: id,
+      house_excerpt: house,
+    });
+    writeNumbersGraph(dir, modelGraph);
   }
 
   const now = new Date().toISOString();
@@ -568,7 +596,13 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       register_ids: thesisRegister?.register_ids || null,
       thesis_pace: thesisPace,
       thesis_order: thesisOrder,
+      model_read_order: isModelReadJob(job) ? MODEL_READ_ORDER : null,
     },
+    model_read: isModelReadJob(job) ? {
+      order: MODEL_READ_ORDER,
+      pdf_rel: null,
+      graph_ok: !!(modelGraph && modelGraph.ok),
+    } : null,
     thesis: isThesisReportJob(job) ? {
       mode: thesisMode,
       checkpoint: 'scope',
@@ -594,8 +628,8 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   rebuildResearchIndex(id);
 
   let spawn = null;
-  // Thesis lane is checkpointed + interactive — never headless deep-compile worker.
-  if (launch && !isThesisReportJob(job)) {
+  // Thesis + model_read are interactive OPEN GROK — never headless deep-compile worker.
+  if (launch && !isInteractiveResearchJob(job)) {
     spawn = launchPipeline(id, run_id, {
       desk: meta.desk,
       job,
@@ -626,8 +660,10 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
     job,
     status: fresh.status,
     spawned: spawn?.ok ? { pid: spawn.pid, log: spawn.log } : null,
-    interactive: isThesisReportJob(job),
+    interactive: isInteractiveResearchJob(job),
     thesis: meta.thesis || null,
+    model_read: meta.model_read || null,
+    graph_ok: meta.model_read?.graph_ok ?? null,
     path: dir,
     vault_rel: `cockpit/research/${id}/runs/${run_id}`,
     decision_support_only: true,
@@ -808,6 +844,15 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
     compute: snap.compute,
     inputs: snap.inputs,
     thesis: snap.thesis || existingMeta?.thesis || null,
+    model_read: isModelReadJob(snap.job)
+      ? {
+        ...(existingMeta?.model_read || {}),
+        ...(snap.model_read || {}),
+        order: (snap.model_read?.order || existingMeta?.model_read?.order || MODEL_READ_ORDER),
+        pdf_rel: listThesisPdfs(dir)[0] || snap.model_read?.pdf_rel || existingMeta?.model_read?.pdf_rel || null,
+        graph_ok: fs.existsSync(path.join(dir, 'numbers-graph.json')),
+      }
+      : (snap.model_read || existingMeta?.model_read || null),
     promotion: snap.promotion,
     immutable: snap.immutable,
     decision_support_only: true,

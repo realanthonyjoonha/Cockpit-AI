@@ -17,12 +17,11 @@ export default function ThinEmpty({ desk, path = '' }) {
       <div className="sect">
         <p className="dimmer" style={{ maxWidth: '40rem', lineHeight: 1.55, padding: '8px 16px 16px' }}>
           Route <span className="mono">#{base.slice(1)}/{path || '…'}</span> is not a known thin room.
-          Valid rooms: overview · risks · house · sources · street · model · <b>compile</b> (`research`) · <b>reports</b> · update.
+          Valid rooms: overview · risks · house · sources · street · model · reports · update.
           Hard-refresh (Cmd+Shift+R) if you just upgraded and still see this for a valid room.
         </p>
         <div className="pagechips" style={{ paddingBottom: 16 }}>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/overview`; }}><b>»</b> overview</span>
-          <span className="pchip" onClick={() => { window.location.hash = `${base}/research`; }}><b>»</b> research</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/model`; }}><b>»</b> model</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/house`; }}><b>»</b> house</span>
         </div>

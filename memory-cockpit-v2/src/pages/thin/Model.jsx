@@ -133,7 +133,10 @@ export default function ThinModel({ desk }) {
   const [caseDraft, setCaseDraft] = useState({});
   const [savingCase, setSavingCase] = useState(null);
   const [printBusy, setPrintBusy] = useState(false);
+  const [reads, setReads] = useState({ runs: [], latest: null });
+  const [readBusy, setReadBusy] = useState(false);
   const pollRef = useRef(null);
+  const readPollRef = useRef(null);
 
   const stopPoll = useCallback(() => {
     if (pollRef.current) {
@@ -143,6 +146,27 @@ export default function ThinModel({ desk }) {
     }
     setPolling(false);
   }, []);
+
+  const stopReadPoll = useCallback(() => {
+    if (readPollRef.current) {
+      clearInterval(readPollRef.current.interval);
+      if (readPollRef.current.timeout) clearTimeout(readPollRef.current.timeout);
+      readPollRef.current = null;
+    }
+  }, []);
+
+  const loadReads = useCallback(() => {
+    return api(`${slug}/research?lane=model`)
+      .then((payload) => {
+        const runs = Array.isArray(payload?.runs) ? payload.runs : [];
+        setReads({ runs, latest: runs[0] || null });
+        return payload;
+      })
+      .catch(() => {
+        setReads({ runs: [], latest: null });
+        return null;
+      });
+  }, [slug]);
 
   const load = useCallback(() => {
     return api(`${slug}/model`)
@@ -159,8 +183,12 @@ export default function ThinModel({ desk }) {
 
   useEffect(() => {
     load();
-    return () => stopPoll();
-  }, [load, stopPoll]);
+    loadReads();
+    return () => {
+      stopPoll();
+      stopReadPoll();
+    };
+  }, [load, loadReads, stopPoll, stopReadPoll]);
 
   useEffect(() => {
     stopPoll();
@@ -169,7 +197,9 @@ export default function ThinModel({ desk }) {
     setArmEvent('');
     setArmDate('');
     setCaseDraft({});
-  }, [slug, stopPoll]);
+    stopReadPoll();
+    setReads({ runs: [], latest: null });
+  }, [slug, stopPoll, stopReadPoll]);
 
   const armPrint = async () => {
     const event = armEvent.trim();
@@ -301,6 +331,80 @@ export default function ThinModel({ desk }) {
     setTimeout(tick, 1200);
   }, [slug, stopPoll]);
 
+  const fileHref = (rid, rel) => (
+    `/api/${slug}/research/runs/${encodeURIComponent(rid)}/file?rel=${encodeURIComponent(rel)}`
+  );
+
+  const pdfOf = (r) => {
+    const list = r?.pdfs || r?.model_read?.pdfs || [];
+    return list[0] || r?.pdf_rel || r?.model_read?.pdf_rel || null;
+  };
+
+  const startReadPoll = useCallback((runId) => {
+    stopReadPoll();
+    const tick = async () => {
+      const payload = await loadReads();
+      const row = (payload?.runs || []).find((r) => r.run_id === runId) || (payload?.runs || [])[0];
+      if (!row) return;
+      const st = String(row.status || '');
+      if (st === 'complete' && pdfOf(row)) {
+        stopReadPoll();
+        setFlash(`Model read ready · Open PDF`);
+        setReadBusy(false);
+      } else if (st === 'failed' || st === 'cancelled') {
+        stopReadPoll();
+        setFlash(row.error || `Model read ${st}`);
+        setReadBusy(false);
+      }
+    };
+    const interval = setInterval(tick, POLL_MS);
+    const timeout = setTimeout(() => {
+      stopReadPoll();
+      setReadBusy(false);
+      setFlash((prev) => (
+        String(prev || '').includes('ready') ? prev : 'Still running in Grok · Open PDF will appear when the PDF lands'
+      ));
+    }, POLL_MAX_MS);
+    readPollRef.current = { interval, timeout };
+    setTimeout(tick, 1500);
+  }, [loadReads, stopReadPoll]);
+
+  const startModelRead = async () => {
+    const noModel = !d?.available || !(d?.assumptions || []).length;
+    if (noModel) {
+      setFlash('UPDATE MODEL first — nothing to read');
+      return;
+    }
+    const inflight = (reads.runs || []).find((r) => r.status === 'queued' || r.status === 'running');
+    if (inflight) {
+      setFlash('A model read is already in flight');
+      setReadBusy(true);
+      startReadPoll(inflight.run_id);
+      return;
+    }
+    setReadBusy(true);
+    setFlash(null);
+    try {
+      const started = await apiPost(`${slug}/research/runs`, { job: 'model_read', launch: false });
+      if (!started?.ok || !started.run_id) {
+        setFlash(started?.error || 'failed to start model read');
+        setReadBusy(false);
+        return;
+      }
+      const grok = await apiPost('open-grok', {
+        action: 'model-read', desk: slug, run_id: started.run_id, job: 'model_read', mode: 'pipeline',
+      });
+      setFlash(grok?.ok
+        ? 'Opened Grok · model read · waiting for PDF'
+        : (grok?.error || 'run created but OPEN GROK failed'));
+      startReadPoll(started.run_id);
+      loadReads();
+    } catch (e) {
+      setFlash(e.message || String(e));
+      setReadBusy(false);
+    }
+  };
+
   const openModelAgent = async (mode) => {
     setBusy(true);
     setFlash(null);
@@ -407,6 +511,16 @@ export default function ThinModel({ desk }) {
           >
             {busy ? '…' : 'OPEN GROK'}
           </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={readBusy || empty}
+            onClick={startModelRead}
+            title="Taught PDF of this ledger — company guide bar, not Street"
+            style={{ fontSize: 10, padding: '4px 10px' }}
+          >
+            {readBusy ? 'READING…' : 'READ MODEL'}
+          </button>
           {!empty && (
             <button
               type="button"
@@ -435,6 +549,52 @@ export default function ThinModel({ desk }) {
           )}
           {flash && <span className="dim" style={{ fontSize: 10 }}>{flash}</span>}
         </div>
+      </div>
+
+      <div className="sect" style={{ padding: '8px 16px 12px' }}>
+        <div className="dim" style={{ fontSize: 11, lineHeight: 1.45, marginBottom: 8 }}>
+          <b>READ MODEL</b> writes a taught PDF of these rows (company guide bar, offset, GAP). Tables stay. Not a thesis note.
+        </div>
+        {(() => {
+          const latestComplete = (reads.runs || []).find((r) => r.status === 'complete' && pdfOf(r));
+          const pdf = latestComplete ? pdfOf(latestComplete) : null;
+          const inflight = (reads.runs || []).find((r) => r.status === 'queued' || r.status === 'running');
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              {pdf && latestComplete && (
+                <a
+                  className="btn primary"
+                  href={fileHref(latestComplete.run_id, pdf)}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 10, padding: '4px 10px' }}
+                >
+                  Open PDF
+                </a>
+              )}
+              {inflight && (
+                <span className="dim" style={{ fontSize: 11 }}>
+                  In flight · {String(inflight.started_at || '').slice(0, 16).replace('T', ' ')}
+                </span>
+              )}
+              {!pdf && !inflight && (
+                <span className="dim" style={{ fontSize: 11 }}>No model-read PDF yet.</span>
+              )}
+              {(reads.runs || []).slice(0, 3).filter((r) => r.status === 'complete' && pdfOf(r) && r !== latestComplete).map((r) => (
+                <a
+                  key={r.run_id}
+                  className="btn"
+                  href={fileHref(r.run_id, pdfOf(r))}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ fontSize: 10, padding: '4px 10px' }}
+                >
+                  {String(r.finished_at || r.started_at || '').slice(0, 10)}
+                </a>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {empty && (

@@ -80,7 +80,7 @@ lab_seal_materialize() {
       mark: String(id).slice(0,1),
       house_file: 'house-view-'+slug+'.md',
       name: 'Sealed instance '+id,
-      rooms: j.rooms || ['overview','risks','house','sources','street','model','research','reports','update'],
+      rooms: j.rooms || ['overview','risks','house','sources','street','model','reports','update'],
       profile: {
         displayName: 'Sealed instance '+id,
         entitySlug: slug,

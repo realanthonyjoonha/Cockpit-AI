@@ -82,7 +82,6 @@ export function thinRail(desk) {
     ['⧉', `${L} Sources — pack catalog`, `#/${s}/sources`],
     ['$', `${L} Street — published targets (not house)`, `#/${s}/street`],
     ['∑', `${L} Model — working assumptions + bridge`, `#/${s}/model`],
-    ['⚗', `${L} Compile — claim notebook`, `#/${s}/research`],
     ['▤', `${L} Reports — thesis notes + PDF`, `#/${s}/reports`],
     ['✎', `${L} Update — write path (file → compile → refresh)`, `#/${s}/update`],
   ];

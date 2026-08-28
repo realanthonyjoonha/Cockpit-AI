@@ -104,9 +104,6 @@ FILES=(
   "memory-cockpit-v2/server/researchRunsWorker.js"
   "memory-cockpit-v2/server/researchAcquire.js"
   "memory-cockpit-v2/server/operateGlance.js"
-  "memory-cockpit-v2/src/pages/thin/Research.jsx"
-  "memory-cockpit-v2/src/pages/thin/compileRunList.js"
-  "memory-cockpit-v2/scripts/compile-run-list-test.mjs"
   "memory-cockpit-v2/src/pages/thin/Reports.jsx"
   "memory-cockpit-v2/src/pages/Start.jsx"
   "scripts/templates/Start.kernel.jsx"
@@ -134,6 +131,11 @@ FILES=(
   "memory-cockpit-v2/server/thinWorkingModel.js"
   "memory-cockpit-v2/server/workingModelAgentSeed.js"
   "memory-cockpit-v2/server/workingModelSchema.js"
+  "memory-cockpit-v2/server/modelReadGraph.js"
+  ".grok/skills/model-read/SKILL.md"
+  ".grok/commands/cockpit-model-read.md"
+  "memory-cockpit-v2/scripts/model-read-graph-test.mjs"
+  "scripts/lab-feature-hooks/94-model-read.sh"
   "memory-cockpit-v2/scripts/compile-pipeline-test.mjs"
   "memory-cockpit-v2/scripts/thin-working-model-test.mjs"
   "memory-cockpit-v2/server/index.js"
@@ -181,6 +183,13 @@ FILES=(
   "RELEASE.md"
 )
 
+# Deleted on dest when shipping so retired glass files do not linger.
+RETIRED_PATHS=(
+  "memory-cockpit-v2/src/pages/thin/Research.jsx"
+  "memory-cockpit-v2/src/pages/thin/compileRunList.js"
+  "memory-cockpit-v2/scripts/compile-run-list-test.mjs"
+)
+
 echo "sync-agent-surface"
 echo "  from: $SRC"
 echo "  to:   $DST"
@@ -207,6 +216,21 @@ copy_one() {
     cp "$s" "$d"
   fi
   echo "  copied: $rel"
+}
+
+remove_one() {
+  local rel="$1"
+  local d="$DST/$rel"
+  if [ ! -e "$d" ]; then
+    echo "  skip (already gone): $rel"
+    return 0
+  fi
+  if [ "$DRY" -eq 1 ]; then
+    echo "  would remove: $rel"
+    return 0
+  fi
+  rm -rf "$d"
+  echo "  removed: $rel"
 }
 
 # All cockpit slash commands (platform agents) — daybook + street + finance + operate
@@ -264,6 +288,10 @@ fi
 
 for rel in "${FILES[@]}"; do
   copy_one "$rel"
+done
+
+for rel in "${RETIRED_PATHS[@]}"; do
+  remove_one "$rel"
 done
 
 echo

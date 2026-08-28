@@ -253,13 +253,13 @@ try {
 
 try {
   const desk = listGrokAgents({ variant: 'desk' });
-  if (!desk.agents.some((a) => a.action === 'research-compile')) {
-    throw new Error('research-compile missing from desk variant');
+  if (desk.agents.some((a) => a.action === 'research-compile')) {
+    throw new Error('research-compile still in desk catalog');
   }
   if (!desk.agents.some((a) => a.action === 'thesis-report')) {
     throw new Error('thesis-report missing from desk variant');
   }
-  ok('desk variant includes research-compile + thesis-report');
+  ok('desk variant omits research-compile; keeps thesis-report');
 } catch (e) {
   fail('desk research-compile catalog', e);
 }
@@ -270,6 +270,24 @@ try {
   ok('model-desk chat → /cockpit-model nvda chat');
 } catch (e) {
   fail('model-desk chat prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'model-read', desk: 'nvda', run_id: '20260827T000000Z_model_read_NVDA' });
+  if (p !== '/cockpit-model-read nvda 20260827T000000Z_model_read_NVDA') throw new Error(p);
+  ok('model-read → /cockpit-model-read desk run_id');
+} catch (e) {
+  fail('model-read prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'model-read')) {
+    throw new Error('model-read missing from desk variant');
+  }
+  ok('desk variant includes model-read');
+} catch (e) {
+  fail('desk model-read catalog', e);
 }
 
 try {

@@ -3,11 +3,17 @@
 // Decision-support only. Not pack / house / Street SoR until explicit promote.
 import fs from 'fs';
 import path from 'path';
+import {
+  MODEL_READ_ORDER,
+  modelReadGraphViolations,
+  modelReadOutputViolations,
+  modelReadOrderViolations,
+} from './modelReadGraph.js';
 
 export const RESEARCH_RUNS_SCHEMA_VERSION = 1;
 
 export const RESEARCH_JOBS = new Set([
-  'deep_compile', 'print_package', 'pack_refresh', 'thesis_report',
+  'deep_compile', 'print_package', 'pack_refresh', 'thesis_report', 'model_read',
 ]);
 
 /** Thesis-lane modes (ib-report skill). Not a coverage rating. */
@@ -19,23 +25,35 @@ export function isThesisReportJob(job) {
   return String(job || '') === 'thesis_report';
 }
 
-/** Compile-lane jobs (Research room). Thesis is the Reports room. */
+export function isModelReadJob(job) {
+  return String(job || '') === 'model_read';
+}
+
+/** Interactive OPEN GROK jobs — no headless pid; orphan sweeper must skip. */
+export function isInteractiveResearchJob(job) {
+  return isThesisReportJob(job) || isModelReadJob(job);
+}
+
+/** Compile-lane jobs (Research room). Thesis is the Reports room. Model read is the Model room. */
 export const COMPILE_JOBS = new Set(['deep_compile', 'print_package', 'pack_refresh']);
 
-/** @returns {'compile'|'reports'} */
+/** @returns {'compile'|'reports'|'model'} */
 export function researchLane(job) {
-  return isThesisReportJob(job) ? 'reports' : 'compile';
+  if (isThesisReportJob(job)) return 'reports';
+  if (isModelReadJob(job)) return 'model';
+  return 'compile';
 }
 
 /**
  * @param {string} job
- * @param {string} [lane] compile | reports | all
+ * @param {string} [lane] compile | reports | model | all
  */
 export function jobMatchesLane(job, lane) {
   const l = String(lane || '').toLowerCase().trim();
   if (!l || l === 'all') return true;
   if (l === 'reports' || l === 'thesis' || l === 'thesis_report') return isThesisReportJob(job);
-  if (l === 'compile' || l === 'research') return !isThesisReportJob(job);
+  if (l === 'model' || l === 'model_read' || l === 'model-read') return isModelReadJob(job);
+  if (l === 'compile' || l === 'research') return !isThesisReportJob(job) && !isModelReadJob(job);
   return true;
 }
 
@@ -237,6 +255,23 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
   const focus = str(raw.focus || raw.inputs?.focus) || null;
   const prior_run_id = str(raw.prior_run_id || raw.inputs?.prior_run_id) || null;
   const as_of_request = str(raw.as_of_request || raw.inputs?.as_of_request).slice(0, 32) || null;
+  if (isModelReadJob(job)) {
+    const order = Array.isArray(raw.model_read_order || raw.inputs?.model_read_order || raw.model_read?.order)
+      ? (raw.model_read_order || raw.inputs?.model_read_order || raw.model_read?.order)
+      : MODEL_READ_ORDER;
+    return {
+      inputs: {
+        focus, prior_run_id, as_of_request,
+        thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
+        model_read_order: order,
+      },
+      thesis: null,
+      model_read: {
+        order,
+        pdf_rel: str(raw.pdf_rel || raw.model_read?.pdf_rel).slice(0, 200) || null,
+      },
+    };
+  }
   if (!isThesisReportJob(job)) {
     return {
       inputs: {
@@ -244,6 +279,7 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
         thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
       },
       thesis: null,
+      model_read: null,
     };
   }
   const reg = resolveThesisRegister({
@@ -524,6 +560,17 @@ export function validateResearchRunPublish(raw, opts = {}) {
         order: thesisBits.inputs.thesis_order,
         runDir: opts.runDir || null,
       }));
+    } else if (isModelReadJob(job)) {
+      if (!summary) errors.push('complete model_read needs a summary (one-sentence read)');
+      if (raw.promotion && (raw.promotion.pack_claims || raw.promotion.house_proposed || raw.promotion.risks_proposed)) {
+        errors.push('model_read does not write pack / house / risks');
+      }
+      const bits = collectThesisFields(raw, job, { complete: true });
+      errors.push(...modelReadOrderViolations(bits.inputs.model_read_order));
+      if (opts.runDir) {
+        errors.push(...modelReadGraphViolations(opts.runDir));
+        errors.push(...modelReadOutputViolations(opts.runDir));
+      }
     } else if (!summary && !financials.length && !narrative.length) {
       errors.push('complete run needs summary or extract claims');
     }
@@ -574,10 +621,10 @@ export function validateResearchRunPublish(raw, opts = {}) {
         },
         promotion: raw.promotion && typeof raw.promotion === 'object' ? {
           status: str(raw.promotion.status) || 'none',
-          pack_claims: isThesisReportJob(job) ? false : !!raw.promotion.pack_claims,
-          risks_proposed: !!raw.promotion.risks_proposed,
-          house_proposed: !!raw.promotion.house_proposed,
-          model_pack_layers: isThesisReportJob(job) ? false : !!raw.promotion.model_pack_layers,
+          pack_claims: (isThesisReportJob(job) || isModelReadJob(job)) ? false : !!raw.promotion.pack_claims,
+          risks_proposed: isModelReadJob(job) ? false : !!raw.promotion.risks_proposed,
+          house_proposed: isModelReadJob(job) ? false : !!raw.promotion.house_proposed,
+          model_pack_layers: (isThesisReportJob(job) || isModelReadJob(job)) ? false : !!raw.promotion.model_pack_layers,
           notes: str(raw.promotion.notes).slice(0, 400) || null,
         } : {
           status: 'none',
@@ -588,6 +635,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
           notes: null,
         },
         thesis: collectThesisFields(raw, job, { complete: true }).thesis,
+        model_read: collectThesisFields(raw, job, { complete: true }).model_read || null,
         immutable: true,
         decision_support_only: true,
       },
@@ -626,6 +674,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
         notes: null,
       },
       thesis: collectThesisFields(raw, job).thesis,
+      model_read: collectThesisFields(raw, job).model_read || null,
       immutable: false,
       decision_support_only: true,
       error: str(raw.error) || null,
@@ -685,5 +734,6 @@ export function humanJobLabel(job) {
   if (j === 'print_package') return 'Print package';
   if (j === 'pack_refresh') return 'Pack refresh';
   if (j === 'thesis_report') return 'Thesis report';
+  if (j === 'model_read') return 'Model read';
   return 'Deep compile';
 }

@@ -6,7 +6,8 @@ import path from 'path';
 import { loadPack } from './pack.js';
 import { listResearchRuns, getResearchRun, researchRunDir } from './thinResearchRuns.js';
 import { resolveDeskIdentity } from './streetAgentSeed.js';
-import { humanJobLabel, resolveThesisRegister, describeRegisterScope, normalizeThesisPace, describeThesisPace, defaultThesisOrder, formatThesisOrder } from './researchRunsSchema.js';
+import { humanJobLabel, resolveThesisRegister, describeRegisterScope, normalizeThesisPace, describeThesisPace, defaultThesisOrder, formatThesisOrder, isModelReadJob, isThesisReportJob } from './researchRunsSchema.js';
+import { MODEL_READ_ORDER, formatModelReadOrder } from './modelReadGraph.js';
 
 function normalizeMode(mode) {
   const m = String(mode || '').toLowerCase().trim();
@@ -63,7 +64,25 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
     ? `research-wiki/cockpit/research/${id.ticker}/runs/${runId}/`
     : `research-wiki/cockpit/research/${id.ticker}/runs/{run_id}/`;
 
-  const jobBlock = job === 'thesis_report'
+  const jobBlock = isModelReadJob(job)
+    ? [
+      '## Open mode: MODEL READ (ledger PDF — not thesis, not compile)',
+      '',
+      'Execute **`.grok/skills/model-read/SKILL.md`**. Distinct from `/cockpit-report` and `/cockpit-model`.',
+      '',
+      `1. **Job:** model_read (${humanJobLabel('model_read')})`,
+      runId ? `2. **run_id (required):** \`${runId}\` — write under \`${vaultRel}\`` : '2. If no run_id, POST /api/{slug}/research/runs `{ job: "model_read" }` then use returned run_id',
+      '3. **Jail:** read `numbers-graph.json` in the run folder FIRST. Every number in the PDF must be a graph cell or offset_pair. Missing cell → GAP. Do **not** invent Street consensus, PT, units×ASP, or YOUR CASE.',
+      '4. If `graph.ok` is false: stop. Tell the user to UPDATE MODEL. Do not draft.',
+      `5. **ORDER (required — write this exact list in config.py):** ${formatModelReadOrder(MODEL_READ_ORDER)}`,
+      '6. Teach in layman terms (what a guide is, why last call is this quarter’s bar, why exclusions matter). Do not compress into three unexplained headlines.',
+      '7. Sections start with `##` (not `#`) so they do not force a page break. PAGE_BREAK = False. Exec is not a seventh section.',
+      '8. Render: `python3 ~/Desktop/cockpit-kernel/scripts/report/build.py --config $RUN/config.py`',
+      '9. Publish complete via POST `/api/{slug}/research/runs/{run_id}/publish` with a one-sentence summary. PDF/HTML in `output/`.',
+      '10. Do **not** write house, risks, ontology/store, YOUR CASE, or propose_*. This job does not close out the book.',
+      '11. Decision-support only — no buy/sell/hold, no PT.',
+    ].join('\n')
+    : (job === 'thesis_report'
     ? [
       '## Open mode: THESIS REPORT (checkpointed — not deep compile)',
       '',
@@ -120,13 +139,13 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
         '',
         'Brief run list + last run status in 3–6 lines, then follow user (re-read run, promote, re-run).',
         'Never arm/lock model print. Never fill YOUR CASE. Never silent house/risk write.',
-      ].join('\n'));
+      ].join('\n')));
 
   const lines = [
     `# Research compile agent seed — ${id.label} (${id.ticker})`,
     '',
     `Generated: ${new Date().toISOString()}`,
-    `Desk slug: \`${id.slug}\` · Glass: \`#/${id.slug}/research\``,
+    `Desk slug: \`${id.slug}\` · Glass: \`#/${id.slug}/${isModelReadJob(job) ? 'model' : isThesisReportJob(job) ? 'reports' : 'overview'}\``,
     `## Open mode: ${mode === 'pipeline' ? 'PIPELINE' : 'CHAT'}`,
     '',
     '## Product law',
@@ -187,13 +206,17 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
     }, null, 2),
     '```',
     '',
-    job === 'thesis_report'
-      ? `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/checkpoint\`  then closeout via propose_* (PDF in output/)`
-      : `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/publish\``,
+    isModelReadJob(job)
+      ? `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/publish\`  (PDF in output/; no propose_*)`
+      : job === 'thesis_report'
+        ? `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/checkpoint\`  then closeout via propose_* (PDF in output/)`
+        : `POST \`/api/${id.slug}/research/runs/${runId || '{run_id}'}/publish\``,
     '',
-    job === 'thesis_report'
-      ? `End seed. Proceed with \`/cockpit-report\`. ${through ? 'Pace through — do not wait at checkpoints.' : 'Stop at checkpoints.'} Decision-support only.`
-      : 'End seed. Proceed with `/cockpit-research-compile`.',
+    isModelReadJob(job)
+      ? 'End seed. Proceed with `/cockpit-model-read`. Decision-support only.'
+      : job === 'thesis_report'
+        ? `End seed. Proceed with \`/cockpit-report\`. ${through ? 'Pace through — do not wait at checkpoints.' : 'Stop at checkpoints.'} Decision-support only.`
+        : 'End seed. Proceed with `/cockpit-research-compile`.',
   ];
 
   const text = lines.join('\n');

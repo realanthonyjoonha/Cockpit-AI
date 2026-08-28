@@ -36,9 +36,6 @@ memory-cockpit-v2/server/openGrok.js
 memory-cockpit-v2/server/thinResearchRuns.js
 memory-cockpit-v2/server/researchRunsSchema.js
 memory-cockpit-v2/server/researchRunsAgentSeed.js
-memory-cockpit-v2/src/pages/thin/Research.jsx
-memory-cockpit-v2/src/pages/thin/compileRunList.js
-memory-cockpit-v2/scripts/compile-run-list-test.mjs
 memory-cockpit-v2/src/pages/thin/Reports.jsx
 .grok/skills/ib-report/SKILL.md
 memory-cockpit-v2/server/pack.js
@@ -60,6 +57,11 @@ memory-cockpit-v2/server/secEdgar.js
 memory-cockpit-v2/server/thinWorkingModel.js
 memory-cockpit-v2/server/workingModelAgentSeed.js
 memory-cockpit-v2/server/workingModelSchema.js
+memory-cockpit-v2/server/modelReadGraph.js
+.grok/skills/model-read/SKILL.md
+.grok/commands/cockpit-model-read.md
+memory-cockpit-v2/scripts/model-read-graph-test.mjs
+scripts/lab-feature-hooks/94-model-read.sh
 memory-cockpit-v2/scripts/compile-pipeline-test.mjs
 memory-cockpit-v2/scripts/thin-working-model-test.mjs
 memory-cockpit-v2/server/index.js

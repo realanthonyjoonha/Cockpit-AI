@@ -16,12 +16,11 @@ const REQUIRED = [
   'sources',
   'street',
   'model',
-  'research',
   'reports',
   'update',
 ];
-/** Ask is API/CLI-only — strip from advertised rooms on upgrade. */
-const DROP = ['ask'];
+/** Ask = API/CLI-only. Compile room (deep archive) retired — run bus stays for thesis/model_read. */
+const DROP = ['ask', 'research'];
 
 function mergeRooms(existing) {
   const list = Array.isArray(existing) ? existing.map(String) : [];

@@ -155,7 +155,7 @@ export function createThinModel(profile) {
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'reports', 'update'],
+      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'reports', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
