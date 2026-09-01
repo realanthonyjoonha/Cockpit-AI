@@ -3,8 +3,6 @@
 **You do not need to re-learn kernel / product / scenario every day.**  
 Talk in **modes**. Agents execute the rest under hard law (`AGENTS.md`).
 
-**New session:** read [`SESSION.md`](./SESSION.md) first (absolute trees + build/ship scars).
-
 Decision-support only.
 
 ---
@@ -57,7 +55,8 @@ Agent MUST:
   3. Factory path only — desk N free-rides registry
   4. Empty desks=[] still works
   5. Implement + tests + how to dogfood
-  6. STOP (no ship, no push)
+  6. Verify with ./scripts/verify-feature.sh (Lab checklist; --docs-only if no UI)
+  7. STOP (no ship, no push)
 ```
 
 ### Ship (friends)
@@ -140,7 +139,7 @@ Research AVGO …    → operate mode
 
 | Doc | When agent needs depth |
 |-----|------------------------|
-| [`SESSION.md`](./SESSION.md) | Cold session card (trees + scars) |
+| [`FEATURE-MAP.md`](./FEATURE-MAP.md) | Rooms, hashes, proof · `./scripts/verify-feature.sh` |
 | [`DEVELOP.md`](./DEVELOP.md) | Full platform procedure |
 | [`LAB.md`](./LAB.md) | Blank E2E |
 | [`RELEASE.md`](../RELEASE.md) | Ship ritual |

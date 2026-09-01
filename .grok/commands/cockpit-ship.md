@@ -9,11 +9,9 @@ Parse `$ARGUMENTS`: optional word **`push`** (only then may `git push` after PAS
 
 **Human load:** Anthony said ship (and maybe push). **You** own privacy strip, gates, file list, commit; push only if they said push.
 
-Read **`docs/SESSION.md`** · **`docs/EASY.md`** · **`RELEASE.md`** · **`docs/LAB.md`**. Hard law: **`AGENTS.md`**.
+Read **`docs/EASY.md`** · **`RELEASE.md`** · **`docs/LAB.md`**. Hard law: **`AGENTS.md`**.
 
 Decision-support only. **Never ship research books.**
-
-**Trees:** kernel `~/Desktop/cockpit-kernel` → product `~/Desktop/cockpit-product` (GitHub `Cockpit-AI`). Product `desks: []`. Default `lab-e2e` is not a UI click (`--glass` for HTTP). Host `test:platform` on **product** must pass. If `git push` says archived/read-only, unarchive the GitHub repo first.
 
 ---
 

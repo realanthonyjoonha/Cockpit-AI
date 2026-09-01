@@ -39,7 +39,17 @@ function secSharedDir() {
   return path.join(resolveVaultDir(), 'cockpit', 'compile', '_sec');
 }
 
+function vaultRootExists() {
+  try {
+    return fs.existsSync(resolveVaultDir());
+  } catch {
+    return false;
+  }
+}
+
 function atomicWriteJson(filePath, obj) {
+  // Empty product / no-vault VMs: do not mkdir ~/Trading/research-wiki as a side effect.
+  if (!vaultRootExists()) return;
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const tmp = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify(obj, null, 2)}\n`, 'utf8');

@@ -31,15 +31,20 @@ need_grep() {
 
 echo "→ easy-mode docs + commands (Anthony cognitive load)"
 need_file "$ROOT/docs/EASY.md" "docs/EASY.md"
-need_file "$ROOT/docs/SESSION.md" "docs/SESSION.md"
-need_file "$ROOT/.grok/skills/cockpit-session/SKILL.md" "cockpit-session skill"
-need_grep "$ROOT/AGENTS.md" 'docs/SESSION\.md' "AGENTS points at SESSION.md"
+need_file "$ROOT/docs/FEATURE-MAP.md" "docs/FEATURE-MAP.md (factory rooms + proof)"
+need_file "$ROOT/scripts/verify-feature.sh" "named verify lever scripts/verify-feature.sh"
 need_file "$ROOT/.grok/commands/cockpit-feature.md" "/cockpit-feature command"
 need_file "$ROOT/.grok/commands/cockpit-ship.md" "/cockpit-ship command"
+need_file "$ROOT/.grok/commands/cockpit-verify.md" "/cockpit-verify command"
 need_grep "$ROOT/AGENTS.md" 'docs/EASY\.md|/cockpit-feature|Easy mode' "AGENTS points at easy mode or feature command"
 need_grep "$ROOT/.grok/commands/cockpit.md" 'cockpit-feature' "cockpit menu lists feature"
 need_grep "$ROOT/docs/EASY.md" 'Scales via registry|desk N' "EASY.md states scale law"
 need_grep "$ROOT/docs/EASY.md" '/cockpit-ship|Ship' "EASY.md states ship mode"
+need_grep "$ROOT/docs/EASY.md" 'FEATURE-MAP' "EASY.md points at feature map"
+need_grep "$ROOT/docs/LAB.md" 'FEATURE-MAP|verify-feature' "LAB.md points at feature map or verify lever"
+need_grep "$ROOT/docs/FEATURE-MAP.md" 'overview|risks|house|sources|street|model|research|ask|update' "map lists thin rooms"
+need_grep "$ROOT/docs/FEATURE-MAP.md" 'background' "map mentions background (parked if not a room)"
+need_grep "$ROOT/docs/FEATURE-MAP.md" 'verify-feature' "map names the verify lever"
 echo
 
 echo "→ factory scalability smells (shared paths exist)"
@@ -81,6 +86,10 @@ if grep -qE 'cockpit-feature|EASY\.md|cockpit-ship' "$ROOT/scripts/sync-agent-su
 else
   bad "sync-agent-surface.sh should allowlist docs/EASY.md and cockpit-feature/ship commands"
 fi
+need_grep "$ROOT/scripts/sync-agent-surface.sh" 'FEATURE-MAP|verify-feature' \
+  "sync-agent-surface allowlists FEATURE-MAP / verify-feature"
+need_grep "$ROOT/docs/PRODUCT-KERNEL-SOR.md" 'FEATURE-MAP|verify-feature' \
+  "PRODUCT-KERNEL-SOR lists FEATURE-MAP / verify-feature"
 echo
 
 if [ "$fail" -gt 0 ]; then

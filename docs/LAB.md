@@ -25,7 +25,9 @@ Decision-support only. Hard law: [`AGENTS.md`](../AGENTS.md). Procedure: [`DEVEL
 ./scripts/lab-e2e.sh
 ```
 
-Requires: Docker (Colima on Mac is fine) + local **product** tree with `desks: []`.
+Requires: Docker (Colima on Mac is fine) **or** host fallback. Local **product** tree with `desks: []`.
+
+If product is missing, `lab-e2e` provisions a **friend-shaped empty product** via `./scripts/ensure-product-empty.sh` (local only — not a ship, not a push, not a copy of kernel desks/books).
 
 Env:
 
@@ -37,6 +39,15 @@ Env:
 
 **Ship-ready** = `lab-e2e` PASS **and** `./scripts/release-check.sh --full` PASS.  
 **Shipped** = human push only.
+
+**Implement-done checklist** (same items Glass posts as proof; Lab FAILs on them) is one named lever — see [`FEATURE-MAP.md`](./FEATURE-MAP.md):
+
+```bash
+./scripts/verify-feature.sh              # test:platform + lab-e2e + empty-shell PRODUCT desks=[] + VM-glass shots
+./scripts/verify-feature.sh --docs-only  # docs/scripts tickets must say so
+```
+
+The lever wraps hook 10 + existing gates (no extra lab hook). Host fallback if Docker is missing. Kernel dogfood desks may stay non-zero; empty-shell still requires **PRODUCT** `desks=[]`.
 
 ---
 
@@ -64,8 +75,6 @@ See [`MULTI-INSTANCE.md`](./MULTI-INSTANCE.md). Lab defaults **never** bind 4681
 ```bash
 # Optional long-run lab glass (after image build / compose)
 ./scripts/lab-e2e.sh --glass
-# Fails closed if LAB_PORT (default 4690) is already bound — do not smoke a foreign glass.
-# LAB_PORT=4692 ./scripts/lab-e2e.sh --glass
 # or: docker compose -f docker/product-lab/docker-compose.yml --profile glass up glass
 ```
 
@@ -103,6 +112,9 @@ scripts/lab-feature-hooks/
 
 Hooks run from `lab-e2e` after base health. Keep them fast and empty-install safe.
 
+Room map + what a screenshot/test proves: [`FEATURE-MAP.md`](./FEATURE-MAP.md).  
+Named lever `./scripts/verify-feature.sh` re-runs hook **10-empty-shell.sh** on PRODUCT (`desks=[]`) plus `test:platform` and this `lab-e2e`.
+
 ---
 
 ## Reset (= new computer)
@@ -120,6 +132,7 @@ Do not “fix” a red lab by mounting kernel vault.
 
 | Doc | Role |
 |-----|------|
+| [`FEATURE-MAP.md`](./FEATURE-MAP.md) | Factory rooms + `verify-feature.sh` lever |
 | [`MULTI-INSTANCE.md`](./MULTI-INSTANCE.md) | N cockpits at once (eng) |
 | [`DEVELOP.md`](./DEVELOP.md) | Platform build procedure |
 | [`RELEASE.md`](../RELEASE.md) | Ship to product remote |

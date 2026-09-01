@@ -13,6 +13,7 @@ ROOT="${1:?monorepo root}"
 ```
 
 - Must work with **desks=[]**
+- Empty-shell truth is **PRODUCT** (`COCKPIT_PRODUCT`), never kernel dogfood desks
 - No network to Anthony’s vault
 - Fast; exit 0 PASS / non-zero FAIL
 - Name with numeric prefix: `10-…sh`, `20-…sh`

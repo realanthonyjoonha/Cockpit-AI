@@ -82,7 +82,7 @@ Save is **ops archive only** — not pack input, not house SoR.
 
 5. Load `get_house_view` + `get_pack_snapshot` (if not already).
 
-6. Write a **short** side block (see Output §5):
+6. Write a **short** side block (see Output §4):
    - One-line house stance (from house only)  
    - For day items that **clearly** touch a pack WATCH or house lever: tag with **exact** WATCH title/id from pack (never invent titles)  
    - If nothing touches: **No material book touch today.**  

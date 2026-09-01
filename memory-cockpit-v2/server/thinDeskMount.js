@@ -242,30 +242,13 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/risks/proposals/:id/accept', j(withDesk((rt, req) => rt.model.riskProposalAccept(req.params.id))));
   app.post('/api/:slug/risks/proposals/:id/reject', j(withDesk((rt, req) => rt.model.riskProposalReject(req.params.id))));
   app.get('/api/:slug/sources', j(withDesk((rt) => rt.model.sources())));
-  app.get('/api/:slug/sources/:id', j(withDesk((rt, req) => rt.model.sourceGet(req.params.id))));
   app.get('/api/:slug/street', j(withDesk((rt) => rt.model.street())));
   app.post('/api/:slug/street/refresh', ja(withDesk(async (rt, req) => rt.model.streetRefresh(req.body || {}))));
   app.get('/api/:slug/model', j(withDesk((rt) => rt.model.workingModel())));
   app.post('/api/:slug/model/refresh', ja(withDesk(async (rt, req) => rt.model.workingModelRefresh(req.body || {}))));
   app.post('/api/:slug/model/print/arm', j(withDesk((rt, req) => rt.model.workingModelArm(req.body || {}))));
   app.post('/api/:slug/model/print/lock', j(withDesk((rt) => rt.model.workingModelLock())));
-  app.get('/api/:slug/reports/schedule', ja(withDesk((rt) => rt.model.reportSchedule())));
-  app.post('/api/:slug/reports/schedule', ja(withDesk((rt, req) => rt.model.reportScheduleSet(req.body || {}))));
-  app.get('/api/:slug/research', j(withDesk((rt, req) => rt.model.researchList({
-    lane: req.query.lane || req.query.job_lane || undefined,
-  }))));
-  app.get('/api/:slug/research/runs/:runId/file', (req, res) => {
-    try {
-      const rt = resolveThinDesk(req.params.slug);
-      if (!rt) deskNotFound(req.params.slug);
-      const out = rt.model.researchFile(req.params.runId, req.query.rel);
-      if (!out?.ok) return res.status(404).json({ ok: false, error: out?.error || 'not found' });
-      return res.sendFile(out.abs);
-    } catch (e) {
-      const status = e.status || 500;
-      return res.status(status).json({ ok: false, error: e.message || String(e) });
-    }
-  });
+  app.get('/api/:slug/research', j(withDesk((rt) => rt.model.researchList())));
   app.get('/api/:slug/research/runs/:runId', j(withDesk((rt, req) => rt.model.researchGet(req.params.runId))));
   app.post('/api/:slug/research/runs', j(withDesk((rt, req) => rt.model.researchStart(req.body || {}))));
   app.post('/api/:slug/research/runs/:runId/publish', j(withDesk((rt, req) => rt.model.researchPublish(req.params.runId, req.body || {}))));
@@ -273,7 +256,6 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/research/runs/:runId/heartbeat', j(withDesk((rt, req) => rt.model.researchHeartbeat(req.params.runId))));
   app.post('/api/:slug/research/runs/:runId/retry', j(withDesk((rt, req) => rt.model.researchRetry(req.params.runId, req.body || {}))));
   app.post('/api/:slug/research/runs/:runId/acquire', ja(withDesk(async (rt, req) => rt.model.researchAcquire(req.params.runId, req.body || {}))));
-  app.post('/api/:slug/research/runs/:runId/checkpoint', j(withDesk((rt, req) => rt.model.researchCheckpoint(req.params.runId, req.body || {}))));
   // Deep-compile pipeline stages 0+1 (SEC EDGAR resolve + filing index) — plan 2026-08-19.
   // Read-only for the book: cache lane cockpit/compile/{TICKER}/ only; never pack/house SoR.
   app.get('/api/:slug/pipeline', ja(withDesk(async (rt) => pipelineSnapshot(rt.desk.ticker, {
@@ -287,7 +269,7 @@ export function mountThinDesks(app, { j, ja }) {
   app.get('/api/:slug/book', j(withDesk((rt) => rt.model.book())));
   app.post('/api/:slug/book/refresh', j(withDesk((rt) => rt.model.refreshBook())));
   app.get('/api/:slug/compile', j(withDesk((rt) => rt.compileStatus())));
-  app.post('/api/:slug/compile', ja(withDesk((rt, req) => rt.compile(req.body || {}))));
+  app.post('/api/:slug/compile', ja(withDesk((rt) => rt.compile())));
   app.get('/api/:slug/ask', j(withDesk((rt, req) => rt.ask(String(req.query.q || '')))));
   app.post('/api/:slug/ask', j(withDesk((rt, req) => rt.ask(String((req.body && req.body.q) || '')))));
   app.get('/api/:slug/write-meta', j(withDesk((rt) => rt.model.writeMeta())));

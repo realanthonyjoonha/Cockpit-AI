@@ -13,6 +13,12 @@ export const GLASS_ROOT = path.resolve(SERVER_DIR, '..');
 export const MONOREPO_ROOT = path.resolve(GLASS_ROOT, '..');
 
 const MONOREPO_WIKI = path.join(MONOREPO_ROOT, 'research-wiki');
+/**
+ * Vault repo checked out beside the code repo (2026-08-20 code/content split).
+ * Research content lives in its own private repo so this tree can be shared
+ * without carrying anyone's book. Sibling of the monorepo root.
+ */
+const SIBLING_VAULT = path.resolve(MONOREPO_ROOT, '..', 'cockpit-vault');
 const MONOREPO_ONT = path.join(MONOREPO_ROOT, 'ontology');
 const MONOREPO_STORE = path.join(MONOREPO_ONT, 'store', 'by_ticker');
 
@@ -32,7 +38,15 @@ export function resolveVaultDir() {
   if (process.env.COCKPIT_VAULT) {
     return path.resolve(process.env.COCKPIT_VAULT);
   }
+  if (looksLikeVault(SIBLING_VAULT)) {
+    return SIBLING_VAULT;
+  }
   if (looksLikeVault(MONOREPO_WIKI)) {
+    return MONOREPO_WIKI;
+  }
+  // Empty product scaffold: in-tree research-wiki may exist with no fm.js / no books.
+  // Prefer it over legacy ~/Trading so tests never require that path.
+  if (fs.existsSync(MONOREPO_WIKI)) {
     return MONOREPO_WIKI;
   }
   return path.join(os.homedir(), 'Trading', 'research-wiki');

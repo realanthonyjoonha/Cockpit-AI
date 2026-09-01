@@ -7,10 +7,11 @@
 //          dogfood book) and NVDA's 2026-08-17 8-K is present in the filing index.
 // Writes: only the pipeline's own cache lane (cockpit/compile/{TICKER}/) — the same
 // writes production makes on any page load. No SoR (house/risks/store) is touched.
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { coverageTier, filedSinceCompile, normalizeFilings, pipelineSnapshot } from '../server/secEdgar.js';
+import { resolveVaultDir } from '../server/monorepoPaths.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 let pass = 0, fail = 0;
@@ -58,12 +59,20 @@ check('normalize: url + fields', nf.length === 1 && nf[0].url.includes('/320193/
 
 console.log('\n\x1b[1m2 · live/cached EDGAR — registry desks\x1b[0m');
 const REG = JSON.parse(readFileSync(path.join(ROOT, 'config', 'thin-desks.json'), 'utf8'));
-const EXPECT = { NVDA: 'A', AVGO: 'A', AMD: 'A', MU: 'A', MRVL: 'A', SHAZ: 'B', IREN: 'B', TSM: 'C', NBIS: 'C' };
 const desks = Array.isArray(REG.desks) ? REG.desks : [];
-const got = {};
+const vaultDir = resolveVaultDir();
+const vaultParser = existsSync(path.join(vaultDir, 'cockpit', 'lib', 'fm.js'));
+const vaultWiki = existsSync(path.join(vaultDir, 'wiki', 'entities'));
+const vaultUsable = vaultParser || vaultWiki;
+
 if (desks.length === 0) {
-  ok('empty registry — skip live EDGAR desk census (friend/product shell)');
+  ok('empty install — skip live EDGAR dogfood census (desks=[])');
+} else if (!vaultUsable) {
+  // This VM / friend empty product: no cockpit-vault and must not require ~/Trading/research-wiki.
+  ok(`no vault parser at ${vaultDir} — skip live EDGAR vault-lane asserts`);
 } else {
+  const EXPECT = { NVDA: 'A', AVGO: 'A', AMD: 'A', MU: 'A', MRVL: 'A', SHAZ: 'B', IREN: 'B', TSM: 'C', NBIS: 'C' };
+  const got = {};
   for (const d of desks) {
     const t = String(d.ticker).toUpperCase();
     try {
@@ -78,28 +87,21 @@ if (desks.length === 0) {
     } catch (e) { bad(`${t} snapshot`, e.message); }
     await new Promise((r) => setTimeout(r, 120)); // SEC politeness
   }
-  const registryTickers = new Set(desks.map((d) => String(d.ticker).toUpperCase()));
-  const dogfoodTickers = Object.keys(EXPECT);
-  const hasFullDogfood = dogfoodTickers.every((t) => registryTickers.has(t));
-  if (hasFullDogfood) {
-    const tiers = dogfoodTickers.map((t) => got[t]?.tier?.tier).filter(Boolean);
-    check('tier census 5A/2B/2C on dogfood book',
-      tiers.filter((x) => x === 'A').length === 5 && tiers.filter((x) => x === 'B').length === 2 && tiers.filter((x) => x === 'C').length === 2,
-      JSON.stringify(tiers));
-  } else {
-    ok(`partial registry — skip dogfood census (desks: ${[...registryTickers].join(',') || 'none'})`);
-  }
+  const tiers = Object.values(got).map((s) => s.tier.tier);
+  check('tier census 5A/2B/2C on dogfood book',
+    tiers.filter((x) => x === 'A').length === 5 && tiers.filter((x) => x === 'B').length === 2 && tiers.filter((x) => x === 'C').length === 2,
+    JSON.stringify(tiers));
 
-  // NVDA 2026-08-17 8-K visible (permanent history assert) — only when NVDA is installed
+  // NVDA 2026-08-17 8-K visible (permanent history assert) — only when NVDA is a live desk
   const nvda = got.NVDA;
   if (nvda) {
     const hit = (nvda.since_compile.material_items || []).find((f) => f.form === '8-K' && f.filed === '2026-08-17')
       || (nvda.latest_filings || []).find((f) => f.form === '8-K' && f.filed === '2026-08-17');
     check('NVDA 8-K 2026-08-17 visible with sec.gov URL', !!hit && /sec\.gov\/Archives/.test(hit.url), JSON.stringify((nvda.latest_filings || []).slice(0, 3)));
-  } else if (registryTickers.has('NVDA')) {
+  } else if (desks.some((d) => String(d.ticker).toUpperCase() === 'NVDA')) {
     bad('NVDA 8-K 2026-08-17 visible', 'no NVDA snapshot');
   } else {
-    ok('NVDA not in this install — skip 8-K history assert');
+    ok('NVDA not in this install registry (skip 8-K history assert)');
   }
 }
 

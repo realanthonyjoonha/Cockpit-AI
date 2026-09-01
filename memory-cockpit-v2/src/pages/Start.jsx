@@ -437,9 +437,9 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
                           type="button"
                           className="desk-btn"
                           style={{ padding: '3px 8px', fontSize: 10, marginLeft: 4 }}
-                          onClick={() => { window.location.hash = `#/${row.slug}/reports`; }}
+                          onClick={() => { window.location.hash = `#/${row.slug}/research`; }}
                         >
-                          Reports
+                          Research
                         </button>
                       </td>
                     </tr>

@@ -4,15 +4,12 @@ description: Cockpit research menu — list MCP recipes for house/pack (Grok + c
 
 Show the **cockpit command menu** and wait for a choice (or desk + action).
 
-Bare `/cockpit` = menu + `list_desks` pin check. **Do not** default to steelman. Steelman only if they named a desk and asked for it.
-
-Cold session: **`docs/SESSION.md`** — kernel `~/Desktop/cockpit-kernel`, product `~/Desktop/cockpit-product`, personal is not factory SoR. Build → `/cockpit-feature`. Ship → `/cockpit-ship`.
-
 ## Menu
 
 | Slash | What it does |
 |-------|----------------|
 | `/cockpit-feature [goal]` | **Build PLATFORM feature** — factory-scalable; agents own trees/gates (`docs/EASY.md`) |
+| `/cockpit-verify [--docs-only]` | **Verify lever** — test:platform + lab-e2e + empty-shell PRODUCT desks=[] + VM-glass shots (`docs/FEATURE-MAP.md`) |
 | `/cockpit-ship [push?]` | **Ship to friends** — privacy + lab-e2e + release-check; push only if you say push |
 | `/cockpit-desks` | List thin desks via MCP |
 | `/cockpit-customer-sim [feature?]` | **First-time customer** on blank product — test from scratch (not dogfood) |
@@ -20,7 +17,6 @@ Cold session: **`docs/SESSION.md`** — kernel `~/Desktop/cockpit-kernel`, produ
 | `/cockpit-daily [desk] [--save]` | Daybook daily: what moved + calendar + short book-touch; optional vault save |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research only what user asks; **ask to save** → write note + compile ticker → Sources |
 | `/cockpit-coverage [desk] [scope?]` | Structured coverage / init-style note (Overview AGENTS → Coverage); optional save+compile |
-| `/cockpit-report [desk] [mode]` | **Thesis lane** — checkpointed report + PDF (`ib-report` skill). Not daybook, not coverage |
 | `/cockpit-comps [desk] [peers?]` | Peer comps table (user supplies peers/metrics); optional save+compile |
 | `/cockpit-model [desk] [pipeline\|chat]` | **Model desk** — working assumptions + bridge vault (glass `#/{slug}/model`); not PT |
 | `/cockpit-research-compile [desk] [pipeline\|chat] [run_id?]` | **Research runs** — deep compile archive (glass `#/{slug}/research`); not live pack |

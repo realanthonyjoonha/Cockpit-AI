@@ -187,79 +187,11 @@ try {
 }
 
 try {
-  const p = buildInitialPrompt({
-    action: 'thesis-report',
-    desk: 'lly',
-    thesis_mode: 'earnings-update',
-  });
-  if (p !== '/cockpit-report lly earnings-update all stop') throw new Error(p);
-  ok('thesis-report → /cockpit-report desk mode all stop');
-} catch (e) {
-  fail('thesis-report prompt', e);
-}
-
-try {
-  const p = buildInitialPrompt({ action: 'thesis-report', desk: 'nvda' });
-  if (p !== '/cockpit-report nvda earnings-update all stop') throw new Error(p);
-  ok('thesis-report default mode earnings-update all stop');
-} catch (e) {
-  fail('thesis-report default mode', e);
-}
-
-try {
-  const p = buildInitialPrompt({
-    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
-    register_scope: 'pick', register_ids: ['R1', 'R9'],
-  });
-  if (p !== '/cockpit-report lly deep-dive pick R1,R9 stop') throw new Error(p);
-  ok('thesis-report pick ids in prompt');
-} catch (e) {
-  fail('thesis-report pick prompt', e);
-}
-
-try {
-  const p = buildInitialPrompt({
-    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
-    register_scope: 'pick',
-    register_ids: ['lly-r1-tirzepatide-cash-engine-concentration-outgoing-mounjaro-zepbound', 'lly-r9-orforglipron'],
-  });
-  if (p !== '/cockpit-report lly deep-dive pick R1,R9 stop') throw new Error(p);
-  ok('thesis-report pick pack slugs compress to Rn');
-} catch (e) {
-  fail('thesis-report pick slug prompt', e);
-}
-
-try {
-  const p = buildInitialPrompt({
-    action: 'thesis-report', desk: 'lly', thesis_mode: 'initiation',
-    register_scope: 'house-only',
-  });
-  if (p !== '/cockpit-report lly initiation skim stop') throw new Error(p);
-  ok('thesis-report house-only → skim');
-} catch (e) {
-  fail('thesis-report skim prompt', e);
-}
-
-try {
-  const p = buildInitialPrompt({
-    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
-    thesis_pace: 'through',
-  });
-  if (p !== '/cockpit-report lly deep-dive all through') throw new Error(p);
-  ok('thesis-report through pace in prompt');
-} catch (e) {
-  fail('thesis-report through prompt', e);
-}
-
-try {
   const desk = listGrokAgents({ variant: 'desk' });
-  if (desk.agents.some((a) => a.action === 'research-compile')) {
-    throw new Error('research-compile still in desk catalog');
+  if (!desk.agents.some((a) => a.action === 'research-compile')) {
+    throw new Error('research-compile missing from desk variant');
   }
-  if (!desk.agents.some((a) => a.action === 'thesis-report')) {
-    throw new Error('thesis-report missing from desk variant');
-  }
-  ok('desk variant omits research-compile; keeps thesis-report');
+  ok('desk variant includes research-compile');
 } catch (e) {
   fail('desk research-compile catalog', e);
 }
@@ -270,24 +202,6 @@ try {
   ok('model-desk chat → /cockpit-model nvda chat');
 } catch (e) {
   fail('model-desk chat prompt', e);
-}
-
-try {
-  const p = buildInitialPrompt({ action: 'model-read', desk: 'nvda', run_id: '20260827T000000Z_model_read_NVDA' });
-  if (p !== '/cockpit-model-read nvda 20260827T000000Z_model_read_NVDA') throw new Error(p);
-  ok('model-read → /cockpit-model-read desk run_id');
-} catch (e) {
-  fail('model-read prompt', e);
-}
-
-try {
-  const desk = listGrokAgents({ variant: 'desk' });
-  if (!desk.agents.some((a) => a.action === 'model-read')) {
-    throw new Error('model-read missing from desk variant');
-  }
-  ok('desk variant includes model-read');
-} catch (e) {
-  fail('desk model-read catalog', e);
 }
 
 try {

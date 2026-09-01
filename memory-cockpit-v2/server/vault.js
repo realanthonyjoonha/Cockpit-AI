@@ -12,8 +12,40 @@ import { resolveVaultDir } from './monorepoPaths.js';
 export const VAULT_DIR = resolveVaultDir();
 export const VAULT_REAL = fs.existsSync(VAULT_DIR) ? fs.realpathSync(VAULT_DIR) : VAULT_DIR;
 
-// one schema parser, shared with lint.js/sync.js (imported from the vault itself)
-export const fm = await import(pathToFileURL(path.join(VAULT_DIR, 'cockpit', 'lib', 'fm.js')).href);
+/**
+ * Frontmatter parser. Prefer vault cockpit/lib/fm.js (one schema with lint/sync).
+ * Empty product / this VM may have no vault — never require ~/Trading/research-wiki.
+ * Stub is parse-only; it does not invent research content.
+ */
+function stubParseFrontmatter(raw) {
+  const text = String(raw ?? '');
+  if (!text.startsWith('---')) return { meta: {}, body: text };
+  const end = text.indexOf('\n---', 3);
+  if (end < 0) return { meta: {}, body: text };
+  const block = text.slice(3, end).replace(/^\n/, '');
+  const body = text.slice(end + 4).replace(/^\n/, '');
+  const meta = {};
+  for (const line of block.split('\n')) {
+    const m = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!m) continue;
+    meta[m[1]] = m[2].replace(/^['"]|['"]$/g, '').trim();
+  }
+  return { meta, body };
+}
+
+async function loadFm() {
+  const p = path.join(VAULT_DIR, 'cockpit', 'lib', 'fm.js');
+  if (!fs.existsSync(p)) {
+    return { parseFrontmatter: stubParseFrontmatter };
+  }
+  try {
+    return await import(pathToFileURL(p).href);
+  } catch {
+    return { parseFrontmatter: stubParseFrontmatter };
+  }
+}
+
+export const fm = await loadFm();
 
 // symlink-safe path guard (ported from v1): realpath the deepest existing ancestor
 export function canonicalize(absCandidate) {
@@ -70,6 +102,11 @@ let cache = null, cacheTime = 0;
 export function scanVault(force = false) {
   const now = Date.now();
   if (cache && !force && now - cacheTime < 5000) return cache;
+  if (!fs.existsSync(VAULT_DIR)) {
+    cache = { pages: [], bySlug: new Map() };
+    cacheTime = now;
+    return cache;
+  }
   const pages = [];
   for (const f of listMarkdownFiles(VAULT_DIR)) {
     try { pages.push(parsePage(f)); } catch { /* unreadable page — skip, never crash */ }

@@ -5,7 +5,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { displayMonorepoRoot, realpathSafe } from './mcpPinGuard.js';
 
 const GLASS_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -22,22 +21,21 @@ export function ensureProjectCockpitMcp(monorepoRoot, opts = {}) {
   if (!root || !fs.existsSync(root)) {
     return { ok: false, error: `monorepo root missing: ${root}` };
   }
-  const displayRoot = displayMonorepoRoot(root);
 
-  const glass = path.join(displayRoot, 'memory-cockpit-v2');
+  const glass = path.join(root, 'memory-cockpit-v2');
   const mcpScript = opts.mcpScript
     || path.join(glass, 'scripts', 'mcp-cockpit-research.mjs');
   if (!fs.existsSync(mcpScript)) {
     return { ok: false, error: `MCP script missing: ${mcpScript}` };
   }
 
-  const vault = process.env.COCKPIT_VAULT || path.join(displayRoot, 'research-wiki');
-  const store = process.env.ONTOLOGY_STORE || path.join(displayRoot, 'ontology', 'store', 'by_ticker');
-  const ontRoot = process.env.ONTOLOGY_ROOT || path.join(displayRoot, 'ontology');
+  const vault = process.env.COCKPIT_VAULT || path.join(root, 'research-wiki');
+  const store = process.env.ONTOLOGY_STORE || path.join(root, 'ontology', 'store', 'by_ticker');
+  const ontRoot = process.env.ONTOLOGY_ROOT || path.join(root, 'ontology');
   const nodeBin = opts.nodeBin || process.execPath;
 
   // Scenario / pin isolation (multi-cockpit on one Mac)
-  let expectRoot = process.env.COCKPIT_EXPECT_ROOT || displayRoot;
+  let expectRoot = process.env.COCKPIT_EXPECT_ROOT || root;
   let allowedSlugs = process.env.COCKPIT_ALLOWED_SLUGS || '';
   let scenarioName = process.env.COCKPIT_SCENARIO_NAME || '';
   let agentAccept = process.env.COCKPIT_AGENT_ACCEPT || '';
@@ -83,8 +81,7 @@ ${allowedSlugs ? `COCKPIT_ALLOWED_SLUGS = ${tomlStr(allowedSlugs)}\n` : ''}${sce
   return {
     ok: true,
     path: cfgPath,
-    monorepo_root: displayRoot,
-    monorepo_real: realpathSafe(root),
+    monorepo_root: root,
     vault,
     store,
     expect_root: expectRoot,

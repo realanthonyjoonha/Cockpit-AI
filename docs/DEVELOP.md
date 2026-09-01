@@ -5,7 +5,7 @@
 
 **Hard law is not here.** Read **[`AGENTS.md`](../AGENTS.md)** first (decision-support, no invent, human ACCEPT, no secrets). This file is **procedure** for platform work so habits survive cold sessions.
 
-**Anthony’s short path:** [`SESSION.md`](./SESSION.md) · [`EASY.md`](./EASY.md) · slash **`/cockpit-feature`** (build) · **`/cockpit-ship`** (friends).  
+**Anthony’s short path:** [`EASY.md`](./EASY.md) · slash **`/cockpit-feature`** (build) · **`/cockpit-ship`** (friends).  
 This file is the deep procedure those commands implement.
 
 Decision-support only.
@@ -26,11 +26,10 @@ Decision-support only.
 
 ## 2. Read order (developer)
 
-1. **`docs/SESSION.md`** — trees + which docs are stale  
-2. **`AGENTS.md`** — hard rules  
-3. **This file** — classify, brief, done stages  
-4. **`RELEASE.md`** — only when shipping platform to product/friends  
-5. Task-specific: `THIN-DESK-CONTRACT.md` · `NEW-DESK-PLAYBOOK.md` · `docs/AGENT-AUTHORING.md`
+1. **`AGENTS.md`** — hard rules  
+2. **This file** — classify, brief, done stages  
+3. **`RELEASE.md`** — only when shipping platform to product/friends  
+4. Task-specific: `THIN-DESK-CONTRACT.md` · `NEW-DESK-PLAYBOOK.md` · `docs/AGENT-AUTHORING.md`
 
 ---
 
@@ -106,13 +105,19 @@ You review on glass when free; you push when you trust it.
 ## 8. Verify (minimum)
 
 ```bash
-# From monorepo root (kernel dogfood)
-cd memory-cockpit-v2 && npm run test:platform   # or thin-slug-resolve + desk-health
+# Named lever — same checklist Glass posts as proof and Lab FAILs on
+# (test:platform, lab-e2e, empty-shell PRODUCT desks=[], VM-glass shots)
+./scripts/verify-feature.sh              # layout/UI
+./scripts/verify-feature.sh --docs-only  # docs/scripts only (must say so)
+
+# Narrower (not a substitute for the lever)
+cd memory-cockpit-v2 && npm run test:platform
 
 # Before claiming ship-ready
 cd <kernel-root> && ./scripts/release-check.sh --full
 ```
 
+Room hashes + what proof looks like: [`FEATURE-MAP.md`](./FEATURE-MAP.md).  
 Empty product install must still pass platform/health checks. Desk dead but pack green → `desk-health.mjs` (see AGENTS task table).
 
 ---
@@ -151,6 +156,7 @@ Container (isolated Node + git; mounts kernel + product read-only):
 | Doc | Role |
 |-----|------|
 | [`AGENTS.md`](../AGENTS.md) | Hard law |
+| [`FEATURE-MAP.md`](./FEATURE-MAP.md) | Factory rooms + verify lever |
 | [`RELEASE.md`](../RELEASE.md) | Ship ritual |
 | [`OPERATE.md`](../OPERATE.md) | Desk day jobs |
 | [`PRODUCT-KERNEL-SOR.md`](./PRODUCT-KERNEL-SOR.md) | Dual-tree sync |

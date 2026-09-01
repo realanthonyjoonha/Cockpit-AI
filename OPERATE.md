@@ -13,8 +13,8 @@ Use this when the desk **already exists**. For a **new** company → `NEW-DESK-P
 | **Daybook** | “What moved for this name?” | Glass AGENTS → **Daily brief** · `/cockpit-daily {slug}` | Optional brief archive only |
 | **Street update** | “Firm PTs / coverage moved” | Desk → **Street** → **REFRESH STREET** | `cockpit/street/{TICKER}.json` only |
 | **Street chat** | Discuss models vs house/WATCH | Street → **OPEN GROK** | Only if you publish Street |
-| **Working model** | Assumptions / bridge / variance | Desk → **Model** → **UPDATE MODEL** / **READ MODEL** | `cockpit/model/{TICKER}.json` only (not pack/house). PDF is ops |
-| **Thesis report** | Earnings-update / deep-dive / initiation note + PDF | Desk → **Reports** → **NEW REPORT** · `/cockpit-report {slug} {mode}` · checkpoints | Same runs folder, `job: thesis_report`. propose_* only (glass ACCEPT). PDF is ops, not pack |
+| **Working model** | Assumptions / bridge / variance | Desk → **Model** → **UPDATE MODEL** | `cockpit/model/{TICKER}.json` only (not pack/house) |
+| **Research runs** | Re-read / start deep compile archive | Desk → **Research** → **NEW COMPILE** (START glance shows compiling / stalled / last complete) | `cockpit/research/{TICKER}/runs/` only (not live pack until promote) |
 | **Risk DD** | One WATCH needs diligence | `/cockpit-risk-check` or risk page agents | Propose only → glass ACCEPT |
 | **House edit** | Stance text change | `/cockpit-propose` → glass ACCEPT → **COMPILE BOOK** | House + pack after compile |
 | **Glass broken / empty rooms** | Desk listed but pages dead | `cd memory-cockpit-v2 && node scripts/desk-health.mjs --slug {slug} --base-url http://127.0.0.1:PORT` | None |

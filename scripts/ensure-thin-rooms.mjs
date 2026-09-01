@@ -16,18 +16,14 @@ const REQUIRED = [
   'sources',
   'street',
   'model',
-  'reports',
+  'research',
+  'ask',
   'update',
 ];
-/** Ask = API/CLI-only. Compile room (deep archive) retired — run bus stays for thesis/model_read. */
-const DROP = ['ask', 'research'];
 
 function mergeRooms(existing) {
   const list = Array.isArray(existing) ? existing.map(String) : [];
-  const out = [];
-  for (const r of list) {
-    if (!DROP.includes(r) && !out.includes(r)) out.push(r);
-  }
+  const out = [...list];
   for (const r of REQUIRED) {
     if (!out.includes(r)) out.push(r);
   }

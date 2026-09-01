@@ -24,6 +24,7 @@ function storePath(slug) {
 }
 
 function ensureDir() {
+  if (!fs.existsSync(VAULT_DIR)) return;
   if (!fs.existsSync(PROPOSALS_DIR)) {
     fs.mkdirSync(PROPOSALS_DIR, { recursive: true, mode: 0o755 });
   }
@@ -648,88 +649,6 @@ export function getRiskProposal(slug, id) {
   const store = readStore(slug);
   const p = store.proposals.find((x) => x.id === id);
   return p || null;
-}
-
-function clipRisk(s, n = 420) {
-  const t = String(s || '').replace(/\s+/g, ' ').trim();
-  if (t.length <= n) return t;
-  return `${t.slice(0, n - 1)}…`;
-}
-
-function tripwireLine(tw) {
-  if (!tw || typeof tw !== 'object') return String(tw || '').trim();
-  const sig = String(tw.signal || tw.Signal || '—').trim();
-  const trip = String(tw.tripwire || tw.Tripwire || tw.tell || '').trim();
-  const state = String(tw.state || tw.State || '').trim();
-  return [sig, trip, state].filter(Boolean).join(' · ');
-}
-
-/**
- * Glass review payload for a risk proposal (readable fields, not SoR dump).
- * @param {object} p
- */
-export function reviewRiskProposal(p) {
-  if (!p || typeof p !== 'object') {
-    return { kind: null, title: '', fields: [], blocks: [], tripwires: [], rationale: null, section_markdown: null, unchanged: true };
-  }
-  const kind = String(p.kind || '');
-  const fields = [];
-  const blocks = [];
-  const tripwires = [];
-  const title = String(p.risk_name || p.title || p.section_heading || 'Risk proposal').trim();
-
-  if (kind === 'add_risk') {
-    fields.push({ key: 'risk', from: '—', to: title || 'New risk' });
-    fields.push({ key: 'status', from: '—', to: String(p.to_status || 'WATCH').toUpperCase() });
-    if (p.grade) fields.push({ key: 'grade', from: '—', to: `[${String(p.grade).toUpperCase()}]` });
-    if (p.summary) blocks.push({ k: 'SUMMARY', text: clipRisk(p.summary, 800) });
-    if (p.mechanism) blocks.push({ k: 'MECHANISM', text: clipRisk(p.mechanism, 1200) });
-    for (const tw of (Array.isArray(p.tripwires) ? p.tripwires : [])) {
-      const line = tripwireLine(tw);
-      if (line) tripwires.push({ t: 'add', s: line });
-    }
-  } else if (kind === 'status_change') {
-    fields.push({ key: 'risk', from: title, to: title });
-    fields.push({
-      key: 'status',
-      from: String(p.from_status || '?').toUpperCase(),
-      to: String(p.to_status || '?').toUpperCase(),
-    });
-  } else if (kind === 'set_tripwires') {
-    fields.push({ key: 'risk', from: title, to: title });
-    const prior = Array.isArray(p.prior_tripwires) ? p.prior_tripwires : [];
-    const next = Array.isArray(p.tripwires) ? p.tripwires : [];
-    for (const tw of prior) {
-      const line = tripwireLine(tw);
-      if (line) tripwires.push({ t: 'del', s: line });
-    }
-    for (const tw of next) {
-      const line = tripwireLine(tw);
-      if (line) tripwires.push({ t: 'add', s: line });
-    }
-    fields.push({
-      key: 'monitors',
-      from: `${prior.length} prior`,
-      to: `${next.length} proposed`,
-    });
-  } else {
-    fields.push({ key: 'kind', from: '—', to: kind || 'edit' });
-    if (title) fields.push({ key: 'risk', from: '—', to: title });
-  }
-
-  const unchanged = kind === 'status_change'
-    && String(p.from_status || '').toUpperCase() === String(p.to_status || '').toUpperCase();
-
-  return {
-    kind,
-    title,
-    fields,
-    blocks,
-    tripwires,
-    rationale: p.rationale ? clipRisk(p.rationale, 1200) : null,
-    section_markdown: p.section_markdown || null,
-    unchanged,
-  };
 }
 
 /**

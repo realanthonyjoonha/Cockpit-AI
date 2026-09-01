@@ -3,320 +3,10 @@
 // Decision-support only. Not pack / house / Street SoR until explicit promote.
 import fs from 'fs';
 import path from 'path';
-import {
-  MODEL_READ_ORDER,
-  modelReadGraphViolations,
-  modelReadOutputViolations,
-  modelReadOrderViolations,
-} from './modelReadGraph.js';
 
 export const RESEARCH_RUNS_SCHEMA_VERSION = 1;
 
-export const RESEARCH_JOBS = new Set([
-  'deep_compile', 'print_package', 'pack_refresh', 'thesis_report', 'model_read',
-]);
-
-/** Thesis-lane modes (ib-report skill). Not a coverage rating. */
-export const THESIS_MODES = new Set(['earnings-update', 'deep-dive', 'initiation']);
-/** Conversational checkpoints stored on run meta (glass-visible). */
-export const THESIS_CHECKPOINTS = new Set(['scope', 'research', 'draft', 'qa', 'closeout']);
-
-export function isThesisReportJob(job) {
-  return String(job || '') === 'thesis_report';
-}
-
-export function isModelReadJob(job) {
-  return String(job || '') === 'model_read';
-}
-
-/** Interactive OPEN GROK jobs — no headless pid; orphan sweeper must skip. */
-export function isInteractiveResearchJob(job) {
-  return isThesisReportJob(job) || isModelReadJob(job);
-}
-
-/** Compile-lane jobs (Research room). Thesis is the Reports room. Model read is the Model room. */
-export const COMPILE_JOBS = new Set(['deep_compile', 'print_package', 'pack_refresh']);
-
-/** @returns {'compile'|'reports'|'model'} */
-export function researchLane(job) {
-  if (isThesisReportJob(job)) return 'reports';
-  if (isModelReadJob(job)) return 'model';
-  return 'compile';
-}
-
-/**
- * @param {string} job
- * @param {string} [lane] compile | reports | model | all
- */
-export function jobMatchesLane(job, lane) {
-  const l = String(lane || '').toLowerCase().trim();
-  if (!l || l === 'all') return true;
-  if (l === 'reports' || l === 'thesis' || l === 'thesis_report') return isThesisReportJob(job);
-  if (l === 'model' || l === 'model_read' || l === 'model-read') return isModelReadJob(job);
-  if (l === 'compile' || l === 'research') return !isThesisReportJob(job) && !isModelReadJob(job);
-  return true;
-}
-
-export function normalizeThesisMode(raw) {
-  const m = String(raw || '').toLowerCase().trim();
-  return THESIS_MODES.has(m) ? m : 'earnings-update';
-}
-
-export function normalizeThesisCheckpoint(raw) {
-  const c = String(raw || '').toLowerCase().trim();
-  return THESIS_CHECKPOINTS.has(c) ? c : 'scope';
-}
-
-/** stop = wait at C1/C2. through = end-to-end, no conversational waits. */
-export const THESIS_PACES = new Set(['stop', 'through']);
-
-const THESIS_PACE_ALIAS = {
-  gated: 'stop',
-  checkpoints: 'stop',
-  interactive: 'stop',
-  e2e: 'through',
-  auto: 'through',
-  'run-through': 'through',
-  run_through: 'through',
-  runthrough: 'through',
-  unattended: 'through',
-  continuous: 'through',
-};
-
-export function normalizeThesisPace(raw) {
-  const s = String(raw || '').toLowerCase().trim();
-  const mapped = THESIS_PACE_ALIAS[s] || s;
-  return THESIS_PACES.has(mapped) ? mapped : 'stop';
-}
-
-export function describeThesisPace(raw) {
-  const p = normalizeThesisPace(raw);
-  if (p === 'through') {
-    return 'through — do not wait at Checkpoint 1 or 2; still POST each checkpoint; closeout via propose_* only';
-  }
-  return 'stop — wait at Checkpoint 1 and 2';
-}
-
-/** Register depth on a thesis note. House is always on — not a fourth option. */
-export const REGISTER_SCOPES = new Set(['all', 'pick', 'skim']);
-
-const REGISTER_SCOPE_ALIAS = {
-  ids: 'pick',
-  named: 'pick',
-  'house-only': 'skim',
-  house_only: 'skim',
-  houseonly: 'skim',
-  none: 'skim',
-};
-
-const RISK_ID_RE = /^[A-Za-z][A-Za-z0-9._-]{0,119}$/;
-
-export function normalizeRegisterScope(raw) {
-  const s = String(raw || '').toLowerCase().trim();
-  const mapped = REGISTER_SCOPE_ALIAS[s] || s;
-  return REGISTER_SCOPES.has(mapped) ? mapped : 'all';
-}
-
-export function normalizeRegisterIds(raw) {
-  const arr = Array.isArray(raw) ? raw : String(raw || '').split(/[\s,;]+/);
-  const out = [];
-  const seen = new Set();
-  for (const item of arr) {
-    const id = String(item || '').trim();
-    if (!id || !RISK_ID_RE.test(id)) continue;
-    const key = id.toUpperCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(id);
-    if (out.length >= 40) break;
-  }
-  return out;
-}
-
-/**
- * House is always on. Register: all | pick | skim.
- * pick with no ids falls back to all (OPEN GROK from the agents menu is safe).
- */
-export function resolveThesisRegister(raw = {}) {
-  let register_scope = normalizeRegisterScope(
-    raw.register_scope || raw.registerScope || raw.thesis_register || raw.thesisRegister,
-  );
-  let register_ids = normalizeRegisterIds(
-    raw.register_ids || raw.registerIds || raw.risk_ids || raw.riskIds,
-  );
-  if (register_scope === 'pick' && !register_ids.length) register_scope = 'all';
-  if (register_scope !== 'pick') register_ids = [];
-  return { register_scope, register_ids };
-}
-
-/** R1 from `R1` or `lly-r1-tirzepatide-…`. Unmatched ids pass through. */
-export function shortRegisterToken(id) {
-  const s = String(id || '').trim();
-  if (/^R\d{1,3}$/i.test(s)) return s.toUpperCase();
-  const m = s.match(/(?:^|[-_./])r(\d{1,3})(?:[-_./]|$)/i);
-  return m ? `R${m[1]}` : s;
-}
-
-/** Section ORDER for config.py. skim drops register-updated and tripwires. */
-export function defaultThesisOrder(mode, registerScope) {
-  const m = normalizeThesisMode(mode);
-  const skim = normalizeRegisterScope(registerScope) === 'skim';
-  if (m === 'earnings-update') {
-    return skim
-      ? ['print-vs-house', 'gaps', 'exec']
-      : ['print-vs-house', 'register-updated', 'tripwires', 'gaps', 'exec'];
-  }
-  if (m === 'initiation') {
-    return skim
-      ? ['spine', 'delta-vs-house', 'financials', 'monitorables', 'exec']
-      : ['spine', 'delta-vs-house', 'financials', 'register-updated', 'monitorables', 'exec'];
-  }
-  return skim
-    ? ['setup', 'delta-vs-house', 'mechanism', 'monitorables', 'exec']
-    : ['setup', 'delta-vs-house', 'register-updated', 'mechanism', 'monitorables', 'exec'];
-}
-
-export function formatThesisOrder(order) {
-  const o = Array.isArray(order) ? order.map((s) => String(s || '').trim()).filter(Boolean) : [];
-  return o.join(' · ');
-}
-
-export function orderOmitsRegister(order) {
-  const o = Array.isArray(order) ? order : [];
-  return !o.includes('register-updated') && !o.includes('tripwires');
-}
-
-const REGISTER_SECTION_IDS = new Set(['register-updated', 'tripwires']);
-
-/** Parse ORDER = ["a", "b"] from a thesis config.py (agent-authored). */
-export function parseConfigPyOrder(text) {
-  const m = String(text || '').match(/ORDER\s*=\s*\[([^\]]*)\]/m);
-  if (!m) return null;
-  return [...m[1].matchAll(/['"]([^'"]+)['"]/g)].map((x) => x[1]);
-}
-
-/**
- * Fail-closed skim checks: ORDER + on-disk sections/config must omit register.
- * @param {{ register_scope?: string, order?: string[], runDir?: string|null }} opts
- * @returns {string[]} errors
- */
-export function skimThesisViolations(opts = {}) {
-  const errors = [];
-  if (normalizeRegisterScope(opts.register_scope) !== 'skim') return errors;
-
-  const order = Array.isArray(opts.order) ? opts.order.map((s) => String(s || '').trim()).filter(Boolean) : [];
-  if (order.length && !orderOmitsRegister(order)) {
-    errors.push('skim: ORDER must omit register-updated and tripwires');
-  }
-
-  const runDir = opts.runDir ? String(opts.runDir) : '';
-  if (!runDir) return errors;
-
-  try {
-    const cfgPath = path.join(runDir, 'config.py');
-    if (fs.existsSync(cfgPath)) {
-      const parsed = parseConfigPyOrder(fs.readFileSync(cfgPath, 'utf8'));
-      if (parsed && !orderOmitsRegister(parsed)) {
-        errors.push('skim: config.py ORDER still includes a register chapter');
-      }
-    }
-    for (const sid of REGISTER_SECTION_IDS) {
-      for (const rel of [`sections/${sid}.md`, `output/sections/${sid}.md`]) {
-        const p = path.join(runDir, rel);
-        if (fs.existsSync(p)) {
-          let size = 0;
-          try { size = fs.statSync(p).size; } catch { size = 1; }
-          if (size > 0) errors.push(`skim: ${rel} must not exist`);
-        }
-      }
-    }
-  } catch (e) {
-    errors.push(`skim: could not verify run folder (${e.message || e})`);
-  }
-  return errors;
-}
-
-export function describeRegisterScope(scope, ids) {
-  const { register_scope, register_ids } = resolveThesisRegister({
-    register_scope: scope,
-    register_ids: ids,
-  });
-  if (register_scope === 'skim') {
-    return 'skim — house only; omit register-updated from ORDER (no register chapter)';
-  }
-  if (register_scope === 'pick') {
-    const labels = [...new Set(register_ids.map(shortRegisterToken))];
-    return `pick — deep only ${labels.join(', ')}; other Rn not tested this note`;
-  }
-  return 'all — WATCH in depth, INTACT/FIRED short';
-}
-
-function collectThesisFields(raw, job, { complete = false } = {}) {
-  const focus = str(raw.focus || raw.inputs?.focus) || null;
-  const prior_run_id = str(raw.prior_run_id || raw.inputs?.prior_run_id) || null;
-  const as_of_request = str(raw.as_of_request || raw.inputs?.as_of_request).slice(0, 32) || null;
-  if (isModelReadJob(job)) {
-    const order = Array.isArray(raw.model_read_order || raw.inputs?.model_read_order || raw.model_read?.order)
-      ? (raw.model_read_order || raw.inputs?.model_read_order || raw.model_read?.order)
-      : MODEL_READ_ORDER;
-    return {
-      inputs: {
-        focus, prior_run_id, as_of_request,
-        thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
-        model_read_order: order,
-      },
-      thesis: null,
-      model_read: {
-        order,
-        pdf_rel: str(raw.pdf_rel || raw.model_read?.pdf_rel).slice(0, 200) || null,
-      },
-    };
-  }
-  if (!isThesisReportJob(job)) {
-    return {
-      inputs: {
-        focus, prior_run_id, as_of_request,
-        thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
-      },
-      thesis: null,
-      model_read: null,
-    };
-  }
-  const reg = resolveThesisRegister({
-    register_scope: raw.register_scope || raw.inputs?.register_scope || raw.thesis?.register_scope,
-    register_ids: raw.register_ids || raw.inputs?.register_ids || raw.thesis?.register_ids,
-  });
-  const checkpoint = normalizeThesisCheckpoint(
-    raw.checkpoint || raw.inputs?.checkpoint || raw.thesis?.checkpoint || (complete ? 'qa' : 'scope'),
-  );
-  const mode = normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode || raw.thesis?.mode);
-  const pace = normalizeThesisPace(raw.thesis_pace || raw.inputs?.thesis_pace || raw.thesis?.thesis_pace);
-  const order = Array.isArray(raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order)
-    ? (raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order)
-    : defaultThesisOrder(mode, reg.register_scope);
-  return {
-    inputs: {
-      focus,
-      prior_run_id,
-      as_of_request,
-      thesis_mode: mode,
-      checkpoint,
-      register_scope: reg.register_scope,
-      register_ids: reg.register_ids,
-      thesis_pace: pace,
-      thesis_order: order,
-    },
-    thesis: {
-      mode,
-      checkpoint,
-      pdf_rel: str(raw.pdf_rel || raw.thesis?.pdf_rel).slice(0, 200) || null,
-      register_scope: reg.register_scope,
-      register_ids: reg.register_ids,
-      thesis_pace: pace,
-      order,
-    },
-  };
-}
+export const RESEARCH_JOBS = new Set(['deep_compile', 'print_package', 'pack_refresh']);
 export const RESEARCH_STATUSES = new Set([
   'queued', 'running', 'complete', 'failed', 'cancelled',
 ]);
@@ -549,29 +239,7 @@ export function validateResearchRunPublish(raw, opts = {}) {
         ? raw.extracts.guide.map(normalizeClaimLine).filter(Boolean)
         : []);
 
-    if (isThesisReportJob(job)) {
-      if (!summary) errors.push('complete thesis_report needs a summary (verdict / QA note)');
-      if (raw.promotion && raw.promotion.pack_claims) {
-        errors.push('thesis_report PDF is ops — never pack SoR');
-      }
-      const thesisBits = collectThesisFields(raw, job, { complete: true });
-      errors.push(...skimThesisViolations({
-        register_scope: thesisBits.inputs.register_scope,
-        order: thesisBits.inputs.thesis_order,
-        runDir: opts.runDir || null,
-      }));
-    } else if (isModelReadJob(job)) {
-      if (!summary) errors.push('complete model_read needs a summary (one-sentence read)');
-      if (raw.promotion && (raw.promotion.pack_claims || raw.promotion.house_proposed || raw.promotion.risks_proposed)) {
-        errors.push('model_read does not write pack / house / risks');
-      }
-      const bits = collectThesisFields(raw, job, { complete: true });
-      errors.push(...modelReadOrderViolations(bits.inputs.model_read_order));
-      if (opts.runDir) {
-        errors.push(...modelReadGraphViolations(opts.runDir));
-        errors.push(...modelReadOutputViolations(opts.runDir));
-      }
-    } else if (!summary && !financials.length && !narrative.length) {
+    if (!summary && !financials.length && !narrative.length) {
       errors.push('complete run needs summary or extract claims');
     }
     if (summary && adviceHit(summary)) errors.push('summary contains advice language');
@@ -609,7 +277,11 @@ export function validateResearchRunPublish(raw, opts = {}) {
               ? Number(raw.compute.agent_calls) : null,
           }
           : { note: 'heavy', duration_sec: null, agent_calls: null },
-        inputs: collectThesisFields(raw, job, { complete: true }).inputs,
+        inputs: raw.inputs && typeof raw.inputs === 'object' ? {
+          focus: str(raw.inputs.focus) || null,
+          prior_run_id: str(raw.inputs.prior_run_id) || null,
+          as_of_request: str(raw.inputs.as_of_request).slice(0, 32) || null,
+        } : { focus: null, prior_run_id: null, as_of_request: null },
         summary: summary || null,
         sources,
         gaps,
@@ -621,10 +293,10 @@ export function validateResearchRunPublish(raw, opts = {}) {
         },
         promotion: raw.promotion && typeof raw.promotion === 'object' ? {
           status: str(raw.promotion.status) || 'none',
-          pack_claims: (isThesisReportJob(job) || isModelReadJob(job)) ? false : !!raw.promotion.pack_claims,
-          risks_proposed: isModelReadJob(job) ? false : !!raw.promotion.risks_proposed,
-          house_proposed: isModelReadJob(job) ? false : !!raw.promotion.house_proposed,
-          model_pack_layers: (isThesisReportJob(job) || isModelReadJob(job)) ? false : !!raw.promotion.model_pack_layers,
+          pack_claims: !!raw.promotion.pack_claims,
+          risks_proposed: !!raw.promotion.risks_proposed,
+          house_proposed: !!raw.promotion.house_proposed,
+          model_pack_layers: !!raw.promotion.model_pack_layers,
           notes: str(raw.promotion.notes).slice(0, 400) || null,
         } : {
           status: 'none',
@@ -634,8 +306,6 @@ export function validateResearchRunPublish(raw, opts = {}) {
           model_pack_layers: false,
           notes: null,
         },
-        thesis: collectThesisFields(raw, job, { complete: true }).thesis,
-        model_read: collectThesisFields(raw, job, { complete: true }).model_read || null,
         immutable: true,
         decision_support_only: true,
       },
@@ -660,7 +330,11 @@ export function validateResearchRunPublish(raw, opts = {}) {
       finished_at: str(raw.finished_at) || (status === 'running' || status === 'queued' ? null : now),
       trigger: str(raw.trigger) || 'user',
       compute: { note: 'heavy', duration_sec: null, agent_calls: null },
-      inputs: collectThesisFields(raw, job).inputs,
+      inputs: {
+        focus: str(raw.focus || raw.inputs?.focus) || null,
+        prior_run_id: str(raw.prior_run_id || raw.inputs?.prior_run_id) || null,
+        as_of_request: null,
+      },
       summary: null,
       sources: [],
       gaps: [],
@@ -673,8 +347,6 @@ export function validateResearchRunPublish(raw, opts = {}) {
         model_pack_layers: false,
         notes: null,
       },
-      thesis: collectThesisFields(raw, job).thesis,
-      model_read: collectThesisFields(raw, job).model_read || null,
       immutable: false,
       decision_support_only: true,
       error: str(raw.error) || null,
@@ -714,18 +386,6 @@ export function indexRowFromMeta(meta) {
     n_claims,
     promoted: !!(meta.promotion && meta.promotion.status && meta.promotion.status !== 'none'),
     compute_note: meta.compute?.note || 'heavy',
-    thesis_mode: str(meta.inputs?.thesis_mode || meta.thesis?.mode) || null,
-    checkpoint: str(meta.inputs?.checkpoint || meta.thesis?.checkpoint) || null,
-    register_scope: isThesisReportJob(meta.job)
-      ? normalizeRegisterScope(meta.inputs?.register_scope || meta.thesis?.register_scope)
-      : null,
-    register_ids: isThesisReportJob(meta.job)
-      ? normalizeRegisterIds(meta.inputs?.register_ids || meta.thesis?.register_ids)
-      : null,
-    thesis_pace: isThesisReportJob(meta.job)
-      ? normalizeThesisPace(meta.inputs?.thesis_pace || meta.thesis?.thesis_pace)
-      : null,
-    job_label: humanJobLabel(meta.job),
   };
 }
 
@@ -733,7 +393,5 @@ export function humanJobLabel(job) {
   const j = str(job);
   if (j === 'print_package') return 'Print package';
   if (j === 'pack_refresh') return 'Pack refresh';
-  if (j === 'thesis_report') return 'Thesis report';
-  if (j === 'model_read') return 'Model read';
   return 'Deep compile';
 }

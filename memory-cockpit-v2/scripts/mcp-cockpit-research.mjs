@@ -55,7 +55,6 @@ const {
   assertAgentAcceptAllowed,
   appendAgentAcceptAudit,
   isAgentAcceptEnabled,
-  displayMonorepoRoot,
 } = await import(path.join(ROOT, 'server', 'mcpPinGuard.js'));
 loadScenarioFileIntoEnv(REPO_ROOT);
 
@@ -155,8 +154,7 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
       ok: false,
       pin_ok: false,
       error: String(e?.message || e),
-      monorepo_root: displayMonorepoRoot(REPO_ROOT),
-      monorepo_real: REPO_ROOT,
+      monorepo_root: REPO_ROOT,
       expect_root: process.env.COCKPIT_EXPECT_ROOT || null,
       allowed_slugs: process.env.COCKPIT_ALLOWED_SLUGS || null,
       note: 'STOP — wrong MCP pin. install-grok-mcp from the correct monorepo; OPEN GROK from that glass only.',
@@ -188,14 +186,12 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
     ok: true,
     pin_ok: true,
     desks,
-    monorepo_root: pin.monorepo_root,
-    monorepo_real: pin.monorepo_real,
-    expect_root: pin.expect_root,
+    monorepo_root: REPO_ROOT,
+    expect_root: process.env.COCKPIT_EXPECT_ROOT || null,
     allowed_slugs: process.env.COCKPIT_ALLOWED_SLUGS || null,
     scenario: process.env.COCKPIT_SCENARIO_NAME || null,
     foreign_slugs_in_registry: foreign,
     pin,
-    agent_accept: pin.agent_accept,
     vault: process.env.COCKPIT_VAULT,
     ontology_store: process.env.ONTOLOGY_STORE,
     registry: registryPath,
@@ -203,10 +199,9 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
     registry_live: true,
     host_hint: 'Primary: Grok Build. Optional later: Claude Code. Same tools either way.',
     note:
-      'Desks = config/thin-desks.json (re-read on file change). ' +
-      'monorepo_root is the human tree (usually ~/Desktop/cockpit-kernel); monorepo_real is the inode if that path is a symlink. Same tree — do not treat Trading/cockpit as a different product. ' +
-      'github/edgartools/tasks MCPs are unrelated. One cockpit-research pin per session. ' +
-      'If pin_ok is false, STOP. agent_accept off = glass ACCEPT only.',
+      'Desks = config/thin-desks.json (re-read on file change — long Grok sessions pick up new desks). ' +
+      'If a desk is missing, confirm monorepo MCP pin (project .grok/config.toml) points at THIS clone. ' +
+      'If pin_ok is false or monorepo_root is wrong, STOP. ACCEPT house/risks on glass only.',
   });
 });
 

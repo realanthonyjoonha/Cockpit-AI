@@ -82,6 +82,21 @@ echo
 echo "→ sync allowlist"
 need_grep "$KERNEL/scripts/sync-agent-surface.sh" 'docs/DEVELOP\.md' "sync-agent-surface allowlists DEVELOP"
 need_grep "$KERNEL/docs/PRODUCT-KERNEL-SOR.md" 'docs/DEVELOP\.md' "PRODUCT-KERNEL-SOR lists DEVELOP"
+need_grep "$KERNEL/scripts/sync-agent-surface.sh" 'FEATURE-MAP|verify-feature' "sync allowlists FEATURE-MAP / verify-feature"
+need_grep "$KERNEL/docs/PRODUCT-KERNEL-SOR.md" 'FEATURE-MAP|verify-feature' "PRODUCT-KERNEL-SOR lists FEATURE-MAP / verify-feature"
+echo
+
+# --- 3b. Feature map + named verify lever (kernel; Lab checklist SoR) ---
+echo "→ feature map + verify lever"
+need_file "$KERNEL/docs/FEATURE-MAP.md" "kernel docs/FEATURE-MAP.md"
+need_file "$KERNEL/scripts/verify-feature.sh" "kernel scripts/verify-feature.sh"
+need_grep "$KERNEL/docs/EASY.md" 'FEATURE-MAP' "EASY.md points at FEATURE-MAP"
+need_grep "$KERNEL/docs/LAB.md" 'FEATURE-MAP|verify-feature' "LAB.md points at FEATURE-MAP or verify-feature"
+need_grep "$KERNEL/docs/FEATURE-MAP.md" 'verify-feature' "FEATURE-MAP names the lever"
+need_grep "$KERNEL/docs/FEATURE-MAP.md" 'test:platform' "FEATURE-MAP lists test:platform"
+need_grep "$KERNEL/docs/FEATURE-MAP.md" 'lab-e2e' "FEATURE-MAP lists lab-e2e"
+need_grep "$KERNEL/docs/FEATURE-MAP.md" 'empty-shell' "FEATURE-MAP lists empty-shell"
+need_grep "$KERNEL/docs/FEATURE-MAP.md" 'VM-glass' "FEATURE-MAP lists VM-glass shots"
 echo
 
 # --- 4. DEVELOP content contracts (procedure, not second constitution) ---
@@ -106,7 +121,7 @@ if [ ! -d "$PRODUCT" ]; then
 else
   TD="$PRODUCT/memory-cockpit-v2/config/thin-desks.json"
   if [ -f "$TD" ]; then
-    n=$(node -e "const j=require('$TD'); console.log((j.desks||[]).length)" 2>/dev/null || echo "?")
+    n=$(env -u FORCE_COLOR NO_COLOR=1 node -e 'try{const j=require(process.argv[1]);process.stdout.write(String((j.desks||[]).length))}catch(e){process.stdout.write("?")}' "$TD" 2>/dev/null || echo "?")
     if [ "$n" = "0" ]; then ok "product thin-desks desks=[]"
     else bad "product thin-desks has $n desks (expected 0 for ship SoR)"
     fi

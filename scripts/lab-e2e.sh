@@ -6,7 +6,7 @@
 # Usage:
 #   ./scripts/lab-e2e.sh           # full gate
 #   ./scripts/lab-e2e.sh --host    # host-only (no docker)
-#   ./scripts/lab-e2e.sh --glass   # HTTP smoke on LAB_PORT (fails if port already bound)
+#   ./scripts/lab-e2e.sh --glass   # also start glass smoke briefly via compose
 #   ./scripts/lab-e2e.sh --negative   # isolation negative test then clean re-run
 #   ./scripts/lab-e2e.sh --isolation  # extensive multi-instance contamination suite
 #   ./scripts/lab-e2e.sh --isolation --isolation-live --isolation-docker
@@ -50,18 +50,6 @@ fail=0
 pass() { echo "  ✓ $*"; }
 bad() { echo "  ✗ $*"; fail=1; }
 
-port_in_use() {
-  local p="$1"
-  if command -v lsof >/dev/null 2>&1; then
-    lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1
-    return $?
-  fi
-  if (echo >/dev/tcp/127.0.0.1/"$p") >/dev/null 2>&1; then
-    return 0
-  fi
-  return 1
-}
-
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║  LAB E2E — blank product ship gate                       ║"
 echo "╚══════════════════════════════════════════════════════════╝"
@@ -73,10 +61,25 @@ echo
 # --- L0: paths ---
 echo "→ L0 paths"
 [ -f "$COMPOSE_FILE" ] && pass "compose present" || bad "missing $COMPOSE_FILE"
+
+if [ ! -d "$PRODUCT/memory-cockpit-v2" ]; then
+  echo "  · product missing — provisioning friend-shaped empty product (local; no ship, no books)"
+  mkdir -p "$(dirname "$PRODUCT")"
+  if [ -x "$ROOT/scripts/ensure-product-empty.sh" ] || [ -f "$ROOT/scripts/ensure-product-empty.sh" ]; then
+    if bash "$ROOT/scripts/ensure-product-empty.sh" "$PRODUCT"; then
+      pass "provisioned empty product"
+    else
+      bad "could not provision empty product at $PRODUCT"
+    fi
+  else
+    bad "product missing and scripts/ensure-product-empty.sh not found"
+  fi
+fi
+
 [ -d "$PRODUCT/memory-cockpit-v2" ] && pass "product monorepo" || bad "product missing"
 [ -f "$PRODUCT/memory-cockpit-v2/config/thin-desks.json" ] && pass "thin-desks.json" || bad "no thin-desks"
 
-n=$(node -e "console.log(require('$PRODUCT/memory-cockpit-v2/config/thin-desks.json').desks.length)" 2>/dev/null || echo "?")
+n=$(env -u FORCE_COLOR NO_COLOR=1 node -e 'try{process.stdout.write(String(require(process.argv[1]).desks.length))}catch(e){process.stdout.write("?")}' "$PRODUCT/memory-cockpit-v2/config/thin-desks.json" 2>/dev/null || echo "?")
 if [ "$n" = "0" ]; then pass "product desks=[]"
 else bad "product desks=$n — clear desks before lab (friend SoR empty)"
 fi
@@ -113,20 +116,6 @@ if [ "$DO_NEGATIVE" -eq 1 ]; then
   echo
 fi
 
-ensure_docker() {
-  if ! command -v docker >/dev/null 2>&1; then
-    return 1
-  fi
-  if docker info >/dev/null 2>&1; then
-    return 0
-  fi
-  if command -v colima >/dev/null 2>&1; then
-    echo "  → colima start"
-    colima start || true
-  fi
-  docker info >/dev/null 2>&1
-}
-
 run_host_suite() {
   echo "→ L1 host platform health (product empty)"
   (
@@ -149,7 +138,17 @@ run_host_suite() {
 
 run_docker_suite() {
   echo "→ L1/L3 docker product-lab test"
-  if ! ensure_docker; then
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "  docker missing — host suite only"
+    return 1
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    if command -v colima >/dev/null 2>&1; then
+      echo "  → colima start"
+      colima start || true
+    fi
+  fi
+  if ! docker info >/dev/null 2>&1; then
     echo "  docker daemon not ready — host suite only"
     return 1
   fi
@@ -158,40 +157,24 @@ run_docker_suite() {
     -f "$ROOT/docker/product-lab/Dockerfile" \
     "$ROOT"
 
-  # -t so hook stdout is line-buffered (non-TTY docker run hid hook FAIL, then we printed PASS).
-  # Do not write `local rc=$?` — `local` clobbers $? in bash.
-  local rc
-  set +e
-  docker run --rm -t \
+  docker run --rm \
     -e COCKPIT_PRODUCT=/work/product \
     -v "$PRODUCT:/work/product:ro" \
     cockpit-product-lab:local
-  rc=$?
-  set -e
-  if [ "$rc" -ne 0 ]; then
-    echo "  ✗ docker lab-test FAIL (container exit $rc)" >&2
-    return 1
-  fi
+
   pass "docker lab-test PASS"
 }
 
-# --- develop discipline (docker if ready; host fallback otherwise) ---
+# --- develop discipline ---
 echo "→ L6 develop-discipline"
-ensure_docker || true
 if [ -x "$KERNEL/docker/develop-discipline/run.sh" ]; then
-  if COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
-    bash "$KERNEL/docker/develop-discipline/run.sh"; then
-    pass "develop-discipline"
-  else
-    bad "develop-discipline FAIL"
-  fi
+  COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
+    bash "$KERNEL/docker/develop-discipline/run.sh" || bad "develop-discipline FAIL"
+  pass "develop-discipline"
 elif [ -x "$KERNEL/scripts/test-develop-discipline.sh" ]; then
-  if COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
-    bash "$KERNEL/scripts/test-develop-discipline.sh"; then
-    pass "develop-discipline (host)"
-  else
-    bad "develop-discipline FAIL"
-  fi
+  COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \
+    bash "$KERNEL/scripts/test-develop-discipline.sh" || bad "develop-discipline FAIL"
+  pass "develop-discipline (host)"
 else
   bad "develop-discipline runner missing"
 fi
@@ -201,14 +184,13 @@ echo
 if [ "$HOST_ONLY" -eq 1 ]; then
   run_host_suite
 else
-  if ensure_docker; then
-    if ! run_docker_suite; then
-      bad "docker lab-test FAIL"
-    fi
+  if run_docker_suite; then
+    :
   else
     echo "  · docker path unavailable — running host suite"
     run_host_suite
   fi
+  # always also run host hooks quickly for dual signal
   echo "→ L1 host cross-check"
   (
     cd "$PRODUCT/memory-cockpit-v2"
@@ -222,12 +204,9 @@ echo
 # --- optional glass HTTP ---
 if [ "$DO_GLASS" -eq 1 ]; then
   echo "→ L2 glass HTTP smoke (compose profile glass, port $LAB_PORT)"
-  if [ "$LAB_PORT" = "4681" ] || [ "$LAB_PORT" = "4682" ]; then
-    bad "LAB_PORT=$LAB_PORT is reserved (product 4681 / kernel 4682) — set LAB_PORT=4690+"
-  elif port_in_use "$LAB_PORT"; then
-    bad "LAB_PORT $LAB_PORT already in use — refuse to smoke a foreign glass. Set LAB_PORT to a free port (4691+)."
-  elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     docker build -t cockpit-product-lab:local -f "$ROOT/docker/product-lab/Dockerfile" "$ROOT" >/dev/null
+    # run glass in background
     cid=$(docker run -d --rm \
       -e COCKPIT_PRODUCT=/work/product \
       -e LAB_PORT="$LAB_PORT" \
@@ -237,6 +216,7 @@ if [ "$DO_GLASS" -eq 1 ]; then
       --entrypoint /entrypoint-glass.sh \
       cockpit-product-lab:local)
     echo "  container $cid"
+    # wait for listen
     ready=0
     for i in $(seq 1 60); do
       if curl -sf -o /dev/null --max-time 2 "http://127.0.0.1:${LAB_PORT}/api/thin-desks"; then

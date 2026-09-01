@@ -126,7 +126,7 @@ else
         const j=JSON.parse(fs.readFileSync(p,'utf8'));
         j.desks=[];
         if (!Array.isArray(j.rooms) || !j.rooms.includes('street')) {
-          j.rooms = ['overview','risks','house','sources','street','model','reports','update'];
+          j.rooms = ['overview','risks','house','sources','street','ask','update'];
         }
         fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
       "
