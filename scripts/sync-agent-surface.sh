@@ -85,6 +85,7 @@ FILES=(
   "docs/SCENARIO-PIN.md"
   "memory-cockpit-v2/scripts/agent-accept-e2e-test.mjs"
   ".grok/commands/cockpit-customer-sim.md"
+  ".grok/commands/cockpit-filings-e2e.md"
   "memory-cockpit-v2/server/mcpPinGuard.js"
   "memory-cockpit-v2/server/cockpitMcpProject.js"
   "memory-cockpit-v2/scripts/mcp-pin-guard-test.mjs"

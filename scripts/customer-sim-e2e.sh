@@ -207,13 +207,13 @@ else
     let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
       const j=JSON.parse(d);
       const acts=(j.agents||[]).map(a=>a.action);
-      for (const need of ['daily','research','street']) {
+      for (const need of ['daily','research','street','filing-map','background','tutor']) {
         if(!acts.includes(need)) {console.error('missing',need,acts); process.exit(2)}
       }
       if(acts.includes('new-desk')) process.exit(3); // new-desk is start-only
       console.log('ok');
     });
-  " && ok "desk variant: daily/research/street; no new-desk" || bad "desk agents catalog wrong"
+  " && ok "desk variant: daily/research/street/filing-map/learn; no new-desk" || bad "desk agents catalog wrong"
 fi
 
 # open-grok prompt mapping (may spawn Terminal — once)
@@ -231,6 +231,36 @@ else
       console.log('ok');
     });
   " && ok "open-grok new-desk → product repo + /cockpit-new-desk" || bad "open-grok new-desk contract fail"
+fi
+
+# Filings + iPhone chrome in the served friend bundle (no ticker, no underwrite)
+html=$(curl -sf --max-time 5 "$BASE/" || true)
+js_hash=$(printf '%s' "$html" | sed -n 's/.*assets\/\(index-[^"]*\.js\).*/\1/p' | head -1)
+css_hash=$(printf '%s' "$html" | sed -n 's/.*assets\/\(index-[^"]*\.css\).*/\1/p' | head -1)
+if [ -n "$js_hash" ]; then
+  js_tmp=$(mktemp)
+  css_tmp=$(mktemp)
+  curl -sf --max-time 8 "$BASE/assets/$js_hash" -o "$js_tmp" || true
+  curl -sf --max-time 8 "$BASE/assets/$css_hash" -o "$css_tmp" || true
+  for needle in 'desk-phone' 'room-bar' 'MAP FILINGS' 'IN BOOK' 'Open analysis'; do
+    if grep -F -q -- "$needle" "$js_tmp" "$css_tmp" 2>/dev/null; then ok "served bundle has $needle"
+    else bad "served bundle missing $needle"
+    fi
+  done
+  rm -f "$js_tmp" "$css_tmp"
+else
+  bad "SPA html missing index-*.js hash"
+fi
+for route in pipeline learn; do
+  code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 5 "$BASE/api/zzz-not-a-desk/$route" || echo 000)
+  if [ "$code" = "404" ]; then ok "unknown desk /$route → 404"
+  else bad "unknown desk /$route → $code (want 404)"
+  fi
+done
+if [ -f "$PRODUCT/.grok/commands/cockpit-filings-e2e.md" ]; then
+  ok "product has /cockpit-filings-e2e command"
+else
+  bad "product missing .grok/commands/cockpit-filings-e2e.md"
 fi
 echo
 

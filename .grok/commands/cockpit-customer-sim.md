@@ -11,6 +11,7 @@ Decision-support only: no buy/sell/hold, price targets, or sizing.
 ## Arguments
 
 - Optional: feature focus after the command, e.g. `/cockpit-customer-sim Street room` or `full first-run`.
+- If the focus is **Filings / SEC / MAP FILINGS**, execute **`/cockpit-filings-e2e`** instead (empty product, no ticker). Do not run `/cockpit-new-desk`.
 
 ## Hard isolation (stop if violated)
 

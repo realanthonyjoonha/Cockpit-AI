@@ -23,6 +23,8 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-feature [goal]` | **Build PLATFORM** — factory-scalable (`docs/EASY.md`) |
 | `/cockpit-ship [push?]` | **Ship to friends** — lab-e2e + release-check; push only if you say push |
 | `/cockpit-desks` | List thin desks |
+| `/cockpit-customer-sim [feature?]` | First-time customer on blank product (not dogfood) |
+| `/cockpit-filings-e2e` | Filings friend-path QA — empty product, no ticker, no underwrite |
 | `/cockpit-new-desk [TICKER]` | Underwrite **new** desk — **deep parallel research default** (START → Build next company; `--light` opt-out) |
 | `/cockpit-daily` | Daily brief: **what moved** + house + pack; optional `--save` |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research after user question; **ask to save** → write note + **`./ont compile`** so Sources updates |

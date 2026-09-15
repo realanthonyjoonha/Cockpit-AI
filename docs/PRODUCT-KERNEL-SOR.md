@@ -63,6 +63,7 @@ memory-cockpit-v2/scripts/filing-map-closeout-test.mjs
 memory-cockpit-v2/scripts/research-run-closeout-test.mjs
 .grok/skills/filing-map/SKILL.md
 .grok/commands/cockpit-filing-map.md
+.grok/commands/cockpit-filings-e2e.md
 scripts/lab-feature-hooks/96-filing-map.sh
 scripts/lab-feature-hooks/97-closeout-pack.sh
 memory-cockpit-v2/server/thinWorkingModel.js

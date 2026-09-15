@@ -16,6 +16,7 @@ Cold session: **`docs/SESSION.md`** — kernel `~/Desktop/cockpit-kernel`, produ
 | `/cockpit-ship [push?]` | **Ship to friends** — privacy + lab-e2e + release-check; push only if you say push |
 | `/cockpit-desks` | List thin desks via MCP |
 | `/cockpit-customer-sim [feature?]` | **First-time customer** on blank product — test from scratch (not dogfood) |
+| `/cockpit-filings-e2e` | **Filings friend-path QA** — empty product, no ticker, no underwrite |
 | `/cockpit-new-desk [TICKER] [--light] [--no-street]` | Underwrite **new** desk — deep research + Street bootstrap + desk-health gate |
 | `/cockpit-daily [desk] [--save]` | Daybook daily: what moved + calendar + short book-touch; optional vault save |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research only what user asks; **ask to save** → write note + compile ticker → Sources |

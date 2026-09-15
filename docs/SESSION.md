@@ -52,6 +52,7 @@ On kernel: `./scripts/lab-e2e.sh` **and** `./scripts/release-check.sh --full` mu
 - Product `desks: []`. Never stage `research-wiki` books, packs, `store/by_ticker`, house, street JSON, secrets.
 - Default `lab-e2e` is empty-install + hooks, **not** a browser click. Use `./scripts/lab-e2e.sh --glass` for HTTP smoke.
 - Host `test:platform` on **product** (empty registry) must pass — kernel-only green is not enough. Dogfood-desk asserts must **skip** when `desks: []`.
+- Filings friend QA: `/cockpit-filings-e2e` (agent) **and** `./scripts/customer-sim-e2e.sh` (script). Not `/cockpit-new-desk`. Not kernel dogfood clicks.
 - Cockpit-AI may be **archived** (read-only). Unarchive before `git push`, then push product `main`.
 
 Friends: `./scripts/friend-upgrade.sh` — their desks stay; they do not get Anthony’s books.

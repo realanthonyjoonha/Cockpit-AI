@@ -53,5 +53,18 @@ else
   echo "  · start variant missing (non-fatal if desk works)"
 fi
 
+# Filings / Learn catalog + empty-shell 404 (friend path; no ticker)
+if [ -n "$agents" ]; then
+  if printf '%s' "$agents" | grep -q 'filing-map'; then ok "desk agents include filing-map"
+  else bad "desk agents missing filing-map"
+  fi
+fi
+for route in pipeline learn; do
+  code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 5 "$BASE/api/zzz-not-a-desk/$route" || echo 000)
+  if [ "$code" = "404" ]; then ok "unknown desk /$route → 404"
+  else bad "unknown desk /$route → $code (want 404)"
+  fi
+done
+
 if [ "$fail" -ne 0 ]; then exit 1; fi
 echo "  HTTP smoke PASS"

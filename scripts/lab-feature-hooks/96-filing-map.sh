@@ -62,6 +62,8 @@ if grep -q 'Research pipeline card' "$MC/src/pages/thin/Overview.jsx"; then
   exit 1
 fi
 grep -q 'filing-map' "$MC/server/openGrok.js"
+test -f "$ROOT/.grok/commands/cockpit-filings-e2e.md"
+grep -q 'Do not ask for a ticker' "$ROOT/.grok/commands/cockpit-filings-e2e.md"
 (cd "$MC" && node scripts/filing-map-test.mjs)
 (cd "$MC" && node scripts/filing-map-closeout-test.mjs)
 echo "    filing-map OK"
