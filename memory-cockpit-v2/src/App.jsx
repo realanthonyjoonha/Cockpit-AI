@@ -2,7 +2,7 @@
 // Live desk registry via GET /api/thin-desks (no rebuild when desks added).
 // Unknown desk hashes → DeskUnknown (never silent redirect to START).
 // Decision-support only. User gates house/risk ACCEPT.
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
 import Start from './pages/Start.jsx';
 import DeskUnknown from './pages/DeskUnknown.jsx';
 import DeskRouter from './pages/thin/DeskRouter.jsx';
@@ -48,9 +48,15 @@ function isStartHash(hash) {
     || hash.startsWith('#/start') || hash.startsWith('#/begin');
 }
 
+function roomKey(href) {
+  const parts = String(href || '').replace(/^#\/?/, '').split('/');
+  return parts[parts.length - 1] || 'start';
+}
+
 export default function App() {
   const hash = useHash();
   const { desks, refresh } = useThinDesks();
+  const [desksOpen, setDesksOpen] = useState(false);
 
   const head = hashHead(hash);
 
@@ -68,6 +74,8 @@ export default function App() {
       localStorage.setItem(DESK_KEY, thinActive ? d : (unknownDesk ? `unknown:${head}` : 'start'));
     } catch { /* */ }
   }, [hash, desks, thinActive, unknownDesk, head]);
+
+  useEffect(() => { setDesksOpen(false); }, [hash]);
 
   // When alias is used in URL, rewrite to canonical slug (keeps bookmarks clean)
   useEffect(() => {
@@ -162,6 +170,46 @@ export default function App() {
             </button>
           ))}
         </div>
+        <div className="desk-phone">
+          <button
+            type="button"
+            className={`desk-phone-toggle${desksOpen ? ' open' : ''}`}
+            aria-expanded={desksOpen}
+            aria-haspopup="listbox"
+            onClick={() => setDesksOpen((o) => !o)}
+          >
+            <span className="desk-phone-now">{onStart ? 'START' : (thinActive?.label || (unknownDesk ? '?' : 'START'))}</span>
+            <span className="desk-phone-go">Desks ▾</span>
+          </button>
+          {desksOpen && (
+            <>
+              <button type="button" className="desk-phone-scrim" aria-label="Close desks" onClick={() => setDesksOpen(false)} />
+              <div className="desk-phone-list" role="listbox" aria-label="Desks">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={onStart}
+                  className={`desk-btn${onStart ? ' on' : ''}`}
+                  onClick={() => switchDesk('start')}
+                >
+                  START
+                </button>
+                {desks.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    role="option"
+                    aria-selected={thinActive?.id === d.id}
+                    className={`desk-btn${thinActive?.id === d.id ? ' on' : ''}`}
+                    onClick={() => switchDesk(d.id)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         {onStart && (
           <div className="synced">SHELL READY · PICK COMPANY TO UNDERWRITE</div>
         )}
@@ -188,6 +236,20 @@ export default function App() {
         <main>
           <div key={thinActive?.slug || (unknownDesk ? `unk-${head}` : 'start')}>{page}</div>
         </main>
+        <nav className="room-bar" aria-label="Rooms">
+          {rail.map(([glyph, title, href]) => (
+            <button
+              key={href}
+              type="button"
+              className={`room-item${active === href ? ' on' : ''}`}
+              title={title}
+              onClick={() => { window.location.hash = href; }}
+            >
+              <span className="room-glyph">{glyph}</span>
+              <span className="room-name">{roomKey(href)}</span>
+            </button>
+          ))}
+        </nav>
       </div>
     </>
   );

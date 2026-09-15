@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { isInteractiveResearchJob } from './researchRunsSchema.js';
 
 export const HEARTBEAT_STALE_MS = 5 * 60 * 1000;
 export const PID_DEAD_GRACE_MS = 15 * 1000;
@@ -267,6 +268,10 @@ export function reconcileRun(ticker, meta, deps, now = Date.now()) {
   }
 
   if (!pid) {
+    // Interactive thesis_report / model_read / filing_map stay queued with worker: null by design.
+    if (isInteractiveResearchJob(meta.job)) {
+      return { stalled: false, meta };
+    }
     const started = meta.started_at ? Date.parse(meta.started_at) : now;
     if (now - started > ORPHAN_FAIL_MS) {
       const failed = deps.failResearchRun(ticker, meta.run_id, 'queued/running with no pid — auto-failed orphan');
