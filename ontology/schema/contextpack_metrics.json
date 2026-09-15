@@ -1,0 +1,141 @@
+{
+  "version": "2",
+  "comment": "Universal 10-K/10-Q spine. No issuer, product, geography, or sector names. Desk N must match with no rule edits.",
+  "boilerplate": [
+    "central index key",
+    "commission file number",
+    "incorporated in",
+    "state of delaware",
+    "common stock is listed",
+    "trading symbol",
+    "nasdaq global",
+    "new york stock exchange",
+    "number of employees",
+    "principal executive offices",
+    "irs employer",
+    "registrant's telephone",
+    "title of each class",
+    "exact name of registrant"
+  ],
+  "metrics": [
+    {
+      "id": "revenue_guide",
+      "any": ["outlook", "guid"]
+    },
+    {
+      "id": "company_revenue",
+      "regex": "net sales|consolidated (net )?revenue|total (net )?revenue|company revenue|(?:q[1-4]|fy\\d{4}|fiscal year \\d{4})(?:\\s+fy\\d{4})?\\s+revenue (?:was|were|of)",
+      "none": ["outlook", "guid"]
+    },
+    {
+      "id": "net_interest_income",
+      "any": ["net interest income"]
+    },
+    {
+      "id": "gross_margin",
+      "any": ["gross margin"]
+    },
+    {
+      "id": "operating_income",
+      "any": ["operating income", "operating profit", "operating loss"]
+    },
+    {
+      "id": "net_income",
+      "any": ["net income", "net loss", "net earnings"]
+    },
+    {
+      "id": "operating_cash_flow",
+      "any": ["operating activities", "operating cash"]
+    },
+    {
+      "id": "cash",
+      "any": ["cash and cash equivalents", "cash and equivalents"]
+    },
+    {
+      "id": "inventory",
+      "any": ["inventor"]
+    },
+    {
+      "id": "long_term_debt",
+      "any": ["long-term debt", "long term debt", "notes payable", "convertible notes"]
+    },
+    {
+      "id": "diluted_shares",
+      "any": ["diluted share", "weighted-average share", "share count"]
+    },
+    {
+      "id": "concentration",
+      "any": ["largest customer", "customer concentration", "percent of revenue from", "% of revenue from", "no customer accounted"]
+    },
+    {
+      "id": "purchase_commitments",
+      "any": ["purchase commitment", "purchase obligation", "supply commitment", "capacity agreement", "long-term supply", "long-term purchase"]
+    },
+    {
+      "id": "rpo_backlog",
+      "any": ["remaining performance obligation", " rpo ", "backlog"]
+    },
+    {
+      "id": "capex",
+      "any": ["capital expenditure", "purchases of property", "capex"]
+    },
+    {
+      "id": "guarantees",
+      "any": ["guarantee", "guaranty", "indemnit"]
+    },
+    {
+      "id": "share_repurchase",
+      "any": ["share repurchase", "stock repurchase", "buyback"]
+    },
+    {
+      "id": "dividends",
+      "any": ["dividend"]
+    },
+    {
+      "id": "goodwill_impairment",
+      "any": ["goodwill", "impairment"]
+    },
+    {
+      "id": "credit_loss_provision",
+      "any": ["provision for credit", "credit loss"]
+    },
+    {
+      "id": "rnd_expense",
+      "any": ["research and development"]
+    },
+    {
+      "id": "export_controls",
+      "any": ["export control", "export restriction", "sanction", "embargo"]
+    }
+  ],
+  "risk_metric": [
+    ["commitment", "purchase_commitments"],
+    ["supply", "purchase_commitments"],
+    ["purchase obligation", "purchase_commitments"],
+    ["cash", "cash"],
+    ["margin", "gross_margin"],
+    ["concentration", "concentration"],
+    ["customer", "concentration"],
+    ["inventor", "inventory"],
+    ["debt", "long_term_debt"],
+    ["convertible", "long_term_debt"],
+    ["leverage", "long_term_debt"],
+    ["export", "export_controls"],
+    ["sanction", "export_controls"],
+    ["embargo", "export_controls"],
+    ["guarantee", "guarantees"],
+    ["indemnit", "guarantees"],
+    ["backlog", "rpo_backlog"],
+    ["performance obligation", "rpo_backlog"],
+    ["capex", "capex"],
+    ["capital expenditure", "capex"],
+    ["repurchase", "share_repurchase"],
+    ["buyback", "share_repurchase"],
+    ["dividend", "dividends"],
+    ["impairment", "goodwill_impairment"],
+    ["goodwill", "goodwill_impairment"],
+    ["credit loss", "credit_loss_provision"],
+    ["research and development", "rnd_expense"],
+    ["r&d", "rnd_expense"]
+  ]
+}

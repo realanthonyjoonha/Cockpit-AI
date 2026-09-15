@@ -1,0 +1,534 @@
+{
+  "schema_version": 1,
+  "ticker": "TEST",
+  "family": "fabless_platform",
+  "as_of": "2026-04-26",
+  "updated_at": "2026-08-28T22:53:13.854Z",
+  "sources": [
+    {
+      "label": "FY2026 10-K Item 1",
+      "as_of": "2026-01-25",
+      "grade": "A"
+    },
+    {
+      "label": "FY2026 Q4 PR",
+      "as_of": "2026-01-25",
+      "grade": "A"
+    },
+    {
+      "label": "FY2027 Q1 10-Q",
+      "as_of": "2026-04-26",
+      "grade": "A"
+    },
+    {
+      "label": "vault 02-business-model",
+      "as_of": "2026-07-26",
+      "grade": "B"
+    }
+  ],
+  "not_this": [
+    "foundry",
+    "memory IDM",
+    "merchant-GPU-only ticker"
+  ],
+  "gaps": [
+    {
+      "id": "sku-mix",
+      "label": "SKU $ splits",
+      "status": "unknown"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "platform",
+      "kind": "systems",
+      "title": "Rack-scale AI factory",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [],
+      "lesson_id": "platform",
+      "not_this": "Not a single-chip ASP story",
+      "as_of": "2026-01-25"
+    },
+    {
+      "id": "gpu",
+      "kind": "silicon",
+      "title": "GPU / CPU / DPU silicon",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [
+        "platform"
+      ],
+      "lesson_id": "gpu",
+      "not_this": "Not a foundry wafer"
+    },
+    {
+      "id": "nvlink",
+      "kind": "networking",
+      "title": "NVLink / InfiniBand / Ethernet",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2027 Q1 PR",
+          "as_of": "2026-04-26",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [
+        "platform"
+      ],
+      "lesson_id": "nvlink",
+      "not_this": "Not a SKU $ split vs compute"
+    },
+    {
+      "id": "cuda",
+      "kind": "software",
+      "title": "CUDA is not a chip",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [
+        "gpu"
+      ],
+      "lesson_id": "cuda",
+      "not_this": "Not a revenue line"
+    },
+    {
+      "id": "segments",
+      "kind": "segment",
+      "title": "Compute and Networking vs Graphics",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [],
+      "lesson_id": "segments",
+      "not_this": "Not the FY2027 platform cut"
+    },
+    {
+      "id": "not-foundry",
+      "kind": "not_this",
+      "title": "Not a foundry",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [],
+      "lesson_id": "not-foundry",
+      "not_this": "Partners build the wafers"
+    },
+    {
+      "id": "rack-how",
+      "kind": "mechanism",
+      "title": "How a rack is built",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [
+        "platform"
+      ],
+      "lesson_id": "rack-how",
+      "not_this": "Not a rack BOM $ or per-rack ASP"
+    },
+    {
+      "id": "pkg-how",
+      "kind": "process",
+      "title": "Packaging and memory supply",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2027 Q1 10-Q",
+          "as_of": "2026-04-26",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [
+        "gpu"
+      ],
+      "lesson_id": "pkg-how",
+      "not_this": "Not contract terms, not utilization"
+    },
+    {
+      "id": "attach-how",
+      "kind": "mechanism",
+      "title": "How attach works",
+      "status": "ready",
+      "sources": [
+        {
+          "label": "FY2026 10-K",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "depends_on": [
+        "nvlink"
+      ],
+      "lesson_id": "attach-how",
+      "not_this": "Not a named customer list"
+    }
+  ],
+  "diagrams": [
+    {
+      "id": "stack",
+      "type": "stack",
+      "title": "Platform stack (what they sell)",
+      "as_of": "2026-01-25",
+      "sources": [
+        {
+          "label": "FY2026 10-K Item 1",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "blocks": [
+        {
+          "id": "sw",
+          "label": "CUDA / software",
+          "status": "ready",
+          "layer": 0,
+          "filed": false,
+          "kind": "software"
+        },
+        {
+          "id": "sys",
+          "label": "Systems / racks",
+          "status": "ready",
+          "layer": 1,
+          "filed": false,
+          "kind": "systems"
+        },
+        {
+          "id": "net",
+          "label": "NVLink / networking",
+          "status": "ready",
+          "layer": 2,
+          "filed": false,
+          "kind": "networking"
+        },
+        {
+          "id": "si",
+          "label": "GPU / CPU / DPU",
+          "status": "ready",
+          "layer": 3,
+          "filed": false,
+          "kind": "silicon"
+        }
+      ],
+      "edges": [
+        {
+          "from": "sw",
+          "to": "sys",
+          "status": "ready",
+          "label": "programs"
+        },
+        {
+          "from": "sys",
+          "to": "net",
+          "status": "ready"
+        },
+        {
+          "from": "net",
+          "to": "si",
+          "status": "ready"
+        }
+      ],
+      "gaps": [
+        "SKU $ by generation"
+      ],
+      "decision_support_only": true,
+      "not_this": "Not a GPU-only ticker"
+    },
+    {
+      "id": "attach",
+      "type": "interconnect",
+      "title": "How a custom XPU attaches (company language)",
+      "as_of": "2026-01-25",
+      "sources": [
+        {
+          "label": "FY2026 10-K Item 1",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "blocks": [
+        {
+          "id": "gpu",
+          "label": "House GPU",
+          "status": "ready",
+          "layer": 0,
+          "filed": false,
+          "kind": "silicon"
+        },
+        {
+          "id": "fusion",
+          "label": "Attach fabric",
+          "status": "ready",
+          "layer": 1,
+          "filed": false,
+          "kind": "networking"
+        },
+        {
+          "id": "xpu",
+          "label": "Customer CPU/XPU",
+          "status": "gap",
+          "layer": 2,
+          "filed": false,
+          "kind": "silicon",
+          "note": "attach exists; customer names UNKNOWN"
+        }
+      ],
+      "edges": [
+        {
+          "from": "gpu",
+          "to": "fusion",
+          "status": "ready"
+        },
+        {
+          "from": "xpu",
+          "to": "fusion",
+          "status": "gap",
+          "label": "GAP: who"
+        }
+      ],
+      "gaps": [
+        "Named identity of NVLink Fusion customers"
+      ],
+      "decision_support_only": true,
+      "not_this": "Not “they became a custom-ASIC house”"
+    },
+    {
+      "id": "flow",
+      "type": "flow",
+      "title": "How the product is made",
+      "as_of": "2026-01-25",
+      "sources": [
+        {
+          "label": "FY2026 10-K Item 1",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "blocks": [
+        {
+          "id": "design",
+          "label": "Design (fabless)",
+          "status": "ready",
+          "layer": 0,
+          "filed": false,
+          "kind": "software"
+        },
+        {
+          "id": "wafer",
+          "label": "Wafers at foundry",
+          "status": "ready",
+          "layer": 1,
+          "filed": false,
+          "kind": "process"
+        },
+        {
+          "id": "mem",
+          "label": "Memory attach",
+          "status": "ready",
+          "layer": 2,
+          "filed": false,
+          "kind": "process"
+        },
+        {
+          "id": "pkg",
+          "label": "Advanced packaging",
+          "status": "ready",
+          "layer": 3,
+          "filed": false,
+          "kind": "process"
+        },
+        {
+          "id": "sysout",
+          "label": "System to the customer",
+          "status": "ready",
+          "layer": 4,
+          "filed": false,
+          "kind": "systems"
+        }
+      ],
+      "edges": [
+        {
+          "from": "design",
+          "to": "wafer",
+          "status": "ready"
+        },
+        {
+          "from": "wafer",
+          "to": "mem",
+          "status": "ready"
+        },
+        {
+          "from": "mem",
+          "to": "pkg",
+          "status": "ready"
+        },
+        {
+          "from": "pkg",
+          "to": "sysout",
+          "status": "ready"
+        }
+      ],
+      "gaps": [
+        "Contract terms"
+      ],
+      "decision_support_only": true,
+      "not_this": "Not utilization. Not a foundry node map."
+    },
+    {
+      "id": "segments",
+      "type": "segments",
+      "title": "Filed platform cuts",
+      "as_of": "2026-04-26",
+      "sources": [
+        {
+          "label": "FY2026 Q4 PR",
+          "as_of": "2026-01-25",
+          "grade": "A"
+        }
+      ],
+      "blocks": [
+        {
+          "id": "co-fy26",
+          "label": "FY company",
+          "status": "ready",
+          "layer": 0,
+          "filed": true,
+          "kind": "segment",
+          "as_of": "2026-01-25",
+          "source": "FY PR",
+          "share": "$100B",
+          "group": "FY26"
+        },
+        {
+          "id": "dc-fy26",
+          "label": "FY platform",
+          "status": "ready",
+          "layer": 1,
+          "filed": true,
+          "kind": "segment",
+          "as_of": "2026-01-25",
+          "source": "FY PR",
+          "share": "$90B",
+          "group": "FY26",
+          "parent": "co-fy26"
+        },
+        {
+          "id": "dc-q1",
+          "label": "Q1 platform",
+          "status": "ready",
+          "layer": 2,
+          "filed": true,
+          "kind": "segment",
+          "as_of": "2026-04-26",
+          "source": "Q1 PR",
+          "share": "$30B",
+          "group": "Q1"
+        },
+        {
+          "id": "dc-compute",
+          "label": "Q1 compute",
+          "status": "ready",
+          "layer": 3,
+          "filed": true,
+          "kind": "segment",
+          "as_of": "2026-04-26",
+          "source": "Q1 PR",
+          "share": "$24B",
+          "group": "Q1",
+          "parent": "dc-q1"
+        },
+        {
+          "id": "dc-net",
+          "label": "Q1 networking",
+          "status": "ready",
+          "layer": 4,
+          "filed": true,
+          "kind": "segment",
+          "as_of": "2026-04-26",
+          "source": "Q1 PR",
+          "share": "$6B",
+          "group": "Q1",
+          "parent": "dc-q1"
+        }
+      ],
+      "edges": [],
+      "gaps": [
+        "SKU generation $"
+      ],
+      "decision_support_only": true,
+      "not_this": "Not a SKU $ pie. Tile size carries no $ meaning."
+    }
+  ],
+  "photos": [
+    {
+      "id": "filed-rack",
+      "lane": "primary",
+      "kind": "system",
+      "src": "cockpit/learn/TEST/photos/filed-rack.jpg",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "as_of": "2026-01-25",
+      "caption": "Filed system photo from an exhibit",
+      "source": {
+        "label": "FY exhibit photo",
+        "page_url": "https://www.sec.gov/Archives/edgar/data/1/exhibit.htm",
+        "image_url": "https://www.sec.gov/Archives/edgar/data/1/rack.jpg",
+        "grade": "A",
+        "retrieved_at": "2026-08-28T00:00:00.000Z"
+      },
+      "node_id": "platform"
+    },
+    {
+      "id": "web-package",
+      "lane": "tape",
+      "kind": "process",
+      "src": "cockpit/learn/TEST/photos/web-package.webp",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "as_of": "2026-08-28",
+      "caption": "Package photo — web, not a filing",
+      "source": {
+        "label": "Tech press article photo",
+        "page_url": "https://www.tomshardware.com/reviews/package",
+        "image_url": "https://cdn.mos.cms.futurecdn.net/package.webp",
+        "grade": "tape",
+        "query": "Acme packaging photo",
+        "retrieved_at": "2026-08-28T00:00:00.000Z"
+      },
+      "node_id": "pkg-how"
+    }
+  ],
+  "decision_support_only": true
+}

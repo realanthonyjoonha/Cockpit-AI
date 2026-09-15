@@ -63,6 +63,7 @@ YOU  →  Glass AGENTS dropdown  →  OPEN GROK
 
 | Purpose | Path |
 |---------|------|
+| Filing map | `.grok/commands/cockpit-filing-map.md` + `.grok/skills/filing-map/SKILL.md` · glass Overview **MAP FILINGS** |
 | Agent ritual | `.grok/commands/cockpit-<action>.md` |
 | Menu list | `.grok/commands/cockpit.md` + `.grok/skills/cockpit/SKILL.md` |
 | Glass dropdown + prompt map | `memory-cockpit-v2/server/openGrok.js` → `GROK_AGENTS` + `buildInitialPrompt` |

@@ -31,6 +31,11 @@ if (g.desks.length === 0) {
   ok(Array.isArray(row.attention), 'row.attention array');
   ok(typeof row.watch_count === 'number', 'watch_count number');
   ok(typeof row.street_status === 'string' || row.street_status == null, 'street_status');
+  ok(typeof row.filing_map_status === 'string', 'filing_map_status');
+  ok(typeof row.filing_material_not_in_book === 'number', 'filing_material_not_in_book');
+  ok(typeof row.propose_pending === 'number', 'propose_pending number');
+  ok(typeof row.filing_map_needs_propose === 'boolean', 'filing_map_needs_propose boolean');
+  ok(typeof row.research_needs_promote === 'boolean', 'research_needs_promote boolean');
 }
 
 if (fail) {

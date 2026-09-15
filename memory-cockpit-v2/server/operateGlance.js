@@ -5,6 +5,16 @@ import { getLiveThinRegistry, resolveThinDesk } from './thinDeskMount.js';
 import { getStreet, STALE_DAYS } from './thinStreet.js';
 import { listResearchRuns, scanRunMetas } from './thinResearchRuns.js';
 import { stalledOverlay } from './researchRunsWorker.js';
+import { loadCachedFilings } from './filingMapInbox.js';
+import { lastPrintCatalog, filedSinceCompile } from './secEdgar.js';
+import { pendingProposalGlance } from './researchRunCloseout.js';
+import { planFilingMapCloseout } from './filingMapCloseout.js';
+import { readSorStatusMap } from './riskProposals.js';
+import { getResearchRun } from './thinResearchRuns.js';
+import fs from 'fs';
+import path from 'path';
+import { researchRunDir } from './thinResearchRuns.js';
+import { isThesisReportJob } from './researchRunsSchema.js';
 
 /** Research run counts in flight for one desk (cross-desk parallel fleet view). */
 function researchInFlight(ticker, slug) {
@@ -41,6 +51,66 @@ function researchInFlight(ticker, slug) {
       last_complete_at: null,
       last_complete_n_sources: 0,
     };
+  }
+}
+
+function filingGlance(ticker, slug, compiledAt) {
+  const empty = {
+    filing_print_form: null,
+    filing_print_date: null,
+    filing_print_in_book: null,
+    filing_material_not_in_book: 0,
+    filing_map_status: 'none',
+    filing_map_run_id: null,
+    filing_map_summary: null,
+    filing_map_needs_propose: false,
+  };
+  try {
+    const filings = loadCachedFilings(ticker);
+    const print = lastPrintCatalog(filings, compiledAt || null);
+    const since = filedSinceCompile(filings, compiledAt || null);
+    const materialN = Number(since.material_count) || 0;
+    const listed = listResearchRuns(ticker, { desk: slug, lane: 'filings' });
+    const runs = Array.isArray(listed.runs) ? listed.runs : [];
+    const inflight = runs.find((r) => r.status === 'queued' || r.status === 'running');
+    const complete = runs.find((r) => r.status === 'complete');
+    const status = inflight ? 'queued' : (complete ? 'complete' : 'none');
+    const summary = complete?.summary
+      ? String(complete.summary).replace(/\s+/g, ' ').trim().slice(0, 160)
+      : null;
+    let needsPropose = false;
+    if (complete?.run_id && status === 'complete') {
+      try {
+        const dir = researchRunDir(ticker, complete.run_id);
+        if (dir && fs.existsSync(dir) && !fs.existsSync(path.join(dir, 'closeout.json'))) {
+          const rt = resolveThinDesk(slug);
+          const risksRel = rt?.desk?.profile?.risksSource
+            || rt?.desk?.risksSourceRel
+            || rt?.risksSourceRel;
+          const run = getResearchRun(ticker, complete.run_id, { desk: slug });
+          if (run?.delta && risksRel) {
+            let sorMap = {};
+            try { sorMap = readSorStatusMap(risksRel); } catch { /* */ }
+            const plan = planFilingMapCloseout(run.delta, { sorMap, runId: complete.run_id });
+            needsPropose = (plan.counts?.actionable || 0) > 0;
+          } else {
+            needsPropose = true;
+          }
+        }
+      } catch { /* */ }
+    }
+    return {
+      filing_print_form: print.known ? print.form : null,
+      filing_print_date: print.known ? print.date : null,
+      filing_print_in_book: print.known ? print.in_book : null,
+      filing_material_not_in_book: materialN,
+      filing_map_status: status,
+      filing_map_run_id: (complete || inflight)?.run_id || null,
+      filing_map_summary: summary,
+      filing_map_needs_propose: needsPropose,
+    };
+  } catch {
+    return empty;
   }
 }
 
@@ -92,6 +162,18 @@ function glanceOne(desk) {
     research_last_complete_run_id: null,
     research_last_complete_at: null,
     research_last_complete_n_sources: 0,
+    filing_print_form: null,
+    filing_print_date: null,
+    filing_print_in_book: null,
+    filing_material_not_in_book: 0,
+    filing_map_status: 'none',
+    filing_map_run_id: null,
+    filing_map_summary: null,
+    filing_map_needs_propose: false,
+    propose_pending: 0,
+    house_propose_pending: 0,
+    risk_propose_pending: 0,
+    research_needs_promote: false,
     attention: [],
     error: null,
   };
@@ -131,6 +213,29 @@ function glanceOne(desk) {
       : (street.needs_rebuild ? 'NEEDS BUILD' : 'EMPTY');
 
     const inFlight = researchInFlight(ticker, slug);
+    const filings = filingGlance(ticker, slug, ov.compiled_at || null);
+    const pending = pendingProposalGlance(slug);
+
+    let researchNeedsPromote = false;
+    try {
+      const rid = inFlight.last_complete_run_id;
+      if (rid) {
+        const dir = researchRunDir(ticker, rid);
+        const metaPath = dir ? path.join(dir, 'meta.json') : null;
+        if (metaPath && fs.existsSync(metaPath)) {
+          const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+          const job = String(meta.job || '');
+          const promo = meta.promotion || {};
+          const promoNone = !promo.status || promo.status === 'none';
+          // Glass closeout for runs lives on Reports (thesis). Compile-lane
+          // promote stays API/MCP; do not flash START without a room to open.
+          if (isThesisReportJob(job) && promoNone
+            && !fs.existsSync(path.join(dir, 'closeout.json'))) {
+            researchNeedsPromote = true;
+          }
+        }
+      }
+    } catch { /* */ }
 
     const attention = [];
     if (firedNames.length) attention.push('fired');
@@ -142,6 +247,12 @@ function glanceOne(desk) {
     else if (streetStale) attention.push('street-stale');
     if (inFlight.stalled) attention.push('compile-stalled');
     else if (inFlight.running) attention.push('compile-running');
+    if (filings.filing_material_not_in_book > 0 && filings.filing_map_status !== 'complete') {
+      attention.push('filing-unmapped');
+    }
+    if (filings.filing_map_needs_propose) attention.push('filing-propose');
+    if (pending.pending_total > 0) attention.push('propose-pending');
+    if (researchNeedsPromote) attention.push('research-promote');
 
     return {
       ...base,
@@ -169,6 +280,11 @@ function glanceOne(desk) {
       research_last_complete_run_id: inFlight.last_complete_run_id || null,
       research_last_complete_at: inFlight.last_complete_at || null,
       research_last_complete_n_sources: inFlight.last_complete_n_sources || 0,
+      ...filings,
+      propose_pending: pending.pending_total,
+      house_propose_pending: pending.house_pending,
+      risk_propose_pending: pending.risk_pending,
+      research_needs_promote: researchNeedsPromote,
       attention,
       error: null,
     };
@@ -197,11 +313,14 @@ export function operateGlance() {
     if (row.attention.includes('compile-stalled')) return 0;
     if (row.attention.includes('compile-running')) return 1;
     if (row.fired_count > 0) return 2;
-    if (row.watch_count > 0) return 3;
-    if (row.attention.includes('house') || row.attention.includes('compile')) return 4;
-    if (row.attention.includes('street') || row.attention.includes('street-stale')) return 5;
-    if (row.attention.includes('pack') || row.error) return 6;
-    return 7;
+    if (row.attention.includes('propose-pending')) return 3;
+    if (row.attention.includes('filing-propose') || row.attention.includes('research-promote')) return 4;
+    if (row.watch_count > 0) return 5;
+    if (row.attention.includes('house') || row.attention.includes('compile')) return 6;
+    if (row.attention.includes('filing-unmapped')) return 7;
+    if (row.attention.includes('street') || row.attention.includes('street-stale')) return 8;
+    if (row.attention.includes('pack') || row.error) return 9;
+    return 10;
   };
   desks.sort((a, b) => rank(a) - rank(b) || String(a.slug).localeCompare(String(b.slug)));
 

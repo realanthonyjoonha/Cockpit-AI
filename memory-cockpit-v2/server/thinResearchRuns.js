@@ -11,6 +11,17 @@ import {
   validateResearchRunPublish,
   indexRowFromMeta,
   humanJobLabel,
+  isThesisReportJob,
+  isModelReadJob,
+  isFilingMapJob,
+  isInteractiveResearchJob,
+  normalizeThesisMode,
+  normalizeThesisCheckpoint,
+  normalizeThesisPace,
+  resolveThesisRegister,
+  defaultThesisOrder,
+  researchLane,
+  jobMatchesLane,
 } from './researchRunsSchema.js';
 import {
   pidAlive,
@@ -24,6 +35,9 @@ import {
 } from './researchRunsWorker.js';
 import { acquireUrlToRun } from './researchAcquire.js';
 import { writeResearchRunsAgentSeed } from './researchRunsAgentSeed.js';
+import { buildNumbersGraph, writeNumbersGraph, MODEL_READ_ORDER } from './modelReadGraph.js';
+import { readWorkingModelSnapshot } from './thinWorkingModel.js';
+import { buildFilingMapInboxFromVault, writeFilingMapInbox } from './filingMapInbox.js';
 
 function vaultRoot() {
   return resolveVaultDir();
@@ -63,17 +77,55 @@ export function researchRunDir(ticker, runId) {
   return path.join(root, 'runs', rid);
 }
 
-function vaultRootExists() {
+function listThesisPdfs(dir) {
+  const out = path.join(dir, 'output');
   try {
-    return fs.existsSync(vaultRoot());
+    return fs.readdirSync(out)
+      .filter((n) => n.toLowerCase().endsWith('.pdf') && !n.startsWith('.'))
+      .map((n) => `output/${n}`);
   } catch {
-    return false;
+    return [];
   }
 }
 
+function readFilingMapDelta(dir) {
+  if (!dir) return null;
+  try {
+    const p = path.join(dir, 'delta.json');
+    if (!fs.existsSync(p)) return null;
+    const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const rows = Array.isArray(j.rows) ? j.rows : [];
+    return {
+      summary: j.summary ? String(j.summary) : null,
+      rows,
+      n_rows: rows.length,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const RUN_FILE_OK = /^(output\/[A-Za-z0-9._-]+\.(pdf|html|md)|baseline-anchors\.md|seed\.md|numbers-graph\.json|inbox\.json|delta\.json)$/i;
+
+/**
+ * Allowlisted file under a run folder (PDF / anchors). Fail-closed path.
+ * @returns {{ ok: true, abs: string, name: string } | { ok: false, error: string }}
+ */
+export function researchRunFile(ticker, runId, rel) {
+  const id = tickerId(ticker);
+  const dir = researchRunDir(id, runId);
+  const raw = String(rel || '').replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!dir || !raw || raw.includes('..') || !RUN_FILE_OK.test(raw)) {
+    return { ok: false, error: 'file not allowed' };
+  }
+  const abs = path.join(dir, raw);
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
+    return { ok: false, error: 'file not found' };
+  }
+  return { ok: true, abs, name: path.basename(abs), rel: raw };
+}
+
 function atomicWriteJson(filePath, obj) {
-  // Empty product / no-vault VMs: do not mkdir ~/Trading/research-wiki as a side effect of list/read.
-  if (!vaultRootExists()) return;
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
   const tmp = `${filePath}.${process.pid}.tmp`;
@@ -82,7 +134,6 @@ function atomicWriteJson(filePath, obj) {
 }
 
 function atomicWriteText(filePath, text) {
-  if (!vaultRootExists()) return;
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
   const tmp = `${filePath}.${process.pid}.tmp`;
@@ -105,9 +156,6 @@ function readJsonSafe(filePath) {
 export function readResearchIndex(ticker) {
   const p = researchIndexPath(ticker);
   if (!p) return { ticker: '', runs: [] };
-  if (!vaultRootExists()) {
-    return { schema_version: RESEARCH_RUNS_SCHEMA_VERSION, ticker: tickerId(ticker), runs: [] };
-  }
   const raw = readJsonSafe(p);
   if (!raw || !Array.isArray(raw.runs)) {
     return rebuildResearchIndex(ticker);
@@ -192,11 +240,15 @@ export function scanRunMetas(ticker) {
 
 /**
  * First queued|running run for this ticker, or null.
+ * Pass lane/job so compile and thesis do not share a mutex.
  * @param {string} ticker
+ * @param {{ lane?: string, job?: string }} [opts]
  */
-export function findInFlightRun(ticker) {
+export function findInFlightRun(ticker, opts = {}) {
+  const lane = opts.lane || (opts.job ? researchLane(opts.job) : null);
   const rows = scanRunMetas(ticker)
     .filter((m) => IN_FLIGHT.has(m.status))
+    .filter((m) => (lane ? jobMatchesLane(m.job, lane) : true))
     .sort((a, b) => String(a.started_at || '').localeCompare(String(b.started_at || '')));
   return rows[0] || null;
 }
@@ -289,17 +341,66 @@ export function listResearchRuns(ticker, opts = {}) {
     };
   }
   reconcileTicker(id);
+  const lane = opts.lane || null;
   const index = readResearchIndex(id);
   const metas = new Map(scanRunMetas(id).map((m) => [m.run_id, m]));
-  const runs = (Array.isArray(index.runs) ? index.runs : []).map((row) => {
+  let indexDirty = false;
+  let runs = (Array.isArray(index.runs) ? index.runs : []).map((row) => {
     const meta = metas.get(row.run_id);
-    if (!meta) return row;
-    return { ...row, stalled: stalledOverlay(meta), worker_pid: meta.worker?.pid || null };
+    const live = meta ? indexRowFromMeta({ ...meta, run_id: meta.run_id || row.run_id }) : null;
+    if (live && (live.status !== row.status || live.checkpoint !== row.checkpoint)) {
+      indexDirty = true;
+    }
+    const merged = meta
+      ? {
+          ...row,
+          ...(live || {}),
+          stalled: stalledOverlay(meta),
+          worker_pid: meta.worker?.pid || null,
+          error: meta.error || row.error || null,
+        }
+      : row;
+    if (isThesisReportJob(merged.job) || isModelReadJob(merged.job)) {
+      const dir = researchRunDir(id, merged.run_id);
+      merged.pdfs = dir ? listThesisPdfs(dir) : [];
+    }
+    if (isFilingMapJob(merged.job)) {
+      const dir = researchRunDir(id, merged.run_id);
+      merged.delta_rel = dir && fs.existsSync(path.join(dir, 'delta.json')) ? 'delta.json' : null;
+      merged.inbox_rel = dir && fs.existsSync(path.join(dir, 'inbox.json')) ? 'inbox.json' : null;
+      if (!merged.summary && dir) {
+        try {
+          const sp = path.join(dir, 'summary.md');
+          if (fs.existsSync(sp)) {
+            merged.summary = fs.readFileSync(sp, 'utf8').replace(/\s+/g, ' ').trim().slice(0, 240);
+          }
+        } catch { /* */ }
+      }
+    }
+    return merged;
   });
+  if (indexDirty) {
+    try { rebuildResearchIndex(id); } catch { /* live overlay already won */ }
+  }
+  if (lane && String(lane).toLowerCase() !== 'all') {
+    runs = runs.filter((r) => jobMatchesLane(r.job, lane));
+  }
+  const laneKey = String(lane || '').toLowerCase();
+  const reports = laneKey === 'reports' || laneKey === 'thesis';
+  const modelLane = laneKey === 'model' || laneKey === 'model_read' || laneKey === 'model-read';
+  const filingsLane = laneKey === 'filings' || laneKey === 'filing_map' || laneKey === 'filing-map';
+  const emptyReason = reports
+    ? 'No reports yet. NEW REPORT starts a checkpointed note against the house.'
+    : modelLane
+      ? 'No model reads yet. READ MODEL on the Model page explains the ledger as a PDF.'
+      : filingsLane
+        ? 'No filing map yet. MAP FILINGS on Overview maps SEC accessions to house and the register.'
+        : 'No compiles yet. NEW COMPILE builds the claim notebook from filings.';
   return {
     available: runs.length > 0,
     desk: opts.desk || null,
     ticker: id,
+    lane: reports ? 'reports' : (modelLane ? 'model' : (filingsLane ? 'filings' : (lane ? 'compile' : 'all'))),
     path: researchRoot(id),
     schema_version: RESEARCH_RUNS_SCHEMA_VERSION,
     runs,
@@ -307,9 +408,11 @@ export function listResearchRuns(ticker, opts = {}) {
     n_complete: runs.filter((r) => r.status === 'complete').length,
     latest: runs[0] || null,
     needs_rebuild: runs.length === 0,
-    reason: runs.length ? null : 'No research runs yet — New compile saves a deep archive for this desk',
+    reason: runs.length ? null : emptyReason,
     decision_support_only: true,
-    note: 'Draft archive of on-demand compiles — not live pack/house. Prefer reopen over re-run.',
+    note: reports
+      ? 'Checkpointed notes — PDF is ops, closeout proposes only.'
+      : 'Draft archive of on-demand compiles — not live pack/house. Prefer reopen over re-run.',
   };
 }
 
@@ -408,8 +511,42 @@ export function getResearchRun(ticker, runId, opts = {}) {
     stalled,
     heartbeat_age_ms: heartbeatAgeMs(meta),
     log_tail: readLogTail(meta.worker?.log),
+    model_read: isModelReadJob(meta.job) ? {
+      order: Array.isArray(meta.model_read?.order || meta.inputs?.model_read_order)
+        ? (meta.model_read?.order || meta.inputs?.model_read_order)
+        : MODEL_READ_ORDER,
+      pdf_rel: meta.model_read?.pdf_rel || null,
+      pdfs: listThesisPdfs(dir),
+      graph_ok: fs.existsSync(path.join(dir, 'numbers-graph.json')),
+    } : null,
+    filing_map: isFilingMapJob(meta.job) ? {
+      inbox_ok: fs.existsSync(path.join(dir, 'inbox.json')),
+      delta_rel: fs.existsSync(path.join(dir, 'delta.json')) ? 'delta.json' : null,
+      inbox_rel: fs.existsSync(path.join(dir, 'inbox.json')) ? 'inbox.json' : null,
+    } : null,
+    delta: isFilingMapJob(meta.job) ? readFilingMapDelta(dir) : null,
+    thesis: isThesisReportJob(meta.job) ? {
+      mode: meta.thesis?.mode || meta.inputs?.thesis_mode || null,
+      checkpoint: meta.thesis?.checkpoint || meta.inputs?.checkpoint || 'scope',
+      pdf_rel: meta.thesis?.pdf_rel || null,
+      pdfs: listThesisPdfs(dir),
+      register_scope: (meta.thesis?.register_scope || meta.inputs?.register_scope || 'all'),
+      register_ids: Array.isArray(meta.thesis?.register_ids)
+        ? meta.thesis.register_ids
+        : (Array.isArray(meta.inputs?.register_ids) ? meta.inputs.register_ids : []),
+      thesis_pace: meta.thesis?.thesis_pace || meta.inputs?.thesis_pace || 'stop',
+      order: Array.isArray(meta.thesis?.order || meta.inputs?.thesis_order)
+        ? (meta.thesis?.order || meta.inputs?.thesis_order)
+        : null,
+    } : null,
     decision_support_only: true,
-    note: 'Draft archive — not live book. Promote via existing gates only.',
+    note: isThesisReportJob(meta.job)
+      ? 'Thesis-lane ops archive — PDF is not pack SoR. Closeout via propose_* only.'
+      : isModelReadJob(meta.job)
+        ? 'Model-read ops archive — PDF explains the ledger. Not pack SoR. Does not write house/risks.'
+        : isFilingMapJob(meta.job)
+          ? 'Filing-map ops archive — delta.json is not pack SoR. Chat via OPEN GROK; propose_* only.'
+          : 'Draft archive — not live book. Promote via existing gates only.',
   };
 }
 
@@ -424,11 +561,26 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
     return { ok: false, error: 'empty ticker', decision_support_only: true };
   }
   reconcileTicker(id);
-  const existing = findInFlightRun(id);
+  let job = String(body.job || 'deep_compile');
+  if (!RESEARCH_JOBS.has(job)) job = 'deep_compile';
+  let filingInbox = null;
+  if (isFilingMapJob(job)) {
+    const built = buildFilingMapInboxFromVault(id, { desk: opts.desk || body.desk || null });
+    if (!built.ok) {
+      return {
+        ok: false,
+        error: built.error || 'no SEC pipeline',
+        decision_support_only: true,
+      };
+    }
+    filingInbox = built.inbox;
+  }
+  const existing = findInFlightRun(id, { lane: researchLane(job) });
   if (existing) {
     return {
       ok: true,
       already_in_flight: true,
+      ...listResearchRuns(id, opts),
       run_id: existing.run_id,
       ticker: id,
       desk: existing.desk || opts.desk || body.desk || null,
@@ -437,12 +589,8 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       path: researchRunDir(id, existing.run_id),
       vault_rel: `cockpit/research/${id}/runs/${existing.run_id}`,
       decision_support_only: true,
-      ...listResearchRuns(id, opts),
     };
   }
-
-  let job = String(body.job || 'deep_compile');
-  if (!RESEARCH_JOBS.has(job)) job = 'deep_compile';
 
   let run_id = makeRunId(id, job);
   let dir = researchRunDir(id, run_id);
@@ -453,9 +601,39 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   fs.mkdirSync(dir, { recursive: true });
   fs.mkdirSync(path.join(dir, 'extracts'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'acquired'), { recursive: true });
+  if (isThesisReportJob(job) || isModelReadJob(job)) {
+    fs.mkdirSync(path.join(dir, 'sections'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'diagrams'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'output'), { recursive: true });
+  }
+
+  let modelGraph = null;
+  if (isModelReadJob(job)) {
+    const loaded = readWorkingModelSnapshot(id);
+    const house = loaded.snapshot?.house_touch || null;
+    modelGraph = buildNumbersGraph(loaded.available ? loaded.snapshot : null, {
+      ticker: id,
+      house_excerpt: house,
+    });
+    writeNumbersGraph(dir, modelGraph);
+  }
+
+  if (isFilingMapJob(job) && filingInbox) {
+    writeFilingMapInbox(dir, filingInbox);
+  }
 
   const now = new Date().toISOString();
   const launch = body.launch === true || body.launch === 'true';
+  const thesisMode = isThesisReportJob(job)
+    ? normalizeThesisMode(body.thesis_mode || body.thesisMode)
+    : null;
+  const thesisRegister = isThesisReportJob(job) ? resolveThesisRegister(body) : null;
+  const thesisPace = isThesisReportJob(job)
+    ? normalizeThesisPace(body.thesis_pace || body.thesisPace)
+    : null;
+  const thesisOrder = isThesisReportJob(job)
+    ? defaultThesisOrder(thesisMode, thesisRegister.register_scope)
+    : null;
   const meta = {
     schema_version: RESEARCH_RUNS_SCHEMA_VERSION,
     run_id,
@@ -471,7 +649,28 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       focus: body.focus ? String(body.focus).slice(0, 400) : null,
       prior_run_id: body.prior_run_id ? String(body.prior_run_id) : null,
       as_of_request: now.slice(0, 10),
+      thesis_mode: thesisMode,
+      checkpoint: isThesisReportJob(job) ? 'scope' : null,
+      register_scope: thesisRegister?.register_scope || null,
+      register_ids: thesisRegister?.register_ids || null,
+      thesis_pace: thesisPace,
+      thesis_order: thesisOrder,
+      model_read_order: isModelReadJob(job) ? MODEL_READ_ORDER : null,
     },
+    model_read: isModelReadJob(job) ? {
+      order: MODEL_READ_ORDER,
+      pdf_rel: null,
+      graph_ok: !!(modelGraph && modelGraph.ok),
+    } : null,
+    thesis: isThesisReportJob(job) ? {
+      mode: thesisMode,
+      checkpoint: 'scope',
+      pdf_rel: null,
+      register_scope: thesisRegister.register_scope,
+      register_ids: thesisRegister.register_ids,
+      thesis_pace: thesisPace,
+      order: thesisOrder,
+    } : null,
     worker: null,
     promotion: {
       status: 'none',
@@ -488,7 +687,8 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   rebuildResearchIndex(id);
 
   let spawn = null;
-  if (launch) {
+  // Thesis + model_read are interactive OPEN GROK — never headless deep-compile worker.
+  if (launch && !isInteractiveResearchJob(job)) {
     spawn = launchPipeline(id, run_id, {
       desk: meta.desk,
       job,
@@ -512,16 +712,61 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
   return {
     ok: true,
     already_in_flight: false,
+    ...listResearchRuns(id, opts),
     run_id,
     ticker: id,
     desk: meta.desk,
     job,
     status: fresh.status,
     spawned: spawn?.ok ? { pid: spawn.pid, log: spawn.log } : null,
+    interactive: isInteractiveResearchJob(job),
+    thesis: meta.thesis || null,
+    model_read: meta.model_read || null,
+    graph_ok: meta.model_read?.graph_ok ?? null,
     path: dir,
     vault_rel: `cockpit/research/${id}/runs/${run_id}`,
     decision_support_only: true,
-    ...listResearchRuns(id, opts),
+  };
+}
+
+/**
+ * Glass-visible checkpoint for thesis_report (scope → research → draft → qa → closeout).
+ * Does not write house/risks. Queued or running only.
+ */
+export function setThesisCheckpoint(ticker, runId, checkpoint, opts = {}) {
+  const id = tickerId(ticker);
+  const rid = String(runId || '').replace(/[^A-Za-z0-9._-]/g, '');
+  if (!id || !rid) {
+    return { ok: false, error: 'ticker and run_id required', decision_support_only: true };
+  }
+  const dir = researchRunDir(id, rid);
+  const metaPath = path.join(dir, 'meta.json');
+  const meta = readJsonSafe(metaPath);
+  if (!meta) return { ok: false, error: 'run not found', decision_support_only: true };
+  if (!isThesisReportJob(meta.job)) {
+    return { ok: false, error: 'checkpoint only on thesis_report jobs', decision_support_only: true };
+  }
+  const st = String(meta.status || '');
+  if (st === 'complete' || st === 'cancelled' || st === 'failed') {
+    return { ok: false, error: `cannot checkpoint ${st} run`, decision_support_only: true };
+  }
+  const cp = normalizeThesisCheckpoint(checkpoint);
+  const next = {
+    ...meta,
+    inputs: { ...(meta.inputs || {}), checkpoint: cp },
+    thesis: { ...(meta.thesis || {}), mode: meta.thesis?.mode || meta.inputs?.thesis_mode, checkpoint: cp },
+  };
+  if (opts.note) next.thesis.note = String(opts.note).slice(0, 400);
+  atomicWriteJson(metaPath, next);
+  rebuildResearchIndex(id);
+  return {
+    ok: true,
+    run_id: rid,
+    ticker: id,
+    job: 'thesis_report',
+    checkpoint: cp,
+    status: next.status,
+    decision_support_only: true,
   };
 }
 
@@ -608,12 +853,27 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
       desk: body.desk || opts.desk || existingMeta?.desk,
       started_at: body.started_at || existingMeta?.started_at,
       job: body.job || existingMeta?.job,
+      thesis_mode: body.thesis_mode || existingMeta?.inputs?.thesis_mode || existingMeta?.thesis?.mode,
+      checkpoint: body.checkpoint || existingMeta?.inputs?.checkpoint || existingMeta?.thesis?.checkpoint,
+      register_scope: body.register_scope
+        || body.inputs?.register_scope
+        || existingMeta?.inputs?.register_scope
+        || existingMeta?.thesis?.register_scope,
+      register_ids: body.register_ids
+        || body.inputs?.register_ids
+        || existingMeta?.inputs?.register_ids
+        || existingMeta?.thesis?.register_ids,
+      thesis_pace: body.thesis_pace
+        || body.inputs?.thesis_pace
+        || existingMeta?.inputs?.thesis_pace
+        || existingMeta?.thesis?.thesis_pace,
     },
     {
       ticker: id,
       run_id: rid,
       requireComplete: body.status !== 'failed' && body.status !== 'cancelled',
       acquiredDir: fs.existsSync(acquiredDir) ? acquiredDir : null,
+      runDir: dir,
     },
   );
 
@@ -642,6 +902,16 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
     trigger: snap.trigger,
     compute: snap.compute,
     inputs: snap.inputs,
+    thesis: snap.thesis || existingMeta?.thesis || null,
+    model_read: isModelReadJob(snap.job)
+      ? {
+        ...(existingMeta?.model_read || {}),
+        ...(snap.model_read || {}),
+        order: (snap.model_read?.order || existingMeta?.model_read?.order || MODEL_READ_ORDER),
+        pdf_rel: listThesisPdfs(dir)[0] || snap.model_read?.pdf_rel || existingMeta?.model_read?.pdf_rel || null,
+        graph_ok: fs.existsSync(path.join(dir, 'numbers-graph.json')),
+      }
+      : (snap.model_read || existingMeta?.model_read || null),
     promotion: snap.promotion,
     immutable: snap.immutable,
     decision_support_only: true,
@@ -657,6 +927,22 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
 
   if (snap.summary) {
     atomicWriteText(path.join(dir, 'summary.md'), snap.summary.endsWith('\n') ? snap.summary : `${snap.summary}\n`);
+  }
+  if (isFilingMapJob(snap.job)) {
+    const rows = Array.isArray(body.rows) ? body.rows
+      : (Array.isArray(body.delta?.rows) ? body.delta.rows : []);
+    const delta = (body.delta && typeof body.delta === 'object')
+      ? body.delta
+      : {
+        schema_version: 1,
+        job: 'filing_map',
+        ticker: id,
+        run_id: rid,
+        summary: snap.summary || '',
+        rows,
+        decision_support_only: true,
+      };
+    atomicWriteJson(path.join(dir, 'delta.json'), delta);
   }
   atomicWriteJson(path.join(dir, 'sources.json'), { schema_version: 1, items: snap.sources || [] });
   atomicWriteJson(path.join(dir, 'gaps.json'), { schema_version: 1, gaps: snap.gaps || [] });
@@ -751,7 +1037,9 @@ export function failResearchRun(ticker, runId, error) {
 
 export function retryResearchRun(ticker, runId, opts = {}) {
   const id = tickerId(ticker);
-  const existing = findInFlightRun(id);
+  const dir = researchRunDir(id, runId);
+  const prior = dir ? readJsonSafe(path.join(dir, 'meta.json')) : null;
+  const existing = findInFlightRun(id, { job: prior?.job });
   if (existing && existing.run_id !== runId) {
     return {
       ok: false,

@@ -13,6 +13,8 @@ import { scenarioPinPreamble } from './mcpPinGuard.js';
 import { writeStreetAgentSeed } from './streetAgentSeed.js';
 import { writeWorkingModelAgentSeed } from './workingModelAgentSeed.js';
 import { writeResearchRunsAgentSeed } from './researchRunsAgentSeed.js';
+import { writeLearnAgentSeed } from './learnAgentSeed.js';
+import { resolveThesisRegister, shortRegisterToken, normalizeThesisPace } from './researchRunsSchema.js';
 import { spawnResearchWorker } from './researchRunsWorker.js';
 import {
   findInFlightRun,
@@ -76,6 +78,20 @@ export const GROK_AGENTS = [
     needs_desk: true,
     variants: ['desk'],
   },
+  {
+    action: 'background',
+    label: 'Background',
+    hint: 'Product spine + HTML architecture · Background room',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'tutor',
+    label: 'Company tutor',
+    hint: 'Personalized teach in Grok · remembers this desk',
+    needs_desk: true,
+    variants: ['desk'],
+  },
   // --- Band C: Models / finance templates ---
   {
     action: 'comps',
@@ -95,6 +111,13 @@ export const GROK_AGENTS = [
     action: 'model-desk',
     label: 'Model desk',
     hint: 'Working assumptions + bridge vault · not PT · glass Model room',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'model-read',
+    label: 'Model read',
+    hint: 'Explain Model numbers → taught PDF · Model room',
     needs_desk: true,
     variants: ['desk'],
   },
@@ -127,9 +150,16 @@ export const GROK_AGENTS = [
     variants: ['desk'],
   },
   {
-    action: 'research-compile',
-    label: 'Research compile',
-    hint: 'Deep compile archive · Research room · heavy compute',
+    action: 'thesis-report',
+    label: 'Thesis report',
+    hint: 'Checkpointed IB note + PDF · Reports room',
+    needs_desk: true,
+    variants: ['desk'],
+  },
+  {
+    action: 'filing-map',
+    label: 'Filing map',
+    hint: 'SEC accession → house / register · Overview MAP FILINGS · on demand',
     needs_desk: true,
     variants: ['desk'],
   },
@@ -210,6 +240,10 @@ const ALLOWED_ACTIONS = new Set([
   ...GROK_AGENTS.map((a) => a.action),
   'street-build',
   'street-refresh',
+  // Study Tree per-node deep-dive (not in the desk AGENTS dropdown — needs node_id).
+  'learn-deepen',
+  // Retired glass catalog; pipeline/tests may still POST this action.
+  'research-compile',
 ]);
 const ALLOWED_VARIANTS = new Set(['desk', 'risk', 'register', 'house', 'start']);
 
@@ -345,12 +379,82 @@ export function buildInitialPrompt(opts = {}) {
           core = parts.join(' ');
           break;
         }
+        case 'thesis-report':
+        {
+          const tMode = String(opts.thesis_mode || opts.thesisMode || '').toLowerCase().trim();
+          const reportMode = (
+            tMode === 'deep-dive' || tMode === 'initiation' || tMode === 'earnings-update'
+          ) ? tMode : 'earnings-update';
+          const parts = ['/cockpit-report'];
+          if (desk) parts.push(desk);
+          parts.push(reportMode);
+          const reg = resolveThesisRegister(opts);
+          if (reg.register_scope === 'pick' && reg.register_ids.length) {
+            const labels = [...new Set(reg.register_ids.map(shortRegisterToken))];
+            parts.push('pick', labels.join(','));
+          } else {
+            parts.push(reg.register_scope);
+          }
+          parts.push(normalizeThesisPace(opts.thesis_pace || opts.thesisPace));
+          core = parts.join(' ');
+          break;
+        }
+        case 'filing-map':
+        {
+          const parts = ['/cockpit-filing-map'];
+          if (desk) parts.push(desk);
+          const rid = String(opts.run_id || opts.runId || '').replace(/[^A-Za-z0-9._-]/g, '');
+          if (rid) parts.push(rid);
+          const rawMode = String(opts.mode || '').toLowerCase().trim();
+          if (rawMode === 'chat') parts.push('chat');
+          core = parts.join(' ');
+          break;
+        }
         case 'coverage':
           core = withDesk('/cockpit-coverage');
           break;
+        case 'background':
+        {
+          const parts = ['/cockpit-learn'];
+          if (desk) parts.push(desk);
+          parts.push('primer');
+          core = parts.join(' ');
+          break;
+        }
+        case 'tutor':
+        {
+          const parts = ['/cockpit-learn'];
+          if (desk) parts.push(desk);
+          parts.push('tutor');
+          core = parts.join(' ');
+          break;
+        }
+        case 'learn-deepen':
+        {
+          const nid = String(opts.node_id || opts.nodeId || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9._-]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 64);
+          const parts = ['/cockpit-learn'];
+          if (desk) parts.push(desk);
+          parts.push('deepen');
+          if (nid) parts.push(nid);
+          core = parts.join(' ');
+          break;
+        }
         case 'comps':
           core = withDesk('/cockpit-comps');
           break;
+        case 'model-read':
+        {
+          const parts = ['/cockpit-model-read'];
+          if (desk) parts.push(desk);
+          const rid = String(opts.run_id || opts.runId || '').replace(/[^A-Za-z0-9._-]/g, '');
+          if (rid) parts.push(rid);
+          core = parts.join(' ');
+          break;
+        }
         case 'model-desk':
         {
           const rawMode = String(opts.mode || '').toLowerCase().trim();
@@ -485,14 +589,49 @@ export function openGrokBuild(opts = {}) {
     }
   }
 
-  // Research runs: deep compile archive seed.
+  let learn_seed = null;
+  if (action === 'background' || action === 'tutor' || action === 'learn-deepen') {
+    try {
+      const seedMode = action === 'background'
+        ? 'primer'
+        : (action === 'learn-deepen' ? 'deepen' : (opts.mode || 'tutor'));
+      learn_seed = writeLearnAgentSeed(opts.desk || ticker || '', {
+        mode: seedMode,
+        node_id: opts.node_id || opts.nodeId,
+      });
+    } catch (e) {
+      learn_seed = { ok: false, error: e.message || String(e) };
+    }
+    if (action === 'learn-deepen' && !learn_seed?.ok) {
+      return {
+        ok: false,
+        error: learn_seed?.error || 'learn-deepen seed failed',
+        action,
+        desk: opts.desk || null,
+        node_id: opts.node_id || opts.nodeId || null,
+        decision_support_only: true,
+      };
+    }
+  }
+
+  // Research runs: deep compile archive seed, or thesis-lane seed.
   let research_seed = null;
-  if (action === 'research-compile') {
+  if (action === 'research-compile' || action === 'thesis-report' || action === 'model-read' || action === 'filing-map') {
     try {
       research_seed = writeResearchRunsAgentSeed(opts.desk || ticker || '', {
         mode: opts.mode || 'chat',
         run_id: opts.run_id || opts.runId || null,
-        job: opts.job || 'deep_compile',
+        job: action === 'thesis-report'
+          ? 'thesis_report'
+          : action === 'model-read'
+            ? 'model_read'
+            : action === 'filing-map'
+              ? 'filing_map'
+              : (opts.job || 'deep_compile'),
+        thesis_mode: opts.thesis_mode || opts.thesisMode || null,
+        register_scope: opts.register_scope || opts.registerScope || null,
+        register_ids: opts.register_ids || opts.registerIds || null,
+        thesis_pace: opts.thesis_pace || opts.thesisPace || null,
       });
     } catch (e) {
       research_seed = { ok: false, error: e.message || String(e) };
@@ -503,12 +642,52 @@ export function openGrokBuild(opts = {}) {
   // or the agent stops at a menu, the execute directive + seed path are still in the
   // prompt itself (2026-08-20 — NEW COMPILE opened Grok idle; fire-and-forget hardening).
   let launchPrompt = initial;
-  const researchPipeline = !!(research_seed?.ok && research_seed.mode === 'pipeline');
+  if (learn_seed?.ok && action === 'learn-deepen') {
+    launchPrompt = `${initial}\n\nDEEPEN — product-mechanism deep-dive on one Study Tree node. `
+      + `First read the seed file: ${learn_seed.path} . `
+      + `Pace through — do not wait at checkpoints. POST /api/${learn_seed.slug || '{slug}'}/learn/deep when the note is ready. `
+      + `No house chapter, no register, no propose_*, no thesis PDF pipeline. Decision-support only.`;
+  }
+  // Thesis report is interactive (checkpoints). Never headless deep-compile worker.
+  const researchPipeline = !!(
+    research_seed?.ok
+    && research_seed.mode === 'pipeline'
+    && research_seed.job !== 'thesis_report'
+    && research_seed.job !== 'model_read'
+    && research_seed.job !== 'filing_map'
+  );
   if (researchPipeline) {
     launchPrompt = `${initial}\n\nPIPELINE MODE — execute the research job now; do not stop at a menu or ask which desk. `
       + `First read the seed file: ${research_seed.path} . `
       + `run_id ${research_seed.run_id || '(in seed)'} is already created (status=queued until worker attach); `
       + `write only under that run folder and publish via the API in the seed. Decision-support only.`;
+  } else if (research_seed?.ok && research_seed.job === 'model_read') {
+    launchPrompt = `${initial}\n\nMODEL READ — execute /cockpit-model-read; do not stop at a menu. `
+      + `First read the seed file: ${research_seed.path} . `
+      + `run_id ${research_seed.run_id || '(in seed)'} is already created. `
+      + `Read numbers-graph.json first. Do not invent consensus or YOUR CASE. `
+      + `PDF is ops, never pack SoR. Do not propose house/risks. Decision-support only.`;
+  } else if (research_seed?.ok && research_seed.job === 'filing_map') {
+    const chat = research_seed.mode === 'chat';
+    launchPrompt = chat
+      ? (`${initial}\n\nFILING MAP CHAT — talk to the existing run; do not start a second map. `
+        + `First read the seed file: ${research_seed.path} . `
+        + `run_id ${research_seed.run_id || '(in seed)'}. Read inbox.json + delta.json. `
+        + `House/risks only via propose_*. Decision-support only.`)
+      : (`${initial}\n\nFILING MAP — execute /cockpit-filing-map; do not stop at a menu. `
+        + `First read the seed file: ${research_seed.path} . `
+        + `run_id ${research_seed.run_id || '(in seed)'} is already created. `
+        + `Read inbox.json first. Map only those accessions. Pace through. Do not propose_*. `
+        + `Publish summary + rows. Decision-support only.`);
+  } else if (research_seed?.ok && research_seed.job === 'thesis_report') {
+    const through = research_seed.thesis_pace === 'through';
+    launchPrompt = `${initial}\n\nTHESIS LANE — execute /cockpit-report; do not stop at a menu. `
+      + `First read the seed file: ${research_seed.path} . `
+      + `run_id ${research_seed.run_id || '(in seed)'} is already created. `
+      + (through
+        ? 'PACE through — do not wait at Checkpoint 1 or 2. Still POST each checkpoint. Closeout via propose_* only; never silent-write house/risks. '
+        : 'STOP at skill checkpoints. ')
+      + `PDF is ops, never pack SoR. Decision-support only.`;
   }
 
   // Research PIPELINE: OS-agnostic headless spawn. Canonical artifacts live in the run
@@ -589,8 +768,16 @@ end tell`;
     let note = 'Opened Terminal → Grok Build (cwd=this monorepo; project MCP pin for cockpit-research).';
     if (street_seed?.ok) {
       note = `Opened Terminal → Grok Build with Street seed (${street_seed.mode || 'chat'} · page + house + risks). Agent: /cockpit-street.`;
+    } else if (learn_seed?.ok) {
+      note = `Opened Terminal → Grok Build with learn seed (${learn_seed.mode || 'tutor'}). Agent: /cockpit-learn. Primer + tutor memory — not pack.`;
     } else if (model_seed?.ok) {
       note = `Opened Terminal → Grok Build with Model seed (${model_seed.mode || 'chat'} · assumptions + house + risks). Agent: /cockpit-model.`;
+    } else if (research_seed?.ok && research_seed.job === 'model_read') {
+      note = `Opened Terminal → Grok Build with model-read seed (run ${research_seed.run_id || '—'}). Agent: /cockpit-model-read. PDF explains the ledger.`;
+    } else if (research_seed?.ok && research_seed.job === 'filing_map') {
+      note = `Opened Terminal → Grok Build with filing-map seed (run ${research_seed.run_id || '—'}). Agent: /cockpit-filing-map. Map is ops, not pack.`;
+    } else if (research_seed?.ok && research_seed.job === 'thesis_report') {
+      note = `Opened Terminal → Grok Build with thesis-report seed (${research_seed.thesis_mode || 'earnings-update'} · run ${research_seed.run_id || '—'}). Agent: /cockpit-report. PDF is ops, not pack.`;
     } else if (research_seed?.ok) {
       note = `Opened Terminal → Grok Build with Research seed (${research_seed.mode || 'chat'} · run ${research_seed.run_id || '—'}). Agent: /cockpit-research-compile.`;
     }
@@ -608,6 +795,7 @@ end tell`;
       ticker: ticker || null,
       risk_id: opts.risk_id || null,
       risk_name: opts.risk_name || null,
+      node_id: opts.node_id || opts.nodeId || learn_seed?.node_id || null,
       initial_prompt: initial,
       headless: headless?.ok ? { pid: headless.pid, log: headless.log } : null,
       headless_error: headless && !headless.ok ? headless.error : null,
@@ -645,6 +833,15 @@ end tell`;
         }
         : null,
       research_seed_error: research_seed && !research_seed.ok ? (research_seed.error || 'seed failed') : null,
+      learn_seed: learn_seed && learn_seed.ok
+        ? {
+          path: learn_seed.path,
+          bytes: learn_seed.bytes,
+          ticker: learn_seed.ticker,
+          mode: learn_seed.mode || null,
+        }
+        : null,
+      learn_seed_error: learn_seed && !learn_seed.ok ? (learn_seed.error || 'seed failed') : null,
       mcp_project: mcpPin.ok ? mcpPin.path : null,
       mcp_project_error: mcpPin.ok ? null : mcpPin.error,
       note,

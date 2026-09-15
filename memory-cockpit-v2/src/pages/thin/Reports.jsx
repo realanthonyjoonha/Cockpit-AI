@@ -297,6 +297,54 @@ export default function ThinReports({ desk }) {
     } catch (e) { setFlash(e.message || String(e)); } finally { setBusy(false); }
   };
 
+  const proposeFromReport = async (rid) => {
+    if (!rid || busy) return null;
+    setBusy(true);
+    try {
+      const dry = await apiPost(
+        `${slug}/research/runs/${encodeURIComponent(rid)}/propose-from-run`,
+        { dry_run: true },
+      );
+      if (!dry?.ok) {
+        setFlash(dry?.error || 'propose preview failed');
+        return dry;
+      }
+      const n = dry.counts?.actionable || 0;
+      if (n <= 0) {
+        setFlash('Closeout preview · nothing actionable in extracts');
+        return dry;
+      }
+      const okConfirm = window.confirm(
+        `Propose from this report?\n\n`
+        + `${dry.counts.house || 0} house · ${dry.counts.risk_status || 0} risk status · ${dry.counts.add_risk || 0} add-risk\n\n`
+        + 'Creates pending proposals only. You still ACCEPT on House / Risks.',
+      );
+      if (!okConfirm) {
+        setFlash('Propose cancelled');
+        return dry;
+      }
+      const out = await apiPost(
+        `${slug}/research/runs/${encodeURIComponent(rid)}/propose-from-run`,
+        { dry_run: false },
+      );
+      if (!out?.ok) {
+        setFlash(out?.error || 'propose failed');
+        return out;
+      }
+      const created = Array.isArray(out.created) ? out.created.length : 0;
+      setFlash(created ? `PROPOSED ${created} · ACCEPT on House / Risks` : (out.note || 'Nothing created'));
+      await loadCtx();
+      await loadList();
+      if (runId === rid) await loadDetail(rid);
+      return out;
+    } catch (e) {
+      setFlash(e.message || String(e));
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const toggleArm = async () => {
     const next = !(sched?.armed);
     try {
@@ -380,6 +428,15 @@ export default function ThinReports({ desk }) {
               </a>
               <button type="button" className="btn" disabled={busy} onClick={openChat}>
                 Open Grok
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={busy || !!hero.promoted}
+                title={hero.promoted ? 'Already proposed / pending accept' : 'Dry-run then confirm pending proposals from extracts'}
+                onClick={() => proposeFromReport(hero.run_id)}
+              >
+                {hero.promoted ? 'PROPOSED' : 'PROPOSE FROM REPORT'}
               </button>
             </div>
             {runId === hero.run_id && summaryLine ? (

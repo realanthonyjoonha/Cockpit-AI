@@ -19,13 +19,36 @@ function attnLabel(row) {
   if (a.includes('compile-stalled')) return { t: 'COMPILE STALLED', cls: 'fired' };
   if (a.includes('compile-running')) return { t: 'COMPILING…', cls: 'watch' };
   if (a.includes('fired')) return { t: 'FIRED', cls: 'fired' };
+  if (a.includes('propose-pending')) {
+    const n = Number(row.propose_pending) || 0;
+    return { t: n ? `${n} PROPOSE` : 'PROPOSE', cls: 'watch' };
+  }
+  if (a.includes('filing-propose')) return { t: 'MAP→PROPOSE', cls: 'watch' };
+  if (a.includes('research-promote')) return { t: 'PROMOTE RUN', cls: 'watch' };
   if (a.includes('watch')) return { t: `${row.watch_count} WATCH`, cls: 'watch' };
   if (a.includes('house') || a.includes('compile')) return { t: a.includes('compile') ? 'COMPILE' : 'HOUSE', cls: 'watch' };
   if (a.includes('street') || a.includes('street-stale')) {
     return { t: a.includes('street-stale') ? 'STREET STALE' : 'STREET', cls: 'dim' };
   }
+  if (a.includes('filing-unmapped')) return { t: 'FILINGS', cls: 'watch' };
   if (a.includes('pack') || a.includes('error')) return { t: 'PACK', cls: 'dim' };
   return { t: 'OK', cls: 'ok' };
+}
+
+function filingCell(row) {
+  const st = row.filing_map_status;
+  if (row.filing_map_needs_propose) return 'mapped · propose';
+  if (row.filing_material_not_in_book > 0 && st !== 'complete') {
+    return `${row.filing_material_not_in_book} new · not mapped`;
+  }
+  if (row.filing_print_form && row.filing_print_date) {
+    const day = String(row.filing_print_date).slice(5);
+    const book = row.filing_print_in_book === true ? 'IN BOOK' : (row.filing_print_in_book === false ? 'NOT IN BOOK' : '');
+    const map = st === 'complete' ? 'mapped' : (st === 'queued' ? 'mapping…' : 'no map');
+    return `${row.filing_print_form} ${day}${book ? ` · ${book}` : ''} · ${map}`;
+  }
+  if (st === 'complete') return 'mapped';
+  return '—';
 }
 
 /**
@@ -361,6 +384,7 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>House</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Risks</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Street</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Filings</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Compile</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Open</th>
                 </tr>
@@ -376,7 +400,26 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
                           {row.displayName || row.label}
                         </span>
                       </td>
-                      <td style={{ padding: '6px 10px' }}>
+                      <td
+                        style={{
+                          padding: '6px 10px',
+                          cursor: (row.attention || []).some((x) => (
+                            x === 'filing-propose' || x === 'research-promote' || x === 'propose-pending'
+                          )) ? 'pointer' : undefined,
+                        }}
+                        title={
+                          (row.attention || []).includes('propose-pending') ? 'Open Risks to ACCEPT'
+                            : (row.attention || []).includes('filing-propose') ? 'Open Filings · PROPOSE FROM MAP'
+                              : (row.attention || []).includes('research-promote') ? 'Open Reports · PROPOSE FROM REPORT'
+                                : undefined
+                        }
+                        onClick={() => {
+                          const a = row.attention || [];
+                          if (a.includes('propose-pending')) window.location.hash = `#/${row.slug}/risks`;
+                          else if (a.includes('filing-propose')) window.location.hash = `#/${row.slug}/filings`;
+                          else if (a.includes('research-promote')) window.location.hash = `#/${row.slug}/reports`;
+                        }}
+                      >
                         <span className={`chipC ${att.cls}`}>{att.t}</span>
                       </td>
                       <td className="dim" style={{ padding: '6px 10px', fontSize: 10, maxWidth: 200 }}>
@@ -395,6 +438,14 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
                         {row.street_status || '—'}
                         {row.street_n_firms ? ` · ${row.street_n_firms}` : ''}
                         {row.street_as_of ? ` · ${row.street_as_of}` : ''}
+                      </td>
+                      <td
+                        className="dim goto"
+                        style={{ padding: '6px 10px', fontSize: 10, cursor: 'pointer' }}
+                        title={row.filing_map_summary || ''}
+                        onClick={() => { window.location.hash = `#/${row.slug}/filings`; }}
+                      >
+                        {filingCell(row)}
                       </td>
                       <td className="dim" style={{ padding: '6px 10px', fontSize: 10 }}>
                         {row.research_stalled ? (
@@ -440,6 +491,15 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
                           onClick={() => { window.location.hash = `#/${row.slug}/research`; }}
                         >
                           Research
+                        </button>
+                        <button
+                          type="button"
+                          className="desk-btn"
+                          style={{ padding: '3px 8px', fontSize: 10, marginLeft: 4 }}
+                          onClick={() => { window.location.hash = `#/${row.slug}/filings`; }}
+                          title="SEC filings catalog + maps"
+                        >
+                          Filings
                         </button>
                       </td>
                     </tr>

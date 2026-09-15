@@ -70,16 +70,13 @@ FILES=(
   ".grok/commands/cockpit.md"
   ".grok/commands/cockpit-feature.md"
   ".grok/commands/cockpit-ship.md"
-  ".grok/commands/cockpit-verify.md"
   "docs/EASY.md"
-  "docs/FEATURE-MAP.md"
-  "docs/proof/vm-glass/README.md"
+  "docs/SESSION.md"
   "docs/DEVELOP.md"
   "docs/LAB.md"
   "docs/MULTI-INSTANCE.md"
   "docs/CUSTOMER-SIM.md"
   "scripts/feature-ready.sh"
-  "scripts/verify-feature.sh"
   "CUSTOMER-SIM-PROMPT.md"
   "scripts/customer-sim-preflight.sh"
   "scripts/customer-sim-e2e.sh"
@@ -93,8 +90,6 @@ FILES=(
   "memory-cockpit-v2/scripts/mcp-pin-guard-test.mjs"
   "scripts/test-develop-discipline.sh"
   "scripts/lab-e2e.sh"
-  "scripts/ensure-product-empty.sh"
-  "FRIEND-START.md"
   "scripts/lab-isolation-e2e.sh"
   "scripts/run-glass-instance.sh"
   "scripts/lib/lab-seal.sh"
@@ -109,7 +104,7 @@ FILES=(
   "memory-cockpit-v2/server/researchRunsWorker.js"
   "memory-cockpit-v2/server/researchAcquire.js"
   "memory-cockpit-v2/server/operateGlance.js"
-  "memory-cockpit-v2/src/pages/thin/Research.jsx"
+  "memory-cockpit-v2/src/pages/thin/Reports.jsx"
   "memory-cockpit-v2/src/pages/Start.jsx"
   "scripts/templates/Start.kernel.jsx"
   "memory-cockpit-v2/scripts/thin-research-runs-test.mjs"
@@ -125,22 +120,96 @@ FILES=(
   "memory-cockpit-v2/server/streetProvider.js"
   "memory-cockpit-v2/server/streetAgentSeed.js"
   "memory-cockpit-v2/server/thinDeskMount.js"
-  "memory-cockpit-v2/server/vault.js"
-  "memory-cockpit-v2/server/monorepoPaths.js"
+  "memory-cockpit-v2/server/sourceRead.js"
+  "memory-cockpit-v2/server/sourceCatalog.js"
+  "memory-cockpit-v2/server/packStale.js"
+  "memory-cockpit-v2/server/thinCompile.js"
+  "memory-cockpit-v2/scripts/pack-stale-test.mjs"
+  "memory-cockpit-v2/scripts/source-catalog-test.mjs"
+  "ontology/compile/from_sources.py"
   "memory-cockpit-v2/server/secEdgar.js"
-  "memory-cockpit-v2/server/houseProposals.js"
-  "memory-cockpit-v2/server/riskProposals.js"
+  "memory-cockpit-v2/server/filingMapInbox.js"
+  "memory-cockpit-v2/server/filingMapSchema.js"
+  "memory-cockpit-v2/server/filingMapCloseout.js"
+  "memory-cockpit-v2/server/researchRunCloseout.js"
+  "memory-cockpit-v2/scripts/filing-map-test.mjs"
+  "memory-cockpit-v2/scripts/filing-map-closeout-test.mjs"
+  "memory-cockpit-v2/scripts/research-run-closeout-test.mjs"
+  ".grok/skills/filing-map/SKILL.md"
+  ".grok/commands/cockpit-filing-map.md"
+  "scripts/lab-feature-hooks/96-filing-map.sh"
+  "memory-cockpit-v2/server/thinWorkingModel.js"
+  "memory-cockpit-v2/server/workingModelAgentSeed.js"
+  "memory-cockpit-v2/server/workingModelSchema.js"
+  "memory-cockpit-v2/server/modelReadGraph.js"
+  ".grok/skills/model-read/SKILL.md"
+  ".grok/commands/cockpit-model-read.md"
+  "memory-cockpit-v2/server/learnSchema.js"
+  "memory-cockpit-v2/server/thinLearn.js"
+  "memory-cockpit-v2/server/learnAgentSeed.js"
+  "memory-cockpit-v2/server/learnMap.js"
+  "memory-cockpit-v2/server/learnHarvest.js"
+  "memory-cockpit-v2/server/learnDiagrams.js"
+  "memory-cockpit-v2/server/learnPhotos.js"
+  "memory-cockpit-v2/server/learnDeep.js"
+  "memory-cockpit-v2/index.html"
+  "memory-cockpit-v2/public/manifest.webmanifest"
+  "memory-cockpit-v2/public/apple-touch-icon.png"
+  "memory-cockpit-v2/public/icon-192.png"
+  "memory-cockpit-v2/public/icon-512.png"
+  "memory-cockpit-v2/src/pages/thin/Background.jsx"
+  "memory-cockpit-v2/src/pages/thin/LearnDiagrams.jsx"
+  "memory-cockpit-v2/src/pages/thin/LearnPhotos.jsx"
+  "memory-cockpit-v2/src/pages/thin/learnDiagramLayout.js"
+  "memory-cockpit-v2/src/pages/thin/learnDiagramPick.js"
+  "memory-cockpit-v2/scripts/thin-learn-test.mjs"
+  "memory-cockpit-v2/scripts/learn-factory.mjs"
+  "memory-cockpit-v2/scripts/learn-photos.mjs"
+  "memory-cockpit-v2/scripts/fixtures/learn-product-map.json"
+  "memory-cockpit-v2/plans/LEARN-PHOTOS-PLAN.md"
+  "memory-cockpit-v2/plans/LEARN-ENGINE.md"
+  "memory-cockpit-v2/plans/LEARN-DIAGRAMS-V2-PLAN.md"
+  "memory-cockpit-v2/plans/LEARN-BACKGROUND-V3.md"
+  ".grok/skills/company-learn/SKILL.md"
+  ".grok/commands/cockpit-learn.md"
+  "scripts/lab-feature-hooks/95-company-learn.sh"
+  "memory-cockpit-v2/scripts/model-read-graph-test.mjs"
+  "scripts/lab-feature-hooks/94-model-read.sh"
   "memory-cockpit-v2/scripts/compile-pipeline-test.mjs"
+  "memory-cockpit-v2/scripts/thin-working-model-test.mjs"
   "memory-cockpit-v2/server/index.js"
   "memory-cockpit-v2/src/pages/thin/GrokAgents.jsx"
   "memory-cockpit-v2/src/pages/thin/Street.jsx"
-  "memory-cockpit-v2/src/pages/thin/DeskRouter.jsx"
+  "memory-cockpit-v2/src/pages/thin/Overview.jsx"
+  "memory-cockpit-v2/src/pages/thin/House.jsx"
+  "memory-cockpit-v2/server/houseProposals.js"
+  "memory-cockpit-v2/scripts/house-proposal-review-test.mjs"
+  "memory-cockpit-v2/scripts/risk-proposal-review-test.mjs"
+  "memory-cockpit-v2/src/pages/thin/Risks.jsx"
+  "memory-cockpit-v2/src/pages/thin/Risk.jsx"
+  "memory-cockpit-v2/server/riskProposals.js"
+  "memory-cockpit-v2/src/pages/thin/UpdateMetaOnly.jsx"
+  "scripts/report/build.py"
+  "memory-cockpit-v2/server/reportSchedule.js"
+  "memory-cockpit-v2/scripts/report-schedule-test.mjs"
+  "memory-cockpit-v2/src/pages/thin/Sources.jsx"
+  "memory-cockpit-v2/src/pages/thin/Model.jsx"
+  "memory-cockpit-v2/src/pages/thin/Empty.jsx"
+  "memory-cockpit-v2/src/pages/thin/filingLink.js"
+  "memory-cockpit-v2/src/pages/thin/filingMapPaint.js"
+  "memory-cockpit-v2/src/pages/thin/FilingMapDossier.jsx"
+  "memory-cockpit-v2/src/pages/thin/Filings.jsx"
+  "memory-cockpit-v2/server/contextpack.js"
+  "memory-cockpit-v2/scripts/contextpack-test.mjs"
+  "memory-cockpit-v2/scripts/phone-chrome-test.mjs"
+  "ontology/schema/contextpack_metrics.json"
+  "ontology/api/contextpack.py"
   "memory-cockpit-v2/src/App.jsx"
   "memory-cockpit-v2/src/theme.css"
-  "memory-cockpit-v2/index.html"
-  "scripts/templates/App.kernel.jsx"
-  "memory-cockpit-v2/scripts/phone-chrome-test.mjs"
+  "memory-cockpit-v2/scripts/source-read-test.mjs"
+  "memory-cockpit-v2/src/pages/thin/DeskRouter.jsx"
   "memory-cockpit-v2/src/thinDesks.js"
+  "memory-cockpit-v2/scripts/thin-rail-test.mjs"
   "memory-cockpit-v2/scripts/open-grok-prompt-test.mjs"
   "memory-cockpit-v2/scripts/street-seed-mode-test.mjs"
   "memory-cockpit-v2/scripts/thin-street-test.mjs"
@@ -159,6 +228,13 @@ FILES=(
   "memory-cockpit-v2/plans/2026-08-04-desk-health-gate.md"
   "OPERATE.md"
   "RELEASE.md"
+)
+
+# Deleted on dest when shipping so retired glass files do not linger.
+RETIRED_PATHS=(
+  "memory-cockpit-v2/src/pages/thin/Research.jsx"
+  "memory-cockpit-v2/src/pages/thin/compileRunList.js"
+  "memory-cockpit-v2/scripts/compile-run-list-test.mjs"
 )
 
 echo "sync-agent-surface"
@@ -189,6 +265,21 @@ copy_one() {
   echo "  copied: $rel"
 }
 
+remove_one() {
+  local rel="$1"
+  local d="$DST/$rel"
+  if [ ! -e "$d" ]; then
+    echo "  skip (already gone): $rel"
+    return 0
+  fi
+  if [ "$DRY" -eq 1 ]; then
+    echo "  would remove: $rel"
+    return 0
+  fi
+  rm -rf "$d"
+  echo "  removed: $rel"
+}
+
 # All cockpit slash commands (platform agents) — daybook + street + finance + operate
 if [ -d "$SRC/.grok/commands" ]; then
   if [ "$DRY" -eq 1 ]; then
@@ -203,6 +294,12 @@ fi
 
 if [ -f "$SRC/.grok/skills/cockpit/SKILL.md" ]; then
   copy_one ".grok/skills/cockpit/SKILL.md"
+fi
+if [ -f "$SRC/.grok/skills/cockpit-session/SKILL.md" ]; then
+  copy_one ".grok/skills/cockpit-session/SKILL.md"
+fi
+if [ -f "$SRC/.grok/skills/ib-report/SKILL.md" ]; then
+  copy_one ".grok/skills/ib-report/SKILL.md"
 fi
 
 # Friend upgrade helpers
@@ -238,6 +335,10 @@ fi
 
 for rel in "${FILES[@]}"; do
   copy_one "$rel"
+done
+
+for rel in "${RETIRED_PATHS[@]}"; do
+  remove_one "$rel"
 done
 
 echo

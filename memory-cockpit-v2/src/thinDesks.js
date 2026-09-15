@@ -71,6 +71,7 @@ export function hashHead(hash) {
   return head.toLowerCase().replace(/[^a-z0-9-]/g, '');
 }
 
+/** Left-rail rooms. Ask stays API/CLI-only (`POST /api/{slug}/ask`, `./ont ask`). */
 export function thinRail(desk) {
   const s = desk.slug;
   const L = desk.label;
@@ -81,8 +82,9 @@ export function thinRail(desk) {
     ['⧉', `${L} Sources — pack catalog`, `#/${s}/sources`],
     ['$', `${L} Street — published targets (not house)`, `#/${s}/street`],
     ['∑', `${L} Model — working assumptions + bridge`, `#/${s}/model`],
-    ['⚗', `${L} Research — saved deep compiles`, `#/${s}/research`],
-    ['?', `${L} Ask — pack Q&A (deterministic)`, `#/${s}/ask`],
+    ['▤', `${L} Reports — thesis notes + PDF`, `#/${s}/reports`],
+    ['▣', `${L} Filings — SEC catalog + maps`, `#/${s}/filings`],
+    ['◎', `${L} Background — what they build + tutor`, `#/${s}/background`],
     ['✎', `${L} Update — write path (file → compile → refresh)`, `#/${s}/update`],
   ];
 }

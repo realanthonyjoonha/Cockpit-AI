@@ -103,6 +103,7 @@ app.post('/api/open-grok', (req, res) => {
       prompt: body.prompt,
       risk_id: body.risk_id || body.riskId,
       risk_name: body.risk_name || body.riskName,
+      node_id: body.node_id || body.nodeId,
       mode: body.mode, // street: pipeline | chat
       run_id: body.run_id || body.runId, // research-compile: target run (was dropped — 2026-08-20 fix)
       job: body.job,

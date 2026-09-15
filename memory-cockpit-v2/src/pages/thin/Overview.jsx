@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 import BookStrip from './BookStrip.jsx';
-import { filingDocLabel, companyEdgarUrl } from './filingLink.js';
+import { filingDocLabel, inBookChip } from './filingLink.js';
+import { filingsStripMode, filingsLedgerExtras } from './filingMapPaint.js';
 
 function fmtCompiled(iso) {
   if (!iso) return '—';
@@ -64,53 +65,7 @@ export default function ThinOverview({ desk }) {
         {label} · <b>{d.ticker || ticker}</b> · PACK AS OF <b>{fmtCompiled(d.compiled_at)}</b>
         {' '}· {d.risk_summary?.count ?? 0} RISKS · {nWatch} WATCH · {nFired} FIRED
       </div>
-
       <BookStrip desk={slug} ticker={ticker} compact />
-
-      {/* Attention surface: material filings only. Routine (Form 3/4/5, 144, 13F) never
-          earns an Overview section — full detail lives on the Research pipeline card. */}
-      {pipe?.available && pipe.since_compile?.material_count > 0 && (
-        <div className="sect">
-          <div className="shd">
-            <span className="no">▤</span>
-            <h2>FILED SINCE COMPILE</h2>
-            <span className="m">
-              SEC EDGAR · tier {pipe.tier?.tier || '—'} · {pipe.since_compile.count} filing{pipe.since_compile.count === 1 ? '' : 's'} after book compile
-              {pipe.stale ? ' · EDGAR cache STALE' : ''}
-              {companyEdgarUrl(pipe.cik) ? (
-                <>
-                  {' · '}
-                  <a className="filing-link" href={companyEdgarUrl(pipe.cik)} target="_blank" rel="noopener noreferrer">
-                    company filings
-                  </a>
-                </>
-              ) : null}
-            </span>
-          </div>
-          <table>
-            <thead><tr><th>Form</th><th>Filed</th><th>Document</th></tr></thead>
-            <tbody>
-              {pipe.since_compile.material_items.slice(0, 6).map((f) => (
-                <tr key={f.accession}>
-                  <td className="idc"><b>{f.form}</b>{f.items ? <span className="dimmer mono" style={{ fontSize: 10, marginLeft: 6 }}>{f.items}</span> : null}</td>
-                  <td className="idc mono">{f.filed}</td>
-                  <td>
-                    <a className="filing-link" href={f.url} target="_blank" rel="noopener noreferrer">
-                      {filingDocLabel(f)}
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="dimmer" style={{ padding: '6px 16px 10px', fontSize: 11 }}>
-            {pipe.since_compile.routine_count > 0
-              ? `+ ${pipe.since_compile.routine_count} routine (insider Form 3/4/5 · 144 · 13F) not shown · `
-              : ''}
-            the pack does not see these yet — research + COMPILE BOOK to fold them in
-          </div>
-        </div>
-      )}
 
       <div className="sect">
         <div className="rdhead">
@@ -150,10 +105,14 @@ export default function ThinOverview({ desk }) {
           <span className="pchip" onClick={() => { window.location.hash = `${base}/street`; }}><b>»</b> street models</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/model`; }}><b>»</b> working model</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/reports`; }}><b>»</b> reports</span>
+          <span className="pchip" onClick={() => { window.location.hash = `${base}/background`; }}><b>»</b> background / tutor</span>
+          <span className="pchip" onClick={() => { window.location.hash = `${base}/filings`; }}><b>»</b> filings</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/sources`; }}><b>»</b> sources catalog</span>
           <span className="pchip" onClick={() => { window.location.hash = `${base}/update`; }}><b>»</b> update / write path</span>
         </div>
       </div>
+
+      {pipe?.available ? <FilingsSignal pipe={pipe} slug={slug} /> : null}
 
       <div className="sect">
         <div className="shd">
@@ -246,6 +205,76 @@ export default function ThinOverview({ desk }) {
       <div className="sect">
         <div className="shd"><span className="no">∿</span><h2>SERIES</h2><span className="m">phase 1</span></div>
         <div className="emptyD">{d.series_note || `${d.series_count} series in snapshot`}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Overview signal only — workstation is `#/{desk}/filings`. */
+function FilingsSignal({ pipe, slug }) {
+  const print = pipe.last_print || {};
+  const known = print.known && print.date;
+  const materialAll = Array.isArray(pipe.since_compile?.material_items)
+    ? pipe.since_compile.material_items
+    : [];
+  const chip = inBookChip(print.in_book);
+  const [maps, setMaps] = useState(null);
+
+  useEffect(() => {
+    api(`${slug}/research?lane=filings`)
+      .then(setMaps)
+      .catch(() => setMaps({ runs: [] }));
+  }, [slug]);
+
+  const runs = Array.isArray(maps?.runs) ? maps.runs : [];
+  const inflight = runs.find((r) => r.status === 'queued' || r.status === 'running');
+  const latestComplete = runs.find((r) => r.status === 'complete');
+  const mappedAt = latestComplete?.finished_at || latestComplete?.started_at || null;
+  const strip = filingsStripMode({
+    print,
+    materialItems: materialAll,
+    materialCount: pipe.since_compile?.material_count,
+    inflight: !!inflight,
+    mappedAt,
+    mapsReady: maps != null,
+  });
+  const extras = filingsLedgerExtras(print, materialAll, mappedAt);
+  const go = () => { window.location.hash = `#/${slug}/filings`; };
+  let attn = null;
+  if (strip.mode === 'new') attn = extras.length > 0 ? `${extras.length} NEW` : 'NEW';
+  else if (strip.mode === 'need_map' || inflight) attn = inflight ? 'MAPPING…' : 'MAP';
+
+  return (
+    <div className="sect fmap-host fmap-signal" style={{ cursor: 'pointer' }} onClick={go}>
+      <div className="shd">
+        <span className="no">▤</span>
+        <h2>SEC FILINGS</h2>
+        {attn ? <span className="chipC watch">{attn}</span> : null}
+        <span className="m">
+          <span className="filing-link">Open filings →</span>
+        </span>
+      </div>
+      <div className="fmap-print">
+        {known ? (
+          <div className="v">
+            <b>{print.form}</b>
+            <span className="mono">{print.date || print.filed}</span>
+            <span className={`chipC${chip.cls ? ` ${chip.cls}` : ''}`}>{chip.t}</span>
+            {print.url ? (
+              <a
+                className="filing-link"
+                href={print.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {filingDocLabel(print)}
+              </a>
+            ) : null}
+          </div>
+        ) : (
+          <div className="dim" style={{ fontSize: 12 }}>UNKNOWN · open filings room</div>
+        )}
       </div>
     </div>
   );

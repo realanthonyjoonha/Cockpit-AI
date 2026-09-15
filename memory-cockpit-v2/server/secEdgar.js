@@ -206,8 +206,7 @@ export function filedSinceCompile(filings, compiledAtIso) {
   for (const f of items) by_form[f.form] = (by_form[f.form] || 0) + 1;
   // Routine housekeeping (insider Forms 3/4/5, Rule 144 notices, the company's own 13F)
   // vs material disclosure — the Overview strip leads with material only.
-  const routine = (f) => /^(3|4|5|144|13F-HR|13F-NT)(\/A)?$/.test(f.form);
-  const material_items = items.filter((f) => !routine(f));
+  const material_items = items.filter((f) => !isRoutineFiling(f));
   const material_by_form = {};
   for (const f of material_items) material_by_form[f.form] = (material_by_form[f.form] || 0) + 1;
   return {
@@ -217,8 +216,114 @@ export function filedSinceCompile(filings, compiledAtIso) {
     material_count: material_items.length,
     material_by_form,
     routine_count: items.length - material_items.length,
-    items: material_items.concat(items.filter(routine)).slice(0, 50),
-    material_items: material_items.slice(0, 25),
+    items: material_items.concat(items.filter(isRoutineFiling)).slice(0, 50),
+    material_items: material_items.slice(0, 25).map(decorateFiling),
+  };
+}
+
+/** Insider 3/4/5, Rule 144, 13F — never Overview material, never filing_map inbox. */
+export function isRoutineFiling(f) {
+  return /^(3|4|5|144|13F-HR|13F-NT)(\/A)?$/.test(String(f?.form || ''));
+}
+
+/** 8-K item codes → English. Unknown codes stay the code. Never invent. */
+export const EIGHT_K_ITEM_LABELS = {
+  '1.01': 'Entry into a material agreement',
+  '1.02': 'Termination of a material agreement',
+  '2.01': 'Completion of acquisition or disposition',
+  '2.02': 'Results of operations and financial condition',
+  '2.05': 'Costs associated with exit or disposal',
+  '2.06': 'Material impairments',
+  '5.02': 'Departure/appointment of directors or officers',
+  '7.01': 'Regulation FD disclosure',
+  '8.01': 'Other events',
+  '9.01': 'Financial statements and exhibits',
+};
+
+export function eightKItemLabel(items) {
+  const raw = String(items || '').trim();
+  if (!raw) return null;
+  const parts = raw.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  return parts.map((code) => {
+    const key = String(code).replace(/^item\s+/i, '').trim();
+    const gloss = EIGHT_K_ITEM_LABELS[key];
+    return gloss ? `${key} ${gloss}` : key;
+  }).join(' · ');
+}
+
+export function decorateFiling(f) {
+  if (!f || typeof f !== 'object') return f;
+  return { ...f, item_label: eightKItemLabel(f.items) };
+}
+
+export function filingIsAfterCompile(f, compiledAtIso) {
+  if (!compiledAtIso || !f) return null;
+  if (f.acceptance) return f.acceptance > compiledAtIso;
+  const baselineDate = String(compiledAtIso).slice(0, 10);
+  return !!(f.filed && f.filed > baselineDate);
+}
+
+/**
+ * Last earnings print from the FULL filing list (not latest_filings[:10]).
+ * 10-Q / 10-K / 20-F or 8-K item 2.02. Never invent a future date.
+ */
+export function pickLatestPrint(filings) {
+  const rows = Array.isArray(filings) ? filings : [];
+  const hits = rows.filter((f) => {
+    const form = String(f.form || '').toUpperCase();
+    if (/^10-Q/.test(form) || /^10-K/.test(form) || /^20-F/.test(form)) return true;
+    if (/^8-K/.test(form) && /2\.02/.test(String(f.items || f.item || ''))) return true;
+    return false;
+  });
+  hits.sort((a, b) => String(b.filed || '').localeCompare(String(a.filed || '')));
+  const top = hits[0];
+  if (!top || !top.filed) return null;
+  const filed = String(top.filed).slice(0, 10);
+  return decorateFiling({
+    date: filed,
+    filed,
+    form: top.form,
+    url: top.url || null,
+    source: 'SEC EDGAR',
+    accession: top.accession || null,
+    items: top.items || '',
+    primary_doc_description: top.primary_doc_description || '',
+    acceptance: top.acceptance || null,
+  });
+}
+
+/** last_print object for pipeline + Reports. in_book vs pack compiled_at. */
+export function lastPrintCatalog(filings, compiledAt) {
+  const print = pickLatestPrint(filings);
+  if (!print) {
+    return {
+      date: null,
+      filed: null,
+      form: null,
+      url: null,
+      source: null,
+      label: 'UNKNOWN',
+      known: false,
+      in_book: null,
+      item_label: null,
+      accession: null,
+      items: '',
+    };
+  }
+  const after = filingIsAfterCompile(print, compiledAt);
+  return {
+    ...print,
+    known: true,
+    in_book: after == null ? null : !after,
+  };
+}
+
+function attachCatalog(data, filings, compiledAt) {
+  return {
+    ...data,
+    since_compile: filedSinceCompile(filings, compiledAt || null),
+    last_print: lastPrintCatalog(filings, compiledAt || null),
   };
 }
 
@@ -244,7 +349,8 @@ export async function pipelineSnapshot(ticker, opts = {}) {
   }
   const hit = memCache.get(memKey);
   if (hit && Date.now() - hit.at < MEM_TTL_MS && !force) {
-    return { ...hit.data, since_compile: filedSinceCompile(hit.data._filings, opts.compiledAt || null), _filings: undefined };
+    const { _filings, ...rest } = hit.data;
+    return attachCatalog(rest, _filings, opts.compiledAt || null);
   }
 
   const lane = compileLaneDir(id);
@@ -306,13 +412,14 @@ export async function pipelineSnapshot(ticker, opts = {}) {
     stale: !!stale,
     stale_error: stale ? error : undefined,
     filings_total_recent: filings.length,
-    latest_filings: filings.slice(0, 10),
+    latest_filings: filings.slice(0, 10).map(decorateFiling),
     _filings: filings,
     decision_support_only: true,
-    note: 'Stage 0+1 of deep-compile pipeline (SEC EDGAR, keyless). Not pack/house SoR.',
+    note: 'Stage 0+1 of deep-compile pipeline (SEC EDGAR, keyless). Not pack/house SoR. last_print scans the full recent list.',
   };
   memCache.set(memKey, { at: Date.now(), data: snap });
-  return { ...snap, since_compile: filedSinceCompile(filings, opts.compiledAt || null), _filings: undefined };
+  const { _filings, ...rest } = snap;
+  return attachCatalog(rest, _filings, opts.compiledAt || null);
 }
 
 /** Tests only. */

@@ -20,6 +20,8 @@ import {
   heartbeatResearchRun,
   retryResearchRun,
   acquireResearchSource,
+  setThesisCheckpoint,
+  researchRunFile,
 } from './thinResearchRuns.js';
 import { liveUsEquity } from './quotes.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
@@ -38,6 +40,7 @@ import {
   proposeRiskTripwires,
   listRiskProposals,
   getRiskProposal,
+  reviewRiskProposal,
   acceptRiskProposal,
   rejectRiskProposal,
   readSorStatusMap,
@@ -46,6 +49,23 @@ import {
 } from './riskProposals.js';
 import { resolveOntRoot } from './monorepoPaths.js';
 import { tryGetThinDeskBundle } from './thinDeskProfiles.js';
+import { readCatalogSource } from './sourceRead.js';
+import { getReportSchedule, writeSchedule } from './reportSchedule.js';
+import {
+  getLearnSnapshot,
+  getLesson,
+  getLearnDeep,
+  startLearnDeep,
+  publishLearnDeep,
+  publishPrimer,
+  publishLearner,
+  publishLesson,
+  publishProductMap,
+} from './thinLearn.js';
+import { harvestPhoto, resolveLearnPhotoFile } from './learnPhotos.js';
+import { filterCatalogForDesk } from './sourceCatalog.js';
+import { proposeFromFilingMap } from './filingMapCloseout.js';
+import { proposeFromResearchRun } from './researchRunCloseout.js';
 
 // Prefer ONTOLOGY_ROOT → monorepo ontology/ → legacy ~/Trading/ontology
 const ONT_ROOT = resolveOntRoot();
@@ -145,11 +165,11 @@ export function createThinModel(profile) {
 
   function thinDeskContract() {
     return {
-      version: '1.1',
+      version: '1.2',
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'research', 'ask', 'update'],
+      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'reports', 'filings', 'background', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
@@ -169,6 +189,11 @@ export function createThinModel(profile) {
         research_heartbeat: true,
         research_retry: true,
         research_acquire: true,
+        learn: true,
+        learn_primer: true,
+        learn_map: true,
+        learn_learner: true,
+        learn_lessons: true,
       },
       compile: {
         method: 'POST',
@@ -754,8 +779,20 @@ export function createThinModel(profile) {
   function riskProposalGet(id) {
     try {
       const p = getRiskProposal(slug, id);
-      if (!p) return null;
-      return { ...p, desk: deskId, ticker: TICKER, decision_support_only: true };
+      if (!p) return { available: false, ok: false, error: 'proposal not found', desk: deskId, ticker: TICKER };
+      let review = null;
+      try {
+        review = reviewRiskProposal(p);
+      } catch {
+        review = null;
+      }
+      return {
+        available: true,
+        proposal: { ...p, review },
+        desk: deskId,
+        ticker: TICKER,
+        decision_support_only: true,
+      };
     } catch (e) {
       return { available: false, ok: false, error: e.message || String(e) };
     }
@@ -860,13 +897,40 @@ export function createThinModel(profile) {
     };
   }
 
+  function packSourceGlobs() {
+    try {
+      const p = path.join(ONT_ROOT, 'packs', `${TICKER}.json`);
+      if (!fs.existsSync(p)) return [];
+      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+      const globs = Array.isArray(j.source_globs) ? j.source_globs.map(String) : [];
+      const extra = (Array.isArray(j.sources) ? j.sources : [])
+        .map((s) => s && s.path)
+        .filter(Boolean);
+      if (j.house_view_path) extra.push(String(j.house_view_path));
+      return [...globs, ...extra];
+    } catch {
+      return [];
+    }
+  }
+
+  function deskSourceOwner() {
+    return {
+      ticker: TICKER,
+      slug,
+      entitySlug,
+      rawDir: rawDirRel,
+      sourceGlobs: packSourceGlobs(),
+    };
+  }
+
   function sources() {
     const { available, pack, path: packPath, reason } = loadPack(TICKER);
     if (!available) {
       return { ...unavailable(reason), pack_path: packPath, sources: [], provenance: null };
     }
 
-    const raw = Array.isArray(pack.sources) ? pack.sources : [];
+    const ingested = Array.isArray(pack.sources) ? pack.sources : [];
+    const raw = filterCatalogForDesk(ingested, deskSourceOwner());
     const isPrimary = (s) => {
       const about = (s.about || []).map((a) => String(a).toLowerCase());
       const id = String(s.id || '').toLowerCase();
@@ -913,7 +977,9 @@ export function createThinModel(profile) {
       ticker: TICKER,
       compiled_at: pack.compiled_at || null,
       pack_path: packPath,
-      provenance: pack.provenance || null,
+      provenance: pack.provenance
+        ? { ...pack.provenance, source_count: raw.length }
+        : null,
       counts: {
         total: raw.length,
         primary: primary.length,
@@ -925,6 +991,21 @@ export function createThinModel(profile) {
         ? `${other.length - otherCap.length} non-primary catalog rows omitted for scan — pack has ${raw.length} total.`
         : null,
     };
+  }
+
+  function sourceGet(id) {
+    const { available, pack, reason } = loadPack(TICKER);
+    if (!available) {
+      return { available: false, id: String(id || ''), reason: reason || 'pack unavailable', markdown: null, html: null };
+    }
+    return readCatalogSource({
+      pack,
+      id,
+      houseFile,
+      owner: deskSourceOwner(),
+      entitySlug,
+      ticker: TICKER,
+    });
   }
 
   function writeMeta() {
@@ -979,7 +1060,7 @@ export function createThinModel(profile) {
         'Hand-edit ontology/store/by_ticker/*.json',
         'Save research to Desktop/Downloads',
         'Chat-only (no file) — will not appear on glass',
-        'Auto-confirm house view without Anthony saying save/confirm',
+        'Silent-write house or risks — Grok proposes; glass ACCEPT only',
         neverGen,
       ],
       commands: {
@@ -991,15 +1072,15 @@ export function createThinModel(profile) {
       glass: {
         compile: `POST /api/${slug}/compile or COMPILE BOOK`,
         refresh: `POST /api/${slug}/book/refresh or REFRESH (re-read only)`,
-        verify: [`#/${slug}/overview`, `#/${slug}/risks`, `#/${slug}/ask`, `#/${slug}/house`],
+        verify: [`#/${slug}/overview`, `#/${slug}/risks`, `#/${slug}/house`],
       },
       success_criteria: [
         { id: 'S1', text: 'Get a new fact or risk change from research' },
         { id: 'S2', text: 'Land it in the correct file with graded format' },
-        { id: 'S3', text: `Run ./ont compile ${TICKER}` },
+        { id: 'S3', text: 'Hit COMPILE BOOK on glass (preferred) or ./ont compile' },
         { id: 'S4', text: 'Hit REFRESH BOOK on the glass' },
-        { id: 'S5', text: 'See the change on Risks / Ask / Overview' },
-        { id: 'S6', text: 'House view untouched unless you said confirm' },
+        { id: 'S5', text: 'See the change on Risks / Overview' },
+        { id: 'S6', text: 'House / risks only via glass ACCEPT of a proposal (or explicit save)' },
       ],
     };
   }
@@ -1026,13 +1107,26 @@ export function createThinModel(profile) {
     riskProposalReject,
     quote,
     sources,
+    sourceGet,
     street: () => getStreet(TICKER, { desk: deskId }),
     streetRefresh: async (body = {}) => refreshStreet(TICKER, body || {}, { desk: deskId }),
     workingModel: () => getWorkingModel(TICKER, { desk: deskId }),
     workingModelRefresh: async (body = {}) => refreshWorkingModel(TICKER, body || {}, { desk: deskId }),
     workingModelArm: (body = {}) => armWorkingModelPrint(TICKER, body || {}, { desk: deskId }),
     workingModelLock: () => lockWorkingModelPrint(TICKER, { desk: deskId }),
-    researchList: () => listResearchRuns(TICKER, { desk: deskId }),
+    learn: () => getLearnSnapshot(TICKER, { desk: deskId }),
+    learnPrimer: (body = {}) => publishPrimer(TICKER, body || {}, { desk: deskId }),
+    learnLearner: (body = {}) => publishLearner(TICKER, body || {}, { desk: deskId }),
+    learnLessonPublish: (body = {}) => publishLesson(TICKER, body || {}, { desk: deskId }),
+    learnLessonGet: (lessonId) => getLesson(TICKER, lessonId, { desk: deskId }),
+    learnMapPublish: (body = {}) => publishProductMap(TICKER, body || {}, { desk: deskId }),
+    learnDeepStart: (nodeId) => startLearnDeep(TICKER, nodeId, { desk: deskId }),
+    learnDeepPublish: (body = {}) => publishLearnDeep(TICKER, body || {}, { desk: deskId }),
+    learnDeepGet: (nodeId) => getLearnDeep(TICKER, nodeId, { desk: deskId }),
+    learnPhotoPublish: (body = {}) => harvestPhoto(TICKER, body || {}, { desk: deskId, displayName }),
+    learnPhotoFile: (file) => resolveLearnPhotoFile(TICKER, file),
+    researchList: (opts = {}) => listResearchRuns(TICKER, { desk: deskId, lane: opts.lane }),
+    researchFile: (runId, rel) => researchRunFile(TICKER, runId, rel),
     researchGet: (runId) => getResearchRun(TICKER, runId, { desk: deskId }),
     researchStart: (body = {}) => startResearchRun(TICKER, body || {}, { desk: deskId }),
     researchPublish: (runId, body = {}) => publishResearchRun(TICKER, runId, body || {}, { desk: deskId }),
@@ -1040,6 +1134,35 @@ export function createThinModel(profile) {
     researchHeartbeat: (runId) => heartbeatResearchRun(TICKER, runId),
     researchRetry: (runId, body = {}) => retryResearchRun(TICKER, runId, body || {}),
     researchAcquire: (runId, body = {}) => acquireResearchSource(TICKER, runId, body || {}),
+    researchCheckpoint: (runId, body = {}) => setThesisCheckpoint(
+      TICKER,
+      runId,
+      (body && (body.checkpoint || body.stage)) || 'scope',
+      { note: body && body.note },
+    ),
+    researchProposeFromMap: (runId, body = {}) => proposeFromFilingMap({
+      slug,
+      ticker: TICKER,
+      houseFile,
+      risksSourceRel,
+      runId,
+      desk: deskId,
+      dryRun: body?.dry_run === true || body?.dryRun === true,
+    }),
+    researchProposeFromRun: (runId, body = {}) => proposeFromResearchRun({
+      slug,
+      ticker: TICKER,
+      houseFile,
+      risksSourceRel,
+      runId,
+      desk: deskId,
+      dryRun: body?.dry_run === true || body?.dryRun === true,
+    }),
+    reportSchedule: () => getReportSchedule(TICKER, { desk: deskId }),
+    reportScheduleSet: async (body = {}) => {
+      writeSchedule(TICKER, body || {});
+      return getReportSchedule(TICKER, { desk: deskId });
+    },
     writeMeta,
   };
 }

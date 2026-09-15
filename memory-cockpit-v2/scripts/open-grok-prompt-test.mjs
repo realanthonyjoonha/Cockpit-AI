@@ -187,11 +187,105 @@ try {
 }
 
 try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report',
+    desk: 'lly',
+    thesis_mode: 'earnings-update',
+  });
+  if (p !== '/cockpit-report lly earnings-update all stop') throw new Error(p);
+  ok('thesis-report → /cockpit-report desk mode all stop');
+} catch (e) {
+  fail('thesis-report prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'thesis-report', desk: 'nvda' });
+  if (p !== '/cockpit-report nvda earnings-update all stop') throw new Error(p);
+  ok('thesis-report default mode earnings-update all stop');
+} catch (e) {
+  fail('thesis-report default mode', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'filing-map', desk: 'lly', run_id: '20260909T000000Z_filing_map_LLY' });
+  if (p !== '/cockpit-filing-map lly 20260909T000000Z_filing_map_LLY') throw new Error(p);
+  ok('filing-map + run_id');
+} catch (e) {
+  fail('filing-map prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'filing-map', desk: 'nvda', run_id: '20260910T041826Z_filing_map_NVDA', mode: 'chat',
+  });
+  if (p !== '/cockpit-filing-map nvda 20260910T041826Z_filing_map_NVDA chat') throw new Error(p);
+  ok('filing-map chat mode');
+} catch (e) {
+  fail('filing-map chat prompt', e);
+}
+
+try {
   const desk = listGrokAgents({ variant: 'desk' });
-  if (!desk.agents.some((a) => a.action === 'research-compile')) {
-    throw new Error('research-compile missing from desk variant');
+  if (!desk.agents.some((a) => a.action === 'filing-map')) throw new Error('filing-map missing from desk');
+  ok('desk variant includes filing-map');
+} catch (e) {
+  fail('desk filing-map catalog', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
+    register_scope: 'pick', register_ids: ['R1', 'R9'],
+  });
+  if (p !== '/cockpit-report lly deep-dive pick R1,R9 stop') throw new Error(p);
+  ok('thesis-report pick ids in prompt');
+} catch (e) {
+  fail('thesis-report pick prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
+    register_scope: 'pick',
+    register_ids: ['lly-r1-tirzepatide-cash-engine-concentration-outgoing-mounjaro-zepbound', 'lly-r9-orforglipron'],
+  });
+  if (p !== '/cockpit-report lly deep-dive pick R1,R9 stop') throw new Error(p);
+  ok('thesis-report pick pack slugs compress to Rn');
+} catch (e) {
+  fail('thesis-report pick slug prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'initiation',
+    register_scope: 'house-only',
+  });
+  if (p !== '/cockpit-report lly initiation skim stop') throw new Error(p);
+  ok('thesis-report house-only → skim');
+} catch (e) {
+  fail('thesis-report skim prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'lly', thesis_mode: 'deep-dive',
+    thesis_pace: 'through',
+  });
+  if (p !== '/cockpit-report lly deep-dive all through') throw new Error(p);
+  ok('thesis-report through pace in prompt');
+} catch (e) {
+  fail('thesis-report through prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (desk.agents.some((a) => a.action === 'research-compile')) {
+    throw new Error('research-compile still in desk catalog');
   }
-  ok('desk variant includes research-compile');
+  if (!desk.agents.some((a) => a.action === 'thesis-report')) {
+    throw new Error('thesis-report missing from desk variant');
+  }
+  ok('desk variant omits research-compile; keeps thesis-report');
 } catch (e) {
   fail('desk research-compile catalog', e);
 }
@@ -202,6 +296,75 @@ try {
   ok('model-desk chat → /cockpit-model nvda chat');
 } catch (e) {
   fail('model-desk chat prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'model-read', desk: 'nvda', run_id: '20260827T000000Z_model_read_NVDA' });
+  if (p !== '/cockpit-model-read nvda 20260827T000000Z_model_read_NVDA') throw new Error(p);
+  ok('model-read → /cockpit-model-read desk run_id');
+} catch (e) {
+  fail('model-read prompt', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'model-read')) {
+    throw new Error('model-read missing from desk variant');
+  }
+  ok('desk variant includes model-read');
+} catch (e) {
+  fail('desk model-read catalog', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'background', desk: 'nvda' });
+  if (p !== '/cockpit-learn nvda primer') throw new Error(p);
+  ok('background → /cockpit-learn desk primer');
+} catch (e) {
+  fail('background prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'tutor', desk: 'nvda' });
+  if (p !== '/cockpit-learn nvda tutor') throw new Error(p);
+  ok('tutor → /cockpit-learn desk tutor');
+} catch (e) {
+  fail('tutor prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'learn-deepen', desk: 'nvda', node_id: 'cuda' });
+  if (p !== '/cockpit-learn nvda deepen cuda') throw new Error(p);
+  ok('learn-deepen → /cockpit-learn desk deepen node');
+} catch (e) {
+  fail('learn-deepen prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'learn-deepen', desk: 'tsm', node_id: 'CoWoS HBM' });
+  if (p !== '/cockpit-learn tsm deepen cowos-hbm') throw new Error(p);
+  ok('learn-deepen sanitizes node_id');
+} catch (e) {
+  fail('learn-deepen sanitize', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (desk.agents.some((a) => a.action === 'learn-deepen')) {
+    throw new Error('learn-deepen must not appear in desk AGENTS dropdown');
+  }
+  ok('learn-deepen is not a desk catalog action');
+} catch (e) {
+  fail('learn-deepen catalog', e);
+}
+
+try {
+  const desk = listGrokAgents({ variant: 'desk' });
+  if (!desk.agents.some((a) => a.action === 'background')) throw new Error('background missing');
+  if (!desk.agents.some((a) => a.action === 'tutor')) throw new Error('tutor missing');
+  ok('desk variant includes background + tutor');
+} catch (e) {
+  fail('desk learn catalog', e);
 }
 
 try {
@@ -280,7 +443,9 @@ try {
   if (!(idx('daily') < idx('daily-save'))) throw new Error('daily before daily-save');
   if (!(idx('daily-save') < idx('research'))) throw new Error('operate before notes');
   if (!(idx('research') < idx('coverage'))) throw new Error('research before coverage');
-  if (!(idx('coverage') < idx('comps'))) throw new Error('notes before models');
+  if (!(idx('coverage') < idx('background'))) throw new Error('coverage before background');
+  if (!(idx('background') < idx('tutor'))) throw new Error('background before tutor');
+  if (!(idx('tutor') < idx('comps'))) throw new Error('notes before models');
   if (!(idx('comps') < idx('ebitda-bridge'))) throw new Error('comps before ebitda-bridge');
   if (!(idx('ebitda-bridge') < idx('model-bridge'))) throw new Error('ebitda-bridge before model-bridge');
   if (!(idx('model-bridge') < idx('ebitda-quality'))) throw new Error('model-bridge before ebitda-quality');

@@ -6,7 +6,9 @@ import path from 'path';
 import { resolveVaultDir } from './monorepoPaths.js';
 import { loadPack } from './pack.js';
 import { listResearchRuns } from './thinResearchRuns.js';
-import { pipelineSnapshot } from './secEdgar.js';
+import { pipelineSnapshot, pickLatestPrint } from './secEdgar.js';
+
+export { pickLatestPrint };
 
 function tickerId(t) {
   return String(t || '').toUpperCase().replace(/[^A-Z0-9.-]/g, '');
@@ -60,26 +62,6 @@ export function writeSchedule(ticker, patch = {}) {
   return { ok: true, ...next };
 }
 
-/** 10-Q / 10-K / 20-F or 8-K item 2.02. Never invent a future earnings date. */
-export function pickLatestPrint(filings) {
-  const rows = Array.isArray(filings) ? filings : [];
-  const hits = rows.filter((f) => {
-    const form = String(f.form || '').toUpperCase();
-    if (/^10-Q/.test(form) || /^10-K/.test(form) || /^20-F/.test(form)) return true;
-    if (/^8-K/.test(form) && /2\.02/.test(String(f.items || f.item || ''))) return true;
-    return false;
-  });
-  hits.sort((a, b) => String(b.filed || '').localeCompare(String(a.filed || '')));
-  const top = hits[0];
-  if (!top || !top.filed) return null;
-  return {
-    date: String(top.filed).slice(0, 10),
-    form: top.form,
-    url: top.url || null,
-    source: 'SEC EDGAR',
-  };
-}
-
 export function scheduleDue({ armed, printDate, lastCompleteAt, ackPrint }) {
   if (!armed) return false;
   if (!printDate) return false;
@@ -113,11 +95,9 @@ export async function getReportSchedule(ticker, opts = {}) {
   const pipe = await pipelineSnapshot(id, {
     compiledAt: pack.pack?.compiled_at || null,
   }).catch(() => ({ available: false }));
-  const filings = [
-    ...((pipe && pipe.since_compile && pipe.since_compile.material_items) || []),
-    ...((pipe && pipe.latest_filings) || []),
-  ];
-  const print = pickLatestPrint(filings);
+  const print = (pipe && pipe.last_print && pipe.last_print.known && pipe.last_print.date)
+    ? pipe.last_print
+    : null;
   const lastCompleteAt = lastCompleteEarningsAt(id);
   const due = scheduleDue({
     armed: sched.armed,

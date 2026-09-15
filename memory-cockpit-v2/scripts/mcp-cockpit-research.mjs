@@ -238,12 +238,19 @@ server.tool(
       return textResult({ available: false, ticker, reason, pack_path: packPath });
     }
     const claims = Array.isArray(pack.claims) ? pack.claims : [];
-    const ranked = [...claims].sort((a, b) => {
-      const ga = a.grade === 'A' ? 0 : a.grade === 'B' ? 1 : 2;
-      const gb = b.grade === 'A' ? 0 : b.grade === 'B' ? 1 : 2;
-      if (ga !== gb) return ga - gb;
-      return String(b.as_of || '').localeCompare(String(a.as_of || ''));
-    }).slice(0, 10);
+    let ranked = [];
+    try {
+      const { loadContextpackRules, liveClaims } = await import(path.join(ROOT, 'server', 'contextpack.js'));
+      const rules = loadContextpackRules(process.env.ONTOLOGY_ROOT);
+      ranked = liveClaims(claims, rules);
+    } catch {
+      ranked = [...claims].sort((a, b) => {
+        const ga = a.grade === 'A' ? 0 : a.grade === 'B' ? 1 : 2;
+        const gb = b.grade === 'A' ? 0 : b.grade === 'B' ? 1 : 2;
+        if (ga !== gb) return ga - gb;
+        return String(b.as_of || '').localeCompare(String(a.as_of || ''));
+      }).slice(0, 10);
+    }
 
     // Same SoR overlay as glass risks/overview — pack.risk_summary alone lags after ACCEPT
     let sorMap = null;
@@ -287,7 +294,14 @@ server.tool(
         pack_fired: packSummary.fired || [],
       },
       risks,
-      claims: ranked.map((c) => ({ text: c.text, grade: c.grade, as_of: c.as_of, source_id: c.source_id })),
+      claims: ranked.map((c) => ({
+        text: c.text,
+        grade: c.grade,
+        as_of: c.as_of,
+        source_id: c.source_id,
+        metric_id: c.metric_id || null,
+      })),
+      contextpack: 'v2',
       gaps: (pack.gaps || []).slice(0, 15),
       sor_ahead_of_pack: sorLag,
       note: sorLag

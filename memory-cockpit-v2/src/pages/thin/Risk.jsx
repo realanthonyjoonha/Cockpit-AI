@@ -275,6 +275,7 @@ export default function ThinRisk({ desk, id }) {
         <div className="shd">
           <span className="no">B</span>
           <h2>DUE DILIGENCE</h2>
+          <span className="m">OPEN GROK · then close out below</span>
         </div>
         <div style={{ padding: '8px 16px 12px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
           <GrokAgents
@@ -292,8 +293,11 @@ export default function ThinRisk({ desk, id }) {
       <div className="sect">
         <div className="shd">
           <span className="no">C</span>
-          <h2>PROPOSE STATUS</h2>
+          <h2>CLOSEOUT · PROPOSE STATUS</h2>
           {pending.length > 0 && <span className="m">{pending.length} pending</span>}
+        </div>
+        <div className="dimmer" style={{ padding: '4px 16px 0', fontSize: 11 }}>
+          After Risk check: pick status → PROPOSE → ACCEPT. Never silent-write.
         </div>
         {banner && (
           <div style={{ padding: '6px 16px 0', fontSize: 11, color: 'var(--ok, #5cba8a)' }}>
