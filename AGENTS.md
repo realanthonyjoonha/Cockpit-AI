@@ -1,7 +1,9 @@
 # AGENTS.md — read this first
 
-**You are working in Anthony’s cockpit research OS (private repo).**  
+**You are working in a Cockpit clone (Cockpit-AI / product or kernel).**  
 If you only open one file after clone/fork, open **this**, then the links below.
+
+**Cursor Project e2e (isolated Filings dogfood):** [`docs/CURSOR-E2E.md`](./docs/CURSOR-E2E.md) · `./scripts/dogfood-e2e.sh` · MCP `.cursor/mcp.json`. Seal is `$PWD/.cockpit-dogfood`, desk **dogf** only. Never attach Anthony’s vault.
 
 ---
 

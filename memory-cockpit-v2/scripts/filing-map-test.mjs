@@ -156,6 +156,10 @@ const flips = parseFlipTriggers('### What would change the view (flip triggers)\
 if (flips.length === 2 && flips[0].includes('Foo miss')) ok('parseFlipTriggers copies bullets');
 else bad(`flips ${JSON.stringify(flips)}`);
 
+const hyphenFlips = parseFlipTriggers('## Flip-triggers\n\n- Gross margin print below 40%\n- Named customer concentration\n');
+if (hyphenFlips.length === 2 && /Gross margin/.test(hyphenFlips[0])) ok('parseFlipTriggers accepts Flip-triggers hyphen heading');
+else bad(`hyphen flips ${JSON.stringify(hyphenFlips)}`);
+
 if (tripwireLabel({ foo: 1 }) === '' && tripwireLabel({ monitor: 'mix ≥70%' }) === 'mix ≥70%') {
   ok('tripwireLabel never String(object)');
 } else bad(`tripwireLabel ${tripwireLabel({ foo: 1 })}`);

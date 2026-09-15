@@ -39,17 +39,7 @@ function secSharedDir() {
   return path.join(resolveVaultDir(), 'cockpit', 'compile', '_sec');
 }
 
-function vaultRootExists() {
-  try {
-    return fs.existsSync(resolveVaultDir());
-  } catch {
-    return false;
-  }
-}
-
 function atomicWriteJson(filePath, obj) {
-  // Empty product / no-vault VMs: do not mkdir ~/Trading/research-wiki as a side effect.
-  if (!vaultRootExists()) return;
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const tmp = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify(obj, null, 2)}\n`, 'utf8');
@@ -319,6 +309,30 @@ export function lastPrintCatalog(filings, compiledAt) {
   };
 }
 
+/** Compile-lane cache only (testing-cockpit fixtures / offline). No network. */
+function snapshotFromCompileLane(id) {
+  const lane = compileLaneDir(id);
+  if (!lane) return null;
+  const index = readJsonSafe(path.join(lane, 'filings', 'index.json'));
+  const filings = index && Array.isArray(index.filings) ? index.filings : [];
+  if (!filings.length) return null;
+  return {
+    available: true,
+    ticker: id,
+    cik: null,
+    entity: { name: id, fixture: !!index.fixture },
+    tier: { tier: 'cache', label: 'compile-lane cache (no live SEC entity)' },
+    fetched_at: index.as_of || null,
+    stale: false,
+    filings_total_recent: filings.length,
+    latest_filings: filings.slice(0, 10).map(decorateFiling),
+    _filings: filings,
+    cache_only: true,
+    decision_support_only: true,
+    note: 'Catalog from vault compile-lane cache. Not pack/house SoR. Not live EDGAR.',
+  };
+}
+
 function attachCatalog(data, filings, compiledAt) {
   return {
     ...data,
@@ -354,8 +368,22 @@ export async function pipelineSnapshot(ticker, opts = {}) {
   }
 
   const lane = compileLaneDir(id);
+  // Testing-cockpit fixtures (index.fixture) have no SEC CIK — serve compile-lane
+  // cache before the universe fetch so Filings / POST filing_map stay offline.
+  const fixtureLane = snapshotFromCompileLane(id);
+  if (fixtureLane && fixtureLane.entity?.fixture && !force) {
+    memCache.set(memKey, { at: Date.now(), data: fixtureLane });
+    const { _filings, ...rest } = fixtureLane;
+    return attachCatalog(rest, _filings, opts.compiledAt || null);
+  }
   const resolved = await resolveCik(id, { force });
   if (!resolved.cik) {
+    const cached = fixtureLane || snapshotFromCompileLane(id);
+    if (cached) {
+      memCache.set(memKey, { at: Date.now(), data: cached });
+      const { _filings, ...rest } = cached;
+      return attachCatalog(rest, _filings, opts.compiledAt || null);
+    }
     const out = {
       available: false,
       ticker: id,

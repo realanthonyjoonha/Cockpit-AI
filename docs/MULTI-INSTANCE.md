@@ -72,7 +72,21 @@ Browser: three tabs, three URLs.
 | Agent tools (`list_desks`, pack) on instance B | `cd` B’s root → `./scripts/install-grok-mcp.sh` (re-pin) |
 | Gate tests without MCP | `curl` + `./scripts/lab-e2e.sh` (preferred for CI/lab) |
 
-One Grok install usually has **one active cockpit-research pin**. Switching instances for agents = re-pin or use HTTP only.
+One Grok install usually has **one active `cockpit-research` pin** for operate. **Testing cockpit mode** uses a **different server name** so pins do not collide:
+
+| Instance | MCP server name | Port |
+|----------|-----------------|------|
+| Kernel operate | `cockpit-research` | 4682 |
+| Product / friends | `cockpit-research` (project pin in that folder) | 4681 |
+| Testing cockpit | **`cockpit-research-dogfood`** | **4695** |
+
+```bash
+./scripts/dogfood-up.sh          # seal $PWD/.cockpit-dogfood + fixture DOGF
+./scripts/dogfood-e2e.sh         # HTTP isolation + Filings/Learn wiring
+./scripts/dogfood-down.sh        # stop glass; --wipe deletes the seal
+```
+
+Agents: `/cockpit-dogfood-e2e`. Do **not** `grok mcp add cockpit-research` from the seal.
 
 ---
 
@@ -81,6 +95,7 @@ One Grok install usually has **one active cockpit-research pin**. Switching inst
 | Instance type | `desks` | Use |
 |---------------|---------|-----|
 | Empty product | `[]` | Platform E2E, first-run, lab-e2e |
+| **Testing cockpit** | fixture **DOGF** only | Feature dogfood; MCP `cockpit-research-dogfood` · :4695 |
 | Personal eng clone | *his* desks | Real underwriting on *his* machine |
 | Anthony kernel | dogfood desks | Research — **not** friend SoR |
 

@@ -1,0 +1,24 @@
+---
+description: Cockpit Cursor e2e — isolated testing cockpit, not live kernel books
+alwaysApply: true
+---
+
+# Cursor e2e (testing cockpit)
+
+You are in a **clone**. Do not use `~/Desktop/cockpit-kernel` paths unless they exist. Do not attach `cockpit-vault`.
+
+**Dogfood Filings / platform features:**
+
+```bash
+./scripts/dogfood-e2e.sh
+```
+
+That creates gitignored `$PWD/.cockpit-dogfood` (fixture desk **dogf**), unique MCP name `cockpit-research-dogfood`, glass on **4695**.
+
+Playbook: `docs/CURSOR-E2E.md`. Command twin: `.grok/commands/cockpit-dogfood-e2e.md`.
+
+**Stop if** `list_desks` shows nvda/nbis or `monorepo_root` is a live kernel vault. MCP must be **cockpit-research-dogfood**.
+
+Empty-friend shell (no desk): `./scripts/customer-sim-e2e.sh` and/or `cd memory-cockpit-v2 && npm run test:platform`.
+
+Decision-support only. No git push unless the human said **push**. Product `desks` must stay `[]`.

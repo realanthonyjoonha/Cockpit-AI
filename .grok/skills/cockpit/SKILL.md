@@ -25,6 +25,7 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-desks` | List thin desks |
 | `/cockpit-customer-sim [feature?]` | First-time customer on blank product (not dogfood) |
 | `/cockpit-filings-e2e` | Filings friend-path QA — empty product, no ticker, no underwrite |
+| `/cockpit-dogfood-e2e` | Testing-cockpit dogfood — isolated MCP + fixture desk DOGF |
 | `/cockpit-new-desk [TICKER]` | Underwrite **new** desk — **deep parallel research default** (START → Build next company; `--light` opt-out) |
 | `/cockpit-daily` | Daily brief: **what moved** + house + pack; optional `--save` |
 | `/cockpit-research [desk] [question?]` | Load house+risks; research after user question; **ask to save** → write note + **`./ont compile`** so Sources updates |

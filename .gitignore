@@ -39,6 +39,9 @@ memory-cockpit-v2/config/thin-desks.json.bak*
 # Friend/local dogfood leftovers
 cockpit-kernel-fresh/
 
+# Workspace testing-cockpit seal (Cursor / local). Never commit fixture books.
+.cockpit-dogfood/
+
 # Machine-local Grok MCP pin (absolute paths; rewritten by install-grok-mcp / OPEN GROK)
 .grok/config.toml
 

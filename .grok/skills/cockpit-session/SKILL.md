@@ -26,4 +26,4 @@ Product `thin-desks.json` must stay `desks: []`. Never ship research books.
 
 Full card: `~/Desktop/cockpit-kernel/docs/SESSION.md`
 
-Scars: new `pages/thin` imports go on `scripts/sync-agent-surface.sh` + `docs/PRODUCT-KERNEL-SOR.md`. `npm run build` does not remount Express — restart `npm start` after server changes. Run `test:platform` on **product** empty shell, not only kernel. Default `lab-e2e` is not a UI click (`--glass` for HTTP). Cockpit-AI may be archived — unarchive before push.
+Scars: new `pages/thin` imports go on `scripts/sync-agent-surface.sh` + `docs/PRODUCT-KERNEL-SOR.md`. `npm run build` does not remount Express — restart `npm start` after server changes. Run `test:platform` on **product** empty shell, not only kernel. Filings friend QA is `/cockpit-filings-e2e` + `customer-sim-e2e.sh`, not `/cockpit-new-desk`. Feature dogfood is `/cockpit-dogfood-e2e` + `dogfood-e2e.sh` (seal `$PWD/.cockpit-dogfood`, MCP `cockpit-research-dogfood`). Cursor: `docs/CURSOR-E2E.md` + `.cursor/mcp.json`. Default `lab-e2e` is not a UI click (`--glass` for HTTP). Cockpit-AI may be archived — unarchive before push.

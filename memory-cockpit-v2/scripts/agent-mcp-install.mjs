@@ -15,12 +15,22 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
-import { ensureProjectCockpitMcp } from '../server/cockpitMcpProject.js';
+import { ensureProjectCockpitMcp, mcpServerName } from '../server/cockpitMcpProject.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MONOREPO_ROOT = path.resolve(ROOT, '..');
 const MCP_SCRIPT = path.join(ROOT, 'scripts', 'mcp-cockpit-research.mjs');
-const SERVER_NAME = 'cockpit-research';
+function scenarioMcpName(repoRoot) {
+  try {
+    const p = path.join(repoRoot, '.cockpit-scenario.json');
+    if (!existsSync(p)) return '';
+    const sc = JSON.parse(readFileSync(p, 'utf8'));
+    return sc.mcp_name ? String(sc.mcp_name) : '';
+  } catch {
+    return '';
+  }
+}
+const SERVER_NAME = mcpServerName(scenarioMcpName(MONOREPO_ROOT) || undefined);
 
 const vault = process.env.COCKPIT_VAULT || path.join(MONOREPO_ROOT, 'research-wiki');
 const store = process.env.ONTOLOGY_STORE || path.join(MONOREPO_ROOT, 'ontology', 'store', 'by_ticker');
@@ -60,7 +70,7 @@ function installGrok() {
       : 'grok');
 
   // Always pin project MCP first (OPEN GROK / cd monorepo → this vault).
-  const pin = ensureProjectCockpitMcp(MONOREPO_ROOT, { nodeBin, mcpScript: MCP_SCRIPT });
+  const pin = ensureProjectCockpitMcp(MONOREPO_ROOT, { nodeBin, mcpScript: MCP_SCRIPT, mcpName: SERVER_NAME });
   if (pin.ok) {
     console.log(`[Grok Build] project MCP pin → ${pin.path}`);
     console.log(`  monorepo: ${pin.monorepo_root}`);
@@ -84,6 +94,7 @@ function installGrok() {
     '-e', `COCKPIT_VAULT=${vault}`,
     '-e', `ONTOLOGY_STORE=${store}`,
     '-e', `ONTOLOGY_ROOT=${ontRoot}`,
+    '-e', `COCKPIT_MCP_NAME=${SERVER_NAME}`,
     '--',
     nodeBin,
     MCP_SCRIPT,

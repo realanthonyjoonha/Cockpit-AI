@@ -64,6 +64,18 @@ memory-cockpit-v2/scripts/research-run-closeout-test.mjs
 .grok/skills/filing-map/SKILL.md
 .grok/commands/cockpit-filing-map.md
 .grok/commands/cockpit-filings-e2e.md
+.grok/commands/cockpit-dogfood-e2e.md
+scripts/dogfood-up.sh
+scripts/dogfood-down.sh
+scripts/dogfood-e2e.sh
+scripts/lib/dogfood-paths.sh
+scripts/cursor-dogfood-mcp.sh
+docs/CURSOR-E2E.md
+.cursor/mcp.json
+.cursor/rules/cockpit-e2e.mdc
+memory-cockpit-v2/scripts/dogfood-fixture.mjs
+memory-cockpit-v2/scripts/mcp-name-isolation-test.mjs
+scripts/lab-feature-hooks/98-dogfood-mode.sh
 scripts/lab-feature-hooks/96-filing-map.sh
 scripts/lab-feature-hooks/97-closeout-pack.sh
 memory-cockpit-v2/server/thinWorkingModel.js
@@ -231,4 +243,3 @@ Exact legacy paths (e.g. `/api/nbis/proposals*`) do not require reserving the wh
 | format-check required per-slug wrappers | Factory path: wrappers optional |
 | Pack stale mid-TTL after compile | `loadPack` mtime-authoritative + `test:pack-cache` |
 | Dual-tree drift | This doc + `sync-agent-surface.sh` |
-memory-cockpit-v2/scripts/phone-chrome-test.mjs

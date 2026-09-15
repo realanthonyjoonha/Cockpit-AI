@@ -46,7 +46,7 @@ export function tripwireLabel(tw) {
 
 export function parseFlipTriggers(markdown) {
   const text = String(markdown || '');
-  const idx = text.search(/what would change the view|flip triggers/i);
+  const idx = text.search(/what would change the view|flip[-\s]?triggers/i);
   if (idx < 0) return [];
   const rest = text.slice(idx);
   const nextH = rest.slice(1).search(/\n### /);
