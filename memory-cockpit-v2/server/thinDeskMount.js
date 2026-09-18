@@ -1,7 +1,7 @@
 // thinDeskMount.js — Path 2A + Path 1.0 house save + agent house/risk proposals (propose→accept).
 // Live registry: re-reads config/thin-desks.json on change (mtime) so new desks work WITHOUT
 // server restart. Parameterized /api/:slug/* so routes are not frozen at boot.
-// MCP may propose drafts; only glass ACCEPT writes house/risks SoR. Decision-support only.
+// MCP may propose drafts; GO commit_on_go or glass ACCEPT writes house/risks SoR. Decision-support only.
 import fs from 'fs';
 import { createThinModel } from './thinModel.js';
 import { createThinAsk } from './thinAsk.js';
@@ -234,6 +234,18 @@ export function mountThinDesks(app, { j, ja }) {
   app.post('/api/:slug/house/proposals', j(withDesk((rt, req) => rt.model.housePropose(req.body || {}))));
   app.post('/api/:slug/house/proposals/:id/accept', j(withDesk((rt, req) => rt.model.houseProposalAccept(req.params.id))));
   app.post('/api/:slug/house/proposals/:id/reject', j(withDesk((rt, req) => rt.model.houseProposalReject(req.params.id))));
+  app.post('/api/:slug/go-commit', ja(withDesk(async (rt, req) => {
+    const body = req.body || {};
+    const out = rt.model.goCommit(body);
+    if (out && out.ok && body.compile !== false && typeof rt.compile === 'function') {
+      try {
+        out.compile = await rt.compile({ if_stale: true });
+      } catch (e) {
+        out.compile = { ok: false, ran: false, error: e.message || String(e) };
+      }
+    }
+    return out;
+  })));
   app.get('/api/:slug/risks/proposals', j(withDesk((rt, req) => rt.model.riskProposalsList({
     status: req.query.status,
   }))));

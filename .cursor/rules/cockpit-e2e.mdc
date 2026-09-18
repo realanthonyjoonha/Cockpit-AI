@@ -5,20 +5,18 @@ alwaysApply: true
 
 # Cursor e2e (testing cockpit)
 
-You are in a **clone**. Do not use `~/Desktop/cockpit-kernel` paths unless they exist. Do not attach `cockpit-vault`.
+**Repos:** Project root = private `realanthonyjoonha/cockpit` (this clone). Books source = private `realanthonyjoonha/cockpit-vault` — on Cursor cloud **`/home/ubuntu/cockpit-vault`**, on a Mac `~/Desktop/cockpit-vault`, or `COCKPIT_VAULT`. Read to copy into the seal; never write; never MCP-pin the vault. Not Cockpit-AI. Not cockpit-personal.
 
-**Dogfood Filings / platform features:**
+**Three-desk lab (NVDA, MU, LLY):**
 
 ```bash
-./scripts/dogfood-e2e.sh
+./scripts/dogfood-e2e.sh --slugs nvda,mu,lly
 ```
 
-That creates gitignored `$PWD/.cockpit-dogfood` (fixture desk **dogf**), unique MCP name `cockpit-research-dogfood`, glass on **4695**.
+Copies those desks from the vault into gitignored `$PWD/.cockpit-dogfood`. MCP `cockpit-research-dogfood`. Glass `:4695`. If vault is missing, fail closed.
 
-Playbook: `docs/CURSOR-E2E.md`. Command twin: `.grok/commands/cockpit-dogfood-e2e.md`.
+Playbook (includes paste block): `docs/CURSOR-E2E.md`.
 
-**Stop if** `list_desks` shows nvda/nbis or `monorepo_root` is a live kernel vault. MCP must be **cockpit-research-dogfood**.
+**Stop if** `list_desks` includes nbis/avgo or `monorepo_root` is cockpit-vault / live kernel wiki. Product `desks` must stay `[]`.
 
-Empty-friend shell (no desk): `./scripts/customer-sim-e2e.sh` and/or `cd memory-cockpit-v2 && npm run test:platform`.
-
-Decision-support only. No git push unless the human said **push**. Product `desks` must stay `[]`.
+Decision-support only. No git push unless the human said **push**.

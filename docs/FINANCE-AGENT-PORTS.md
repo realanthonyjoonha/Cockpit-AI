@@ -54,7 +54,7 @@ Menu clarity plan: `memory-cockpit-v2/plans/2026-08-01-agents-menu-clarity.md`.
 
 - No price targets as recommendations  
 - No invented peers/metrics — GAP or user paste  
-- House/risks only via propose → glass ACCEPT  
+- House/risks via GO (`commit_on_go`) or glass ACCEPT of CONFIRMED. Never FORMING on glass.  
 - Never hand-edit `ontology/store/`  
 
 See `docs/AGENT-AUTHORING.md` to build more.

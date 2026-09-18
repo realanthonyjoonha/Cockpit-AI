@@ -231,9 +231,6 @@ export default function ThinRisk({ desk, id }) {
             )}
           </div>
         </div>
-        {r.note && (
-          <div className="dim" style={{ padding: '0 16px 8px', fontSize: 10 }}>{r.note}</div>
-        )}
         {r.summary && (
           <div className="prose"><p>{String(r.summary).replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1')}</p></div>
         )}

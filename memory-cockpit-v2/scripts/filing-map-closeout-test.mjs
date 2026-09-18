@@ -130,7 +130,7 @@ else ok('skip non-actionable risk test');
 // --- fixture vault + propose ---
 const houseFile = 'house-view-testco.md';
 const risksRel = 'raw/testco-research/08-risks-catalysts.md';
-fs.writeFileSync(path.join(tmpVault, houseFile), `# House View — TESTCO
+fs.writeFileSync(path.join(tmpVault, houseFile), `# House View — TESTCO · **CONFIRMED** · 2026-09-18
 
 > **Stance:** Tracking TESTCO for diligence.
 
@@ -302,6 +302,51 @@ else {
   if (meta.promotion?.status !== 'quiet') bad(`quiet promo ${meta.promotion?.status}`);
   else ok('quiet map writes closeout + promotion.quiet');
 }
+
+// FORMING live house: skip house chip (glass never gets FORMING); risks still propose
+const formingFile = 'house-view-formco.md';
+const formingRisks = 'raw/formco-research/08-risks-catalysts.md';
+fs.writeFileSync(path.join(tmpVault, formingFile), `# House View — FORMCO · **FORMING**
+
+> **Stance:** Edit after research.
+
+## Flip triggers
+- Loud wire
+`, 'utf8');
+fs.mkdirSync(path.join(tmpVault, 'raw', 'formco-research'), { recursive: true });
+fs.writeFileSync(path.join(tmpVault, formingRisks), fs.readFileSync(path.join(tmpVault, risksRel), 'utf8'));
+const formingId = '20260911T140000Z_filing_map_FORMCO';
+const formingDir = path.join(tmpVault, 'cockpit', 'research', 'FORMCO', 'runs', formingId);
+fs.mkdirSync(formingDir, { recursive: true });
+fs.writeFileSync(path.join(formingDir, 'meta.json'), JSON.stringify({
+  schema_version: 1,
+  run_id: formingId,
+  job: 'filing_map',
+  status: 'complete',
+  ticker: 'FORMCO',
+  desk: 'formco',
+  started_at: '2026-09-11T14:00:00Z',
+  finished_at: '2026-09-11T14:05:00Z',
+  immutable: true,
+}, null, 2), 'utf8');
+fs.writeFileSync(path.join(formingDir, 'delta.json'), JSON.stringify(planDelta, null, 2), 'utf8');
+const formingApplied = proposeFromFilingMap({
+  slug: 'formco',
+  ticker: 'FORMCO',
+  houseFile: formingFile,
+  risksSourceRel: formingRisks,
+  runId: formingId,
+  dryRun: false,
+  desk: 'formco',
+});
+const formingHouse = listHouseProposals('formco', { status: 'pending' });
+if (!formingApplied.ok) bad(`forming apply ${JSON.stringify(formingApplied.errors || formingApplied)}`);
+else if ((formingHouse.counts?.pending || 0) !== 0) bad('FORMING house chip leaked to glass');
+else if (!formingApplied.skipped?.some((s) => s.kind === 'house_forming')) {
+  bad(`forming skip missing ${JSON.stringify(formingApplied.skipped)}`);
+} else if (!formingApplied.created?.some((c) => c.kind === 'status_change' || c.kind === 'add_risk')) {
+  bad('forming should still propose risks');
+} else ok('FORMING live house skips house propose; risks still chip');
 
 console.log(`\nfiling-map-closeout ${fail ? 'FAIL' : 'PASS'} — ${pass} passed, ${fail} failed`);
 try {

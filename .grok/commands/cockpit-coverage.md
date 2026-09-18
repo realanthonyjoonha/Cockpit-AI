@@ -94,4 +94,4 @@ Optional verify. On fail: keep file, report error. On ok: `#/{slug}/sources` + R
 | `/cockpit-new-desk` | No desk yet |
 | `/cockpit-coverage` | Structured coverage / init-style note |
 
-Footer: decision-support only; not house SoR until ACCEPT on any propose.
+Footer: decision-support only; not house SoR until GO (`commit_on_go`) or CONFIRMED glass ACCEPT.

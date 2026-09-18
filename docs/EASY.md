@@ -3,6 +3,8 @@
 **You do not need to re-learn kernel / product / scenario every day.**  
 Talk in **modes**. Agents execute the rest under hard law (`AGENTS.md`).
 
+**New session:** read [`SESSION.md`](./SESSION.md) first (absolute trees + build/ship scars).
+
 Decision-support only.
 
 ---
@@ -14,7 +16,7 @@ Decision-support only.
 | **Operate** | Research day on **my** desks — no ship |
 | **Build** | New platform feature — scalable + friend-ready design |
 | **Ship** | Friends should get code — run gates; push only if you say **push** |
-| **ACCEPT / CONFIRM** | You own house & risks on glass — agents never silent-write the book |
+| **GO** | You own house & risks — Grok GO writes (`commit_on_go`); glass ACCEPT is alternate for CONFIRMED. Never FORMING on glass |
 
 That’s the whole personal checklist.
 
@@ -55,8 +57,7 @@ Agent MUST:
   3. Factory path only — desk N free-rides registry
   4. Empty desks=[] still works
   5. Implement + tests + how to dogfood
-  6. Verify with ./scripts/verify-feature.sh (Lab checklist; --docs-only if no UI)
-  7. STOP (no ship, no push)
+  6. STOP (no ship, no push)
 ```
 
 ### Ship (friends)
@@ -139,7 +140,7 @@ Research AVGO …    → operate mode
 
 | Doc | When agent needs depth |
 |-----|------------------------|
-| [`FEATURE-MAP.md`](./FEATURE-MAP.md) | Rooms, hashes, proof · `./scripts/verify-feature.sh` |
+| [`SESSION.md`](./SESSION.md) | Cold session card (trees + scars) |
 | [`DEVELOP.md`](./DEVELOP.md) | Full platform procedure |
 | [`LAB.md`](./LAB.md) | Blank E2E |
 | [`RELEASE.md`](../RELEASE.md) | Ship ritual |

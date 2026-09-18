@@ -282,19 +282,50 @@ export default function ThinReports({ desk }) {
     } finally { setBusy(false); }
   };
 
-  const openChat = async () => {
+  const openChat = async (rid) => {
+    if (!rid || busy) return;
     setBusy(true);
     try {
+      const row = (list?.runs || []).find((r) => r.run_id === rid) || null;
+      const useDetail = detail && detail.run_id === rid ? detail : null;
       const out = await apiPost('open-grok', {
         action: 'thesis-report', desk: slug, mode: 'chat',
-        run_id: runId || undefined, job: 'thesis_report',
-        thesis_mode: detail?.thesis?.mode || 'earnings-update',
-        register_scope: registerOf(detail) || registerScope,
-        register_ids: registerIdsOf(detail).length ? registerIdsOf(detail) : pickedIds,
-        thesis_pace: paceOf(detail) || thesisPace,
+        run_id: rid, job: 'thesis_report',
+        thesis_mode: useDetail?.thesis?.mode || modeOf(row) || 'earnings-update',
+        register_scope: registerOf(useDetail || row) || registerScope,
+        register_ids: registerIdsOf(useDetail || row).length ? registerIdsOf(useDetail || row) : pickedIds,
+        thesis_pace: paceOf(useDetail || row) || thesisPace,
       });
-      setFlash(out?.ok ? 'Opened Grok' : (out?.error || 'open Grok failed'));
+      setFlash(out?.ok ? `OPEN GROK · ${rid}` : (out?.error || 'open Grok failed'));
     } catch (e) { setFlash(e.message || String(e)); } finally { setBusy(false); }
+  };
+
+  const cancelRun = async (rid) => {
+    if (!rid || busy) return;
+    if (!window.confirm(
+      'Cancel this in-flight report?\n\nSTART will drop COMPILING for this run. House and register are not written. Complete PDFs stay.',
+    )) return;
+    setBusy(true);
+    try {
+      const out = await apiPost(`${slug}/research/runs/${encodeURIComponent(rid)}/cancel`, {
+        reason: 'cancelled by user from Reports',
+      });
+      if (!out?.ok) {
+        setFlash(out?.error || 'cancel failed');
+        return;
+      }
+      const nKill = Array.isArray(out.killed_pids) ? out.killed_pids.length : (out.killed_pid ? 1 : 0);
+      setFlash(nKill
+        ? `Cancelled · stopped ${nKill} Grok process · COMPILING clears on START`
+        : 'Cancelled · COMPILING clears on START · close the Grok window if it is still open');
+      if (runId === rid) {
+        setRunId(null);
+        setDetail(null);
+      }
+      await loadList();
+    } catch (e) {
+      setFlash(e.message || String(e));
+    } finally { setBusy(false); }
   };
 
   const proposeFromReport = async (rid) => {
@@ -426,7 +457,7 @@ export default function ThinReports({ desk }) {
               <a className="btn" href={fileHref(hero.run_id, 'baseline-anchors.md')} target="_blank" rel="noreferrer">
                 Anchors
               </a>
-              <button type="button" className="btn" disabled={busy} onClick={openChat}>
+              <button type="button" className="btn" disabled={busy} onClick={() => openChat(hero.run_id)}>
                 Open Grok
               </button>
               <button
@@ -459,13 +490,38 @@ export default function ThinReports({ desk }) {
       {inflight && (
         <div className="sect" style={{ padding: '12px 16px' }}>
           <div style={{ fontSize: 12, marginBottom: 6 }}>IN FLIGHT · {modeOf(inflight)}</div>
-          <Stepper checkpoint={checkpoint} failed={false} />
+          <Stepper
+            checkpoint={
+              (detail && detail.run_id === inflight.run_id && detail.thesis?.checkpoint)
+              || inflight.checkpoint
+              || 'scope'
+            }
+            failed={false}
+          />
           <div className="dim" style={{ fontSize: 11, marginBottom: 8 }}>
-            {paceOf(inflight) === 'through' || (detail && detail.run_id === inflight.run_id && paceOf(detail) === 'through')
+            {paceOf(detail && detail.run_id === inflight.run_id ? detail : inflight) === 'through'
               ? 'Running through · not waiting at checkpoints'
-              : 'Waiting on Grok · Checkpoint 1 is next'}
+              : `Waiting on Grok · ${inflight.run_id}`}
           </div>
-          <button type="button" className="btn" onClick={openChat} style={{ fontSize: 10, padding: '4px 10px', marginRight: 8 }}>OPEN GROK</button>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => openChat(inflight.run_id)}
+            style={{ fontSize: 10, padding: '4px 10px', marginRight: 8 }}
+          >
+            OPEN GROK
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => cancelRun(inflight.run_id)}
+            style={{ fontSize: 10, padding: '4px 10px' }}
+            title="Cancel this run. START drops COMPILING. Does not write house/register."
+          >
+            CANCEL
+          </button>
         </div>
       )}
 
@@ -577,7 +633,12 @@ export default function ThinReports({ desk }) {
             ))}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-            <button type="button" className="btn" disabled={busy} onClick={openChat}>
+            <button
+              type="button"
+              className="btn"
+              disabled={busy || !(inflight || hero)}
+              onClick={() => openChat((inflight && inflight.run_id) || (hero && hero.run_id))}
+            >
               Open Grok
             </button>
             {flash && <span className="dim" style={{ fontSize: 11 }}>{flash}</span>}
@@ -652,6 +713,18 @@ export default function ThinReports({ desk }) {
                 <span className={`chipC${r.status === 'complete' ? ' ok' : r.status === 'failed' ? ' watch' : ''}`}>
                   {r.status}
                 </span>
+                {isInFlight(r) ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={busy}
+                    style={{ fontSize: 9, padding: '2px 6px', marginLeft: 6 }}
+                    onClick={(e) => { e.stopPropagation(); cancelRun(r.run_id); }}
+                    title="Cancel this run so START drops COMPILING"
+                  >
+                    CANCEL
+                  </button>
+                ) : null}
                 {complete ? (
                   <a
                     className="filing-link"

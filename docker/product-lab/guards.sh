@@ -13,7 +13,7 @@ ok() { echo "  ✓ guard: $*"; }
 TD="$PRODUCT/memory-cockpit-v2/config/thin-desks.json"
 [ -f "$TD" ] || fail "missing thin-desks.json"
 
-n=$(env -u FORCE_COLOR NO_COLOR=1 node -e 'try{const j=require(process.argv[1]);process.stdout.write(String((j.desks||[]).length))}catch(e){process.stdout.write("?")}' "$TD" 2>/dev/null)
+n=$(node -e "const j=require('$TD'); console.log((j.desks||[]).length)")
 if [ "$n" != "0" ]; then
   fail "desks.length=$n (lab requires desks=[] — refuse dogfood registry)"
 fi

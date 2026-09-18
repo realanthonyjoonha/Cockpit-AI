@@ -1,37 +1,66 @@
 ---
-description: Propose house draft via efficient MCP from-current replacements (glass ACCEPT)
-argument-hint: "[desk] [brief edit intent]"
+description: Interactive Grok Build session — dump the full house here. GO writes, SAVE DRAFT parks, EDIT revises with no write.
+argument-hint: "[desk] [--session]"
 ---
 
-Parse `$ARGUMENTS`: first token desk if ``slug`/`ticker`/ticker-like; rest = edit intent.  
-If desk missing, ask once. If intent missing, ask for a **minimal** edit (stance unchanged unless they say otherwise).
+Parse `$ARGUMENTS`: desk (slug/ticker); optional `--session` (default when OPEN GROK from House).
 
-## Efficiency (mandatory)
+**Surface:** this Grok Build chat. **GO writes.** Glass ACCEPT of **CONFIRMED** is the alternate commit (friends / if commit_on_go missed). Never FORMING on glass.
 
-- **Do not** mine chat history, session files, or home greps for wording unless user says “use prior draft.”
-- **Do** use only `get_house_view` + `get_pack_snapshot` as sources.
-- Prefer **`propose_house_from_current`** (exact find→replace). Each `find` must appear **exactly once** in current house.
-- Cap at ~6 tool calls. If a find is not unique, widen context in `find` or fail clearly.
+Decision-support only. Never write `house-view-*.md` yourself. Never auto-write CONFIRMED without user GO.
 
-## Steps
+## Three words
 
-1. `get_house_view` + `get_pack_snapshot` for the desk  
-2. Identify the **exact** substrings to change from current house markdown  
-3. Call **`propose_house_from_current`** with:
-   - `desk`
-   - `replacements`: `[{ "find": "…exact…", "replace": "…new…" }, …]`
-   - `summary`: short banner
-   - `rationale`: pack-grounded (2–4 sentences)
-4. `list_house_proposals` status=pending to verify id  
+- **GO** (aliases: looks good, that’s my house, CONFIRM) — this is their stance. Propose markdown with `status: CONFIRMED`, then **`commit_on_go`** (or `node scripts/go-commit.mjs`). Live house becomes **CONFIRMED**. No Safari trip.
+- **SAVE DRAFT** — stay in this chat. Do **not** `propose_house`. Do **not** call `commit_on_go`. Glass never gets a FORMING chip.
+- **EDIT** (aliases: change / fix / rewrite / drop Rn / not yet) — **no propose, no write.** Apply their delta, dump the **full** house fence again, same three words. Wait.
 
-Only if from_current cannot express the edit (true full rewrite): write `/tmp/{desk}-house-propose.md` and `propose_house_view` with `markdown_path`.
+Prompt under every fence:
 
-## Output
+**GO** (writes CONFIRMED) · **SAVE DRAFT** (Grok only, no glass chip) · **EDIT** (change it here, no write)
 
-- Proposal **id**  
-- What changed (list finds) / what did not (stance, numbers unless asked)  
-- Glass: `http://127.0.0.1:4681/#/{desk}/house` → REVIEW → **ACCEPT** or REJECT  
-- COMPILE BOOK + REFRESH after ACCEPT  
-- **Do not** claim vault house is written until ACCEPT  
+No CONFIRM button on glass. No lecture bar. **GO must produce a CONFIRMED proposal then commit_on_go.** EDIT must not call `commit_on_go` or `propose_house`.
 
-Decision-support only. Never change CONFIRMED stance unless user explicitly asks.
+## Session (mandatory order)
+
+1. `list_desks` — if `pin_ok` is false, STOP.
+2. `get_house_view` (full markdown). `get_pack_snapshot` for grades.
+3. **First reply — dump the full current house** in one `markdown` fence. No summary-only. If scaffold, dump it and say so.
+4. One line under the fence: **GO** (writes CONFIRMED) · **SAVE DRAFT** (Grok only, no glass chip) · **EDIT** (change it here, no write)
+5. **Wait.**
+6. **EDIT** (or a delta without GO/SAVE DRAFT) → apply, dump the **full** file again, wait. Do not propose.
+7. **GO** → propose that dump as **CONFIRMED** (`intent: "go"`) → immediately **`commit_on_go` kind=house** with that proposal id and utterance GO.  
+   **SAVE DRAFT** → no propose. Stop.  
+   **STOP** → no proposal.
+
+## Propose (only after GO — never after EDIT or SAVE DRAFT)
+
+- Same markdown you just dumped (`propose_house_from_current` if tiny; else `/tmp/{desk}-house-propose.md` + `propose_house_view`).
+- Pass `intent: "go"`. API rejects scaffold, FORMING, SAVE DRAFT, and `intent: "edit"`.
+- Print proposal **id**. After GO, call **`commit_on_go`**. Print `live_status: CONFIRMED`. Glass `#/{desk}/house` is a **viewer**.
+- GO + commit_on_go → CONFIRMED on disk. SAVE DRAFT / EDIT → dump only. No glass chip.
+
+## After GO writes CONFIRMED — same terminal, register
+
+Do **not** stop. Do **not** require a second OPEN GROK. Do **not** wait for glass ACCEPT.
+
+1. Live house must be **CONFIRMED** (commit_on_go already wrote). If still FORMING, do **not** start register-closeout.
+2. Load `08` + that house. **Align register** (ask; no silent-delete): WATCH what the stance lives on; drop/add only if they say so.
+3. Dump **full proposed `08`** in one fence.
+4. Same three words. **EDIT** → dump `08` again. **GO** (or ACCEPT REGISTER) → propose chips → **`commit_on_go` kind=register**. **SAVE DRAFT** → pending chips only. Glass `#/{desk}/risks` is a viewer.
+5. `node scripts/register-closeout.mjs --slug {desk}` must **PASS**. COMPILE BOOK if pack lags.
+
+SAVE DRAFT house → do **not** flow into register-closeout.
+
+## Do not
+
+- First message without the full markdown fence
+- Propose before GO or SAVE DRAFT
+- Propose or `commit_on_go` after **EDIT**
+- Propose FORMING when they said GO
+- Call `commit_on_go` after SAVE DRAFT
+- Dump to glass and skip the terminal dump
+- Wait for glass ACCEPT after GO
+- Change a CONFIRMED stance unless they asked in this chat
+
+Cap: conversation long; propose + commit ≤8 MCP calls.

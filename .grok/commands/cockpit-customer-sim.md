@@ -20,7 +20,7 @@ Decision-support only: no buy/sell/hold, price targets, or sizing.
 3. If MCP `list_desks` shows Anthony’s real tickers (nvda, nbis, mu, … as dogfood set) **without** being a disposable seal desk → **STOP**, tell human to re-pin MCP to product.  
 4. Never copy kernel `research-wiki` into product.  
 5. No `git push` unless human explicitly asks.  
-6. House/risks: **propose only** → human glass ACCEPT. Prefer **no** permanent underwrite unless human asked for disposable desk test.
+6. House/risks: **propose CONFIRMED after GO** → `commit_on_go`. Never FORMING on glass. Prefer **no** permanent underwrite unless human asked for disposable desk test.
 
 Read: `docs/CUSTOMER-SIM.md` · `FRIEND-START.md` · `docs/LAB.md`.
 

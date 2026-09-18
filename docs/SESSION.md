@@ -3,7 +3,7 @@
 **Audience:** a new Grok Build / coding agent (or Anthony after a break).  
 **Not:** daily desk research → [`OPERATE.md`](../OPERATE.md) · friend install → [`FRIEND-START.md`](../FRIEND-START.md).
 
-Decision-support only. No buy/sell/PT/sizing. House/risks: propose, then glass **ACCEPT**. Never hand-edit `ontology/store/`. Never ship vault books.
+Decision-support only. No buy/sell/PT/sizing. House/risks: dump in Grok → **GO** writes (`commit_on_go`). Never propose FORMING to glass. Glass ACCEPT is the alternate commit for CONFIRMED. Never hand-edit `ontology/store/`. Never ship vault books.
 
 If cwd is `$HOME` or `cockpit-personal`, **still use the kernel paths below.** Do not treat personal as factory source of truth.
 
@@ -53,7 +53,7 @@ On kernel: `./scripts/lab-e2e.sh` **and** `./scripts/release-check.sh --full` mu
 - Default `lab-e2e` is empty-install + hooks, **not** a browser click. Use `./scripts/lab-e2e.sh --glass` for HTTP smoke.
 - Host `test:platform` on **product** (empty registry) must pass — kernel-only green is not enough. Dogfood-desk asserts must **skip** when `desks: []`.
 - Filings friend QA: `/cockpit-filings-e2e` (agent) **and** `./scripts/customer-sim-e2e.sh` (script). Not `/cockpit-new-desk`. Not kernel dogfood clicks.
-- Feature dogfood (desk-shaped, no MCP collision): `./scripts/dogfood-e2e.sh` / `/cockpit-dogfood-e2e`. Seal is **`$PWD/.cockpit-dogfood`** (gitignored), MCP name `cockpit-research-dogfood`, glass :4695. Cursor: [`CURSOR-E2E.md`](./CURSOR-E2E.md) + `.cursor/mcp.json`. Never overwrite kernel `cockpit-research`. Never attach `cockpit-vault`.
+- Feature dogfood (desk-shaped, no MCP collision): `./scripts/dogfood-e2e.sh` / `/cockpit-dogfood-e2e`. Seal is **`$PWD/.cockpit-dogfood`** (gitignored), MCP name `cockpit-research-dogfood`, glass :4695. Cursor: [`CURSOR-E2E.md`](./CURSOR-E2E.md) + `.cursor/mcp.json`. Never overwrite kernel `cockpit-research`. Cloud vault path is **`/home/ubuntu/cockpit-vault`** (read-only copy into the seal; do not MCP-pin the vault).
 - Cockpit-AI may be **archived** (read-only). Unarchive before `git push`, then push product `main`.
 
 Friends: `./scripts/friend-upgrade.sh` — their desks stay; they do not get Anthony’s books.

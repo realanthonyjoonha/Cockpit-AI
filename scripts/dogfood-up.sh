@@ -7,6 +7,7 @@
 #   ./scripts/dogfood-up.sh
 #   ./scripts/dogfood-up.sh --port 4695 --dir "$PWD/.cockpit-dogfood"
 #   ./scripts/dogfood-up.sh --no-glass
+#   ./scripts/dogfood-up.sh --slugs nvda,mu,lly   # real desks from vault → seal only
 #   COCKPIT_MCP_NAME=cockpit-research-dogfood ./scripts/dogfood-up.sh
 #
 # Defaults (Cursor / any clone): --from = this repo, --dir = $ROOT/.cockpit-dogfood
@@ -23,6 +24,7 @@ PORT="${DOGFOOD_PORT:-4695}"
 MCP_NAME="${COCKPIT_MCP_NAME:-cockpit-research-dogfood}"
 NO_GLASS=0
 FROM="$ROOT"
+SLUGS="${COCKPIT_DOGFOOD_SLUGS:-}"
 
 usage() { sed -n '2,14p' "$0"; exit 0; }
 
@@ -32,6 +34,7 @@ while [ $# -gt 0 ]; do
     --port) PORT="${2:?}"; shift 2 ;;
     --from) FROM="${2:?}"; shift 2 ;;
     --mcp-name) MCP_NAME="${2:?}"; shift 2 ;;
+    --slugs) SLUGS="${2:?}"; shift 2 ;;
     --no-glass) NO_GLASS=1; shift ;;
     -h|--help) usage ;;
     *) echo "unknown: $1" >&2; exit 1 ;;
@@ -150,15 +153,32 @@ if [ -d "$FROM/memory-cockpit-v2/node_modules" ]; then
   ln -sfn "$FROM/memory-cockpit-v2/node_modules" "$DEST/memory-cockpit-v2/node_modules"
 fi
 
-echo "→ inject fixture desk DOGF"
-node "$ROOT/memory-cockpit-v2/scripts/dogfood-fixture.mjs" --root "$DEST"
-
 ABS="$DEST"
+SLUGS_CSV="dogf"
+if [ -n "$SLUGS" ]; then
+  echo "→ seed desks from vault ($SLUGS) — seal only, not product"
+  VAULT_SRC="$(dogfood_resolve_vault "$ROOT" || true)"
+  if [ -z "$VAULT_SRC" ] || [ ! -d "$VAULT_SRC" ]; then
+    echo "error: --slugs needs a vault (COCKPIT_VAULT, /home/ubuntu/cockpit-vault, or ~/Desktop/cockpit-vault). Not copying books into git." >&2
+    exit 1
+  fi
+  echo "  vault src: $VAULT_SRC"
+  REG="$ROOT/memory-cockpit-v2/config/thin-desks.json"
+  node "$ROOT/memory-cockpit-v2/scripts/dogfood-seed-desks.mjs" \
+    --root "$DEST" --slugs "$SLUGS" --registry "$REG" --vault "$VAULT_SRC" --ontology "$ROOT/ontology"
+  SLUGS_CSV=$(echo "$SLUGS" | tr 'A-Z' 'a-z' | tr -d ' ')
+else
+  echo "→ inject fixture desk DOGF"
+  node "$ROOT/memory-cockpit-v2/scripts/dogfood-fixture.mjs" --root "$DEST"
+  SLUGS_CSV="dogf"
+fi
+ALLOWED_JSON=$(node -e "console.log(JSON.stringify(String(process.argv[1]).split(',').map(s=>s.trim()).filter(Boolean)))" "$SLUGS_CSV")
+
 cat > "$ABS/.cockpit-scenario.json" <<EOF
 {
   "name": "dogfood",
   "expect_root": "$ABS",
-  "allowed_slugs": ["dogf"],
+  "allowed_slugs": $ALLOWED_JSON,
   "port": $PORT,
   "mcp_name": "$MCP_NAME",
   "agent_accept": true,
@@ -171,7 +191,7 @@ export COCKPIT_VAULT="$ABS/research-wiki"
 export ONTOLOGY_STORE="$ABS/ontology/store/by_ticker"
 export ONTOLOGY_ROOT="$ABS/ontology"
 export COCKPIT_EXPECT_ROOT="$ABS"
-export COCKPIT_ALLOWED_SLUGS="dogf"
+export COCKPIT_ALLOWED_SLUGS="$SLUGS_CSV"
 export COCKPIT_SCENARIO_NAME="dogfood"
 export COCKPIT_AGENT_ACCEPT="1"
 
@@ -208,11 +228,13 @@ node "$PIN_JS" --root "$ABS" --name "$MCP_NAME"
 
 PID=""
 dogfood_desks_ok() {
-  DEST_ABS="$ABS" curl -sf --max-time 2 "http://127.0.0.1:${PORT}/api/thin-desks" | node -e "
+  DEST_ABS="$ABS" EXPECT_SLUGS="$SLUGS_CSV" curl -sf --max-time 2 "http://127.0.0.1:${PORT}/api/thin-desks" | node -e "
     let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{
       const j=JSON.parse(d);
       const desks=j.desks||[];
-      if (desks.length!==1 || desks[0].slug!=='dogf') process.exit(2);
+      const want=(process.env.EXPECT_SLUGS||'dogf').split(',').filter(Boolean);
+      const got=desks.map(x=>String(x.slug||'').toLowerCase()).sort();
+      if (got.join(',') !== want.slice().sort().join(',')) process.exit(2);
       const dest=process.env.DEST_ABS||'';
       const reg=j.registry_path||'';
       if (dest && !reg.startsWith(dest)) process.exit(3);
@@ -236,7 +258,7 @@ if [ "$NO_GLASS" -eq 0 ]; then
       export ONTOLOGY_ROOT="$ABS/ontology" PORT="$PORT" HOST=127.0.0.1 COCKPIT_ENV_QUIET=1
       export COCKPIT_MCP_NAME="$MCP_NAME"
       export COCKPIT_EXPECT_ROOT="$ABS"
-      export COCKPIT_ALLOWED_SLUGS="dogf"
+      export COCKPIT_ALLOWED_SLUGS="$SLUGS_CSV"
       export COCKPIT_SCENARIO_NAME="dogfood"
       export COCKPIT_AGENT_ACCEPT="1"
       exec node server/index.js
@@ -266,8 +288,9 @@ cat > "$ABS/.cockpit-dogfood.json" <<EOF
   "dir": "$ABS",
   "port": $PORT,
   "mcp_name": "$MCP_NAME",
-  "slug": "dogf",
-  "ticker": "DOGF",
+  "slugs": $ALLOWED_JSON,
+  "slug": "$(echo "$SLUGS_CSV" | cut -d, -f1)",
+  "ticker": "$(echo "$SLUGS_CSV" | cut -d, -f1 | tr 'a-z' 'A-Z')",
   "pid": ${PID:-null},
   "kernel": "$KERNEL_ABS",
   "product": "$PRODUCT_ABS"
@@ -275,7 +298,7 @@ cat > "$ABS/.cockpit-dogfood.json" <<EOF
 EOF
 
 echo
-echo "  URL:      http://127.0.0.1:${PORT}/#/dogf/filings"
+echo "  URL:      http://127.0.0.1:${PORT}/#/$(echo "$SLUGS_CSV" | cut -d, -f1)/filings"
 echo "  MCP name: $MCP_NAME  (kernel operate stays cockpit-research)"
 echo "  Agent:    ./scripts/dogfood-e2e.sh   (Cursor: see docs/CURSOR-E2E.md)"
 echo "  Down:     ./scripts/dogfood-down.sh"

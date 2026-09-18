@@ -466,9 +466,38 @@ try {
 try {
   const house = listGrokAgents({ variant: 'house' });
   if (house.default_action !== 'propose') throw new Error(`house default ${house.default_action}`);
+  const propose = house.agents.find((a) => a.action === 'propose');
+  if (!/GO writes/i.test(propose?.hint || '') || !/\bEDIT\b/i.test(propose?.hint || '')) {
+    throw new Error(`house hint ${propose?.hint}`);
+  }
+  if (/one glass ACCEPT/i.test(propose?.hint || '')) throw new Error('house hint still requires glass ACCEPT');
   ok('house default still propose');
 } catch (e) {
   fail('house default', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'propose', desk: 'meta' });
+  if (p !== '/cockpit-propose meta --session') throw new Error(p);
+  ok('propose OPEN GROK is a Grok Build session');
+} catch (e) {
+  fail('propose session prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'register-session', desk: 'meta' });
+  if (p !== '/cockpit-register meta --session') throw new Error(p);
+  ok('register-session OPEN GROK is a Grok Build session');
+} catch (e) {
+  fail('register session prompt', e);
+}
+
+try {
+  const reg = listGrokAgents({ variant: 'register' });
+  if (reg.default_action !== 'register-session') throw new Error(`register default ${reg.default_action}`);
+  ok('register default is Edit register in Grok');
+} catch (e) {
+  fail('register default', e);
 }
 
 console.log(failed ? `\nFAIL ${failed} check(s)\n` : '\nPASS all open-grok-prompt checks\n');

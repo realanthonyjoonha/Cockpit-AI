@@ -168,7 +168,7 @@ export function writeStreetAgentSeed(deskOrTicker, opts = {}) {
     '3. Every published firm row must be **complete**: rating + numeric PT + date + 3–5 sentence why (≥180 chars) + https source_url.',
     '4. Never invent PTs, ratings, or why. No source → omit firm.',
     '5. **Write scope:** only `research-wiki/cockpit/street/' + id.ticker + '.json` via format-gated publish (`refreshStreet` / POST street/refresh).',
-    '6. **Do not write** house, risks, or `ontology/store/`. You may *comment* on alignment vs house/WATCH; changes need glass ACCEPT paths elsewhere.',
+    '6. **Do not write** house, risks, or `ontology/store/`. You may *comment* on alignment vs house/WATCH; changes need GO / commit_on_go elsewhere.',
     '7. **Ontology boundary:** pack house/risks = context only. Never fold firm PTs into the pack. Never COMPILE BOOK from Street.',
     '',
     jobBlock,

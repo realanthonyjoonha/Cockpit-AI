@@ -14,8 +14,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 KERNEL="${COCKPIT_KERNEL:-$(cd "$HERE/../.." && pwd)}"
 PRODUCT="${COCKPIT_PRODUCT:-$HOME/Desktop/cockpit-product}"
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "docker not found — running host path instead:"
+if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+  echo "docker not ready — running host path instead:"
   echo "  COCKPIT_KERNEL=$KERNEL COCKPIT_PRODUCT=$PRODUCT $KERNEL/scripts/test-develop-discipline.sh"
   echo
   exec env COCKPIT_KERNEL="$KERNEL" COCKPIT_PRODUCT="$PRODUCT" \

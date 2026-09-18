@@ -258,7 +258,9 @@ function FilingsSignal({ pipe, slug }) {
         {known ? (
           <div className="v">
             <b>{print.form}</b>
+            {' · '}
             <span className="mono">{print.date || print.filed}</span>
+            {' · '}
             <span className={`chipC${chip.cls ? ` ${chip.cls}` : ''}`}>{chip.t}</span>
             {print.url ? (
               <a

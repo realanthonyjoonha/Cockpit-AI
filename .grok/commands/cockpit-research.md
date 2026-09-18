@@ -173,4 +173,4 @@ Do **not** compile on research alone (no save). Do **not** compile other tickers
 | `/cockpit-new-desk` | New company |
 | `/cockpit-research` | User-directed research + optional vault save |
 
-Footer: decision-support only; not book SoR until glass ACCEPT on any propose.
+Footer: decision-support only; not book SoR until GO (`commit_on_go`) or glass ACCEPT of CONFIRMED.

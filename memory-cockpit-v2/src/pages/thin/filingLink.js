@@ -1,13 +1,21 @@
 // Shared EDGAR filing link helpers — Overview + pipeline (all thin desks).
 // Decision-support only. Not pack/house SoR.
 
+/** EDGAR accession as a headline looks like a tracking number, not a filing. */
+export function looksLikeAccession(s) {
+  const t = String(s || '').trim();
+  if (/^\d{10}-\d{2}-\d{6}$/.test(t)) return true;
+  if (/^\d{18,}$/.test(t.replace(/-/g, ''))) return true;
+  return false;
+}
+
 export function filingDocLabel(f) {
   const form = String(f?.form || '').trim();
   const desc = String(f?.primary_doc_description || '').trim();
   const doc = String(f?.primary_document || '').trim();
-  if (desc && desc.toUpperCase() !== form.toUpperCase()) return desc;
-  if (doc) return doc;
-  return f?.accession || 'Open on EDGAR';
+  if (desc && desc.toUpperCase() !== form.toUpperCase() && !looksLikeAccession(desc)) return desc;
+  if (doc && !looksLikeAccession(doc) && !/^\d/.test(doc)) return doc;
+  return 'Open on EDGAR';
 }
 
 /** Prefer server item_label; fall back to raw 8-K item codes. Never invent a gloss. */

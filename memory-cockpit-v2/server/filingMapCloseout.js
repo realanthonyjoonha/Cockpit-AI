@@ -6,6 +6,7 @@ import path from 'path';
 import { houseHitTrips, riskTest } from '../src/pages/thin/filingMapPaint.js';
 import { readHouseMarkdown } from './thinHouseSave.js';
 import { proposeHouse, listHouseProposals } from './houseProposals.js';
+import { houseProposeRefuseReason } from './houseStance.js';
 import {
   proposeRiskStatus,
   proposeAddRisk,
@@ -356,20 +357,28 @@ export function proposeFromFilingMap(opts) {
           throw new Error(`vault house missing: ${houseFile}`);
         }
         const markdown = buildHouseCloseoutMarkdown(raw.markdown, plan.house, runId);
-        const out = proposeHouse({
-          slug,
-          ticker,
-          houseFile,
-          markdown,
-          rationale: `Filing map closeout (${plan.house.length} tripped house hit(s)) from run ${runId}.`,
-          summary: `Filing map · ${plan.house.length} house trip(s)`,
-          source: sourceTag,
-        });
-        created.push({
-          kind: 'house_view',
-          id: out.proposal?.id,
-          summary: out.proposal?.summary,
-        });
+        const refuse = houseProposeRefuseReason(markdown);
+        if (refuse) {
+          plan.skipped.push({
+            kind: 'house_forming',
+            reason: refuse,
+          });
+        } else {
+          const out = proposeHouse({
+            slug,
+            ticker,
+            houseFile,
+            markdown,
+            rationale: `Filing map closeout (${plan.house.length} tripped house hit(s)) from run ${runId}.`,
+            summary: `Filing map · ${plan.house.length} house trip(s)`,
+            source: sourceTag,
+          });
+          created.push({
+            kind: 'house_view',
+            id: out.proposal?.id,
+            summary: out.proposal?.summary,
+          });
+        }
       } catch (e) {
         errors.push({ kind: 'house_view', error: e.message || String(e) });
       }
@@ -518,7 +527,7 @@ export function proposeFromFilingMap(opts) {
     add_risk: plan.add_risk,
     skipped: plan.skipped,
     note: created.length
-      ? 'Pending proposals stored. House/risks NOT written until glass ACCEPT. Then COMPILE BOOK.'
+      ? 'Pending CONFIRMED proposals only. House/risks written on GO (commit_on_go) or glass ACCEPT. Never FORMING. COMPILE BOOK if pack lags.'
       : (errors.length ? 'Propose failed for one or more candidates.' : 'Nothing created.'),
     next_steps: [
       `Open #/${slug}/house and #/${slug}/risks`,

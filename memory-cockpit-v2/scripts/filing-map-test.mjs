@@ -40,6 +40,7 @@ import {
   writeFilingsExpandStore,
   filingsExpandKey,
 } from '../src/pages/thin/filingMapPaint.js';
+import { filingDocLabel, looksLikeAccession } from '../src/pages/thin/filingLink.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tmpVault = fs.mkdtempSync(path.join(os.tmpdir(), 'cockpit-filing-map-'));
@@ -649,6 +650,22 @@ if (newAfter[0].mode === 'quiet' && newAfter[1].mode === 'new' && !newAfter[1].e
 const ovSrc = fs.readFileSync(path.join(ROOT, 'src/pages/thin/Overview.jsx'), 'utf8');
 if (/FilingsSignal/.test(ovSrc) && /#\/\$\{slug\}\/filings/.test(ovSrc)) ok('Overview signal deep-links to Filings room');
 else bad('Overview missing Filings signal');
+if (/\{\s*['"] · ['"]\s*\}/.test(ovSrc) && /print\.form/.test(ovSrc)) {
+  ok('Overview print inserts · between form and date (survives missing CSS gap)');
+} else bad('Overview print can jam 10-Q into the date');
+
+const theme = fs.readFileSync(path.join(ROOT, 'src/theme.css'), 'utf8');
+if (/\.fmap-print \.v\s*\{[^}]*gap:\s*8px/.test(theme)) ok('theme.css fmap-print .v has flex gap');
+else bad('theme.css missing fmap-print gap (personal-style CSS hole)');
+
+if (looksLikeAccession('0001628280-26-050705')) ok('accession detector');
+else bad('accession detector');
+if (filingDocLabel({ form: '10-Q', accession: '0001628280-26-050705' }) === 'Open on EDGAR') {
+  ok('Overview/Filings never headline a raw accession');
+} else bad(`label ${filingDocLabel({ form: '10-Q', accession: '0001628280-26-050705' })}`);
+if (filingDocLabel({ form: '10-Q', primary_doc_description: 'Quarterly report' }) === 'Quarterly report') {
+  ok('human description still wins');
+} else bad('description lost');
 if (/className="btn"/.test(ovSrc) && /MAP FILINGS/.test(ovSrc)) bad('Overview still has MAP FILINGS button');
 else ok('Overview has no MAP FILINGS workstation button');
 if (/FilingMapDossier/.test(ovSrc) || /Show map/.test(ovSrc) || /<LastPrint /.test(ovSrc)) {

@@ -42,11 +42,12 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-research-compile [desk]` | Deep compile archive (glass Research) — not thesis-lane |
 | `/cockpit-street [desk]` | Street agent |
 | `/cockpit-risk-check` | Risk DD: direction vs tripwires (no status write) |
-| `/cockpit-risk-add` | Research + propose NEW risk (glass ACCEPT) |
+| `/cockpit-risk-add` | Research + propose NEW risk (GO / glass ACCEPT) |
 | `/cockpit-risk-tripwires` | Tripwire research + user cull → propose |
 | `/cockpit-steelman` | Steelman house vs pack WATCH |
 | `/cockpit-match` | Verify house labels vs pack WATCH |
-| `/cockpit-propose` | Propose house draft → glass ACCEPT |
+| `/cockpit-propose` | **House in this terminal** — dump full markdown; **GO** writes · **SAVE DRAFT** Grok-only · **EDIT** revises (no write, no FORMING chip) |
+| `/cockpit-register` | **Register in this terminal** — dump full 08; **GO** writes · **SAVE DRAFT** Grok-only · **EDIT** revises |
 | `/cockpit-pending` | List pending house proposals |
 | `/cockpit` | **Menu only.** Print pin (`list_desks`) + this table. Wait. Do **not** steelman unless they named a desk **and** asked steelman/daily/report/… |
 
@@ -66,6 +67,7 @@ If they named a desk only, ask which command — do not default to steelman.
 | `get_house_assist_context` | Full grounded pack |
 | **`propose_house_from_current`** | **Preferred propose** — exact find→replace on current house |
 | `propose_house_view` | Full markdown or `markdown_path` (large files) |
+| **`commit_on_go`** | After user **GO** — write pending CONFIRMED house or register (not SAVE DRAFT) |
 | `list_house_proposals` | Pending / accepted / rejected |
 
 ## Efficiency rules (mandatory)
@@ -84,14 +86,14 @@ If they named a desk only, ask which command — do not default to steelman.
 1. `get_pack_snapshot` — use **SoR-aware** `risk_summary.watch` / `risks[].status` (not stale `pack_watch` alone).
 2. Desk-wide WATCH list must include every name in `risk_summary.watch` (e.g. newly ACCEPTed R4).
 3. Direction: easing | stable | elevated. Suggested status is **not applied**.
-4. Status change: MCP `propose_risk_status` or glass → ACCEPT → COMPILE BOOK.
+4. Status change: MCP `propose_risk_status` then GO / glass ACCEPT → COMPILE BOOK if pack lags.
 
 ## Add risk (`/cockpit-risk-add`)
 
 1. Research idea vs existing register (avoid duplicates).
 2. Draft title, grade, status (default WATCH), summary, mechanism, tripwires (prefer 2–5 real monitors).
 3. MCP **`propose_add_risk`** — pending only.
-4. Human ACCEPT on glass `#/{desk}/risks` → SoR insert → COMPILE BOOK.
+4. User **GO** (`commit_on_go` kind=register) or glass ACCEPT on `#/{desk}/risks` → SoR insert → COMPILE BOOK if pack lags.
 5. If tripwires empty/GAP after add → `/cockpit-risk-tripwires`.
 
 ## Tripwires (`/cockpit-risk-tripwires`)
@@ -99,7 +101,7 @@ If they named a desk only, ask which command — do not default to steelman.
 1. `get_risk_sor` for current table.
 2. Research candidates; **iterate with user** — keep only monitors they approve.
 3. MCP **`propose_risk_tripwires`** with final list (replace).
-4. Glass ACCEPT → SoR table replace → COMPILE BOOK.
+4. GO / glass ACCEPT → SoR table replace → COMPILE BOOK if pack lags.
 
 ## Daily brief (`/cockpit-daily`)
 
@@ -118,14 +120,15 @@ If they named a desk only, ask which command — do not default to steelman.
 1. Decision-support only: NO buy/sell/hold, NO price target, NO sizing.
 2. Prefer pack grades/as_of; say **GAP** if missing.
 3. Steelman **house first**, then delta vs pack, then red-team.
-4. Propose tools do **not** write the vault house. Glass **ACCEPT** does.
-5. After propose: proposal **id** + `#/{desk}/house` → ACCEPT → COMPILE BOOK → REFRESH.
-6. Do not change CONFIRMED stance unless the user explicitly asks.
+4. Propose tools do **not** write the vault house. **`commit_on_go` after user GO** does. **Never propose FORMING** — API refuses it. SAVE DRAFT stays in Grok only.
+5. After GO: propose CONFIRMED → **`commit_on_go`** → live chip CONFIRMED. Glass is the viewer. COMPILE BOOK if pack lags.
+6. House session: first reply is the **full house markdown fence**. User says **GO** (propose CONFIRMED + commit_on_go), **SAVE DRAFT** (Grok only — no glass chip), or **EDIT** (dump again, no propose). Never propose FORMING. Do not call commit_on_go after SAVE DRAFT or EDIT. Do not POST a house on first message.
 
-## Glass (human only)
+## Glass
 
-- EDIT / SAVE / ACCEPT: glass `#/{desk}/house` (live monorepo often :4681; kernel often :4682)
-- COMPILE BOOK + REFRESH after accept
+- Viewer after GO: `#/{desk}/house` and `#/{desk}/risks` (kernel often :4682)
+- Alternate commit: glass ACCEPT of a **CONFIRMED** pending (friends / if commit_on_go did not run). Never FORMING.
+- COMPILE BOOK + REFRESH if pack lags after GO write
 
 ## Default `/cockpit` with a desk
 

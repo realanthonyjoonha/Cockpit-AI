@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { readHouseMarkdown } from './thinHouseSave.js';
 import { proposeHouse, listHouseProposals } from './houseProposals.js';
+import { houseProposeRefuseReason } from './houseStance.js';
 import {
   proposeRiskStatus,
   proposeAddRisk,
@@ -350,16 +351,21 @@ export function proposeFromResearchRun(opts) {
         const raw = readHouseMarkdown(houseFile);
         if (!raw.exists || !raw.markdown) throw new Error(`vault house missing: ${houseFile}`);
         const markdown = buildHouseMarkdown(raw.markdown, plan.house, runId, job);
-        const out = proposeHouse({
-          slug,
-          ticker,
-          houseFile,
-          markdown,
-          rationale: `Research run closeout (${job}) ${runId}`,
-          summary: `${job} · house notes`,
-          source: sourceTag,
-        });
-        created.push({ kind: 'house_view', id: out.proposal?.id, summary: out.proposal?.summary });
+        const refuse = houseProposeRefuseReason(markdown);
+        if (refuse) {
+          plan.skipped.push({ kind: 'house_forming', reason: refuse });
+        } else {
+          const out = proposeHouse({
+            slug,
+            ticker,
+            houseFile,
+            markdown,
+            rationale: `Research run closeout (${job}) ${runId}`,
+            summary: `${job} · house notes`,
+            source: sourceTag,
+          });
+          created.push({ kind: 'house_view', id: out.proposal?.id, summary: out.proposal?.summary });
+        }
       } catch (e) {
         errors.push({ kind: 'house_view', error: e.message || String(e) });
       }

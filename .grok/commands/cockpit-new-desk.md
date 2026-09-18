@@ -1,5 +1,5 @@
 ---
-description: Underwrite a NEW thin desk — deep research default (parallel subagents); human CONFIRM/ACCEPT
+description: Underwrite a NEW thin desk — deep research default (parallel subagents); human GO writes CONFIRMED
 argument-hint: "[TICKER] [optional display name] [--light]"
 ---
 
@@ -27,7 +27,7 @@ This is **underwrite** the book, then (default) **one Street operate bootstrap**
 
 1. **Decision-support only** — no buy/sell/hold, price targets, or position sizing.  
 2. **Never invent** graded claims, CONFIRMED house stance, or WATCH risk register to “finish” a desk.  
-3. **Human owns** house CONFIRM and risk ACCEPT on glass. Agents may **propose** only.  
+3. **Human owns** the book. In Grok they say **GO**, **SAVE DRAFT**, or **EDIT**. **GO writes** via `commit_on_go` / `go-commit.mjs`. **EDIT** and **SAVE DRAFT** never propose. Glass never gets a FORMING house proposal.  
 4. **Never hand-edit** `ontology/store/`. Compile rebuilds packs.  
 5. Prefer empty scaffold + real research over fake fullness.  
 6. **Primary over press** — 10-K / 10-Q / IR PR / 8-K / DEF 14A first; secondary press → **[soft]**.  
@@ -96,7 +96,8 @@ Orchestrator:
 - Launch slices **in parallel** (do not serial-skim 1→7 unless forced by tool limits).  
 - After all return: reconcile contradictions, dedupe claims, file `wiki/sources/*` distillations, merge into `wiki/entities/{slug}.md`.  
 - **Then** draft risk register (section A `### Rn —` + Status/Grade + tripwire tables, before `## B)`). Prefer **6+** risks when evidence supports; default new elevated to **WATCH** only with mechanism + monitors.  
-- House stays **FORMING** unless user explicitly confirms stance text.  
+- House stays **FORMING** until they say **GO** in Grok and **`commit_on_go`** writes CONFIRMED. **Do not `propose_house` FORMING.** API refuses it. After research, dump the full house in this terminal and wait. When they say GO, propose CONFIRMED then `commit_on_go`. No CONFIRMED write → TSLA-class miss.  
+- **Dump the full proposed house markdown in this Grok Build terminal** in one `markdown` fence (same bar as `/cockpit-propose --session`). Do not stop after compile/Street/health without that dump + pending proposal.  
 - Update `00-research-status.md` depth column: Light / Medium / Strong / Deep + primary citations.
 
 #### 4c. Depth bar (DEEP exit criteria)
@@ -111,6 +112,8 @@ Do **not** call research “done” until:
 | Primary | At least one **10-K or 20-F-class** filing (or foreign equivalent) when available for the name |
 | Risks SoR | Draft R1… with mechanism + **≥ 2** tripwires each (or GAP table) |
 | Status file | `00-research-status.md` depth table + residual gaps |
+| House closeout | Live CONFIRMED **or** pending **CONFIRMED** proposal (never FORMING) + **full house markdown printed in this terminal**. `node scripts/house-closeout.mjs --slug SLUG` must **PASS**. FORMING on glass is a fail. |
+| Register closeout | **After house is CONFIRMED** (GO in Grok + `commit_on_go`). `08` has ≥4 `### Rn` + tripwire tables, **and** pending `add_risk` chips **or** 08 header **ACCEPTED**. Dump **full 08** in this terminal. Then GO → `commit_on_go` kind=register. `node scripts/register-closeout.mjs --slug SLUG` must **PASS**. House not CONFIRMED → this bar **FAIL**s first. |
 
 If the market is thin on primary, document **GAP** and still max out what exists — do not fake Deep.
 
@@ -159,6 +162,12 @@ cd memory-cockpit-v2
 node scripts/desk-health.mjs --slug SLUG
 # If glass is running (replace PORT):
 node scripts/desk-health.mjs --slug SLUG --base-url http://127.0.0.1:PORT
+# DEEP book closeout (mandatory — not the same as routing health):
+node scripts/house-closeout.mjs --slug SLUG
+node scripts/new-desk-closeout.mjs --slug SLUG
+# Stamps 00-research-status.md. Do not claim DEEP done without PASS.
+# After house is CONFIRMED (not before):
+node scripts/register-closeout.mjs --slug SLUG
 # All desks:
 npm run test:thin-slug-resolve
 npm run test:desk-health
@@ -168,13 +177,15 @@ npm run test:desk-health
 |--------|--------|
 | **PASS** | Desk is operable on glass (process layer; live if base-url given) |
 | **FAIL** | **Do not** claim “glass ready.” Report failing check ids (S1 reserved / S2 resolve / S3 live). Fix reserved-slug or registry; restart glass if live fail. **Do not** re-run deep research as the first fix. |
+| **house-closeout FAIL** | Live house is still the scaffold **and** there is no pending research-enough proposal (TSLA 2026-09-17). **`propose_house`**, dump the **full markdown in this terminal**, re-run the check. **Do not** claim DEEP done. |
+| **register-closeout FAIL** | House not **CONFIRMED** yet, **or** `08` thin, **or** DRAFT with no `add_risk` chips. GO house first (`commit_on_go` / `go-commit.mjs`). Then dump full `08` in Grok, GO, `commit_on_go` kind=register, re-run. |
 
-Book may still be FORMING / ACCEPT pending — health only means routes resolve.
+Routing health may PASS while house-closeout FAILs. Both are required for DEEP. LIGHT may skip house-closeout (book not underwrite-complete).
 
 ### 6–7. Human gates (book only) — or scenario agent ACCEPT
 
-6. **House + risks** — default product/kernel: user CONFIRM house + ACCEPT risks on glass (`#/{slug}/house`, `#/{slug}/risks`).  
-   Agents use propose tools only; never claim vault written until ACCEPT.  
+6. **House first, then register — same Grok terminal.** Dump full house → **GO** (CONFIRMED + **`commit_on_go` / `go-commit.mjs`**), **SAVE DRAFT** (Grok only), or **EDIT**. **Do not propose FORMING.** When house is **CONFIRMED**, **do not end the session.** Align `08` to that house (add/drop only if they say so) → dump **full `08`** → they say **GO** / **SAVE DRAFT** / **EDIT** → on GO: propose chips → **`commit_on_go` kind=register** → `register-closeout.mjs` **PASS**.  
+   Never claim vault written until `commit_on_go`. Never leave DEEP with only the scaffold house. Never treat register as closed while house is FORMING. Never require a second OPEN GROK after house GO. Never propose FORMING. Never `commit_on_go` after SAVE DRAFT or **EDIT**. Do not wait for glass ACCEPT after GO.  
 
    **Scenario monorepo only** (`.cockpit-scenario.json` with `agent_accept: true`, MCP `COCKPIT_AGENT_ACCEPT=1`):  
    After **DEEP** research + propose house/risks (same bar as kernel — **not** thin seeders), the **test-user agent may ACCEPT**:
@@ -186,7 +197,7 @@ Book may still be FORMING / ACCEPT pending — health only means routes resolve.
      (depth gate **fails** if house/claims are thin — see `docs/SCENARIO-DEPTH-LAW.md`)  
    - OPEN GROK **only** from the scenario folder / that glass (wrong pin = wrong books)
 
-7. **After ACCEPT** — COMPILE BOOK + REFRESH on glass (book pack only; not Street).
+7. **After GO writes** — `commit_on_go` tries `./ont compile`. If pack still lags: COMPILE BOOK + REFRESH on glass (book pack only; not Street). Glass is the viewer.
 
 ## Playbook paths (relative monorepo)
 
@@ -208,10 +219,10 @@ Book may still be FORMING / ACCEPT pending — health only means routes resolve.
 7. compile/verify status  
 8. **Street:** n complete firms published · path `cockpit/street/{TICKER}.json` · or EMPTY/GAP reason  
 9. **Desk health:** PASS / FAIL (+ command to re-run `desk-health.mjs`) — required before “glass ready”  
-10. Remind glass CONFIRM/ACCEPT (or scenario agent ACCEPT when grant on) — book not SoR until then; Street ≠ house PT  
+10. Remind: **GO** in this terminal writes CONFIRMED (`commit_on_go`). Do not propose FORMING. Scenario grant may ACCEPT. Street ≠ house PT  
 
 ## Footer
 
-Decision-support only. Not book SoR until ACCEPT (human glass **or** scenario agent grant). No buy/sell/PT/sizing.  
+Decision-support only. Not book SoR until **GO** (`commit_on_go`) or scenario agent ACCEPT. No buy/sell/PT/sizing. Never propose FORMING to glass.  
 **Default is deep parallel research** — opt out with `--light` only.  
 **Default includes one Street bootstrap** after pack — opt out with `--no-street` (or `--light`).

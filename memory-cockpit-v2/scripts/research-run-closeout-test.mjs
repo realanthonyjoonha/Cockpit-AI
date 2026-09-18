@@ -70,7 +70,7 @@ else ok('thesis plans house notes');
 // Fixture vault
 const houseFile = 'house-view-closeco.md';
 const risksRel = 'raw/closeco-research/08-risks-catalysts.md';
-fs.writeFileSync(path.join(tmpVault, houseFile), '# House View — CLOSECO\n\n> **Stance:** Tracking.\n', 'utf8');
+fs.writeFileSync(path.join(tmpVault, houseFile), '# House View — CLOSECO · **CONFIRMED** · 2026-09-18\n\n> **Stance:** Tracking.\n', 'utf8');
 fs.mkdirSync(path.join(tmpVault, 'raw', 'closeco-research'), { recursive: true });
 fs.writeFileSync(path.join(tmpVault, risksRel), `# Risks
 

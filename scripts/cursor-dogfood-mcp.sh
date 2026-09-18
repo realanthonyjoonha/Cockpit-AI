@@ -16,9 +16,23 @@ if [ ! -f "$SCRIPT" ]; then
   exit 1
 fi
 
-if [ ! -f "$SEAL/.cockpit-dogfood.json" ]; then
+need_up=0
+if [ ! -f "$SEAL/.cockpit-dogfood.json" ]; then need_up=1; fi
+if [ -n "${COCKPIT_DOGFOOD_SLUGS:-}" ] && [ -f "$SEAL/.cockpit-scenario.json" ]; then
+  have=$(node -e "const j=require(process.argv[1]);console.log((j.allowed_slugs||[]).join(','))" "$SEAL/.cockpit-scenario.json")
+  want=$(echo "$COCKPIT_DOGFOOD_SLUGS" | tr 'A-Z' 'a-z' | tr -d ' ')
+  if [ "$have" != "$want" ]; then need_up=1; fi
+fi
+if [ "$need_up" -eq 1 ]; then
   echo "cursor-dogfood-mcp: bootstrapping $SEAL (--no-glass)" >&2
-  bash "$ROOT/scripts/dogfood-up.sh" --dir "$SEAL" --mcp-name "$MCP_NAME" --no-glass
+  UP=(--dir "$SEAL" --mcp-name "$MCP_NAME" --no-glass)
+  if [ -n "${COCKPIT_DOGFOOD_SLUGS:-}" ]; then UP+=(--slugs "$COCKPIT_DOGFOOD_SLUGS"); fi
+  bash "$ROOT/scripts/dogfood-up.sh" "${UP[@]}"
+fi
+if [ -f "$SEAL/.cockpit-scenario.json" ]; then
+  SLUGS_CSV=$(node -e "const j=require(process.argv[1]);console.log((j.allowed_slugs||['dogf']).join(','))" "$SEAL/.cockpit-scenario.json")
+else
+  SLUGS_CSV="${COCKPIT_DOGFOOD_SLUGS:-dogf}"
 fi
 
 if is_live_tree "$SEAL"; then
@@ -36,7 +50,7 @@ export ONTOLOGY_WIKI="$COCKPIT_VAULT"
 export ONTOLOGY_STORE="$SEAL/ontology/store/by_ticker"
 export ONTOLOGY_ROOT="$SEAL/ontology"
 export COCKPIT_EXPECT_ROOT="$SEAL"
-export COCKPIT_ALLOWED_SLUGS="dogf"
+export COCKPIT_ALLOWED_SLUGS="$SLUGS_CSV"
 export COCKPIT_SCENARIO_NAME="dogfood"
 export COCKPIT_MCP_NAME="$MCP_NAME"
 export COCKPIT_AGENT_ACCEPT="${COCKPIT_AGENT_ACCEPT:-1}"

@@ -24,6 +24,7 @@ import {
   researchRunFile,
 } from './thinResearchRuns.js';
 import { liveUsEquity } from './quotes.js';
+import { stanceLine } from './houseStance.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
 import { buildHouseAssistContext } from './assistContext.js';
 import {
@@ -34,6 +35,7 @@ import {
   acceptHouseProposal,
   rejectHouseProposal,
 } from './houseProposals.js';
+import { goCommitHouse, goCommitRegister } from './goCommit.js';
 import {
   proposeRiskStatus,
   proposeAddRisk,
@@ -100,41 +102,6 @@ function slimRisk(r) {
     order: Number.isFinite(r.order) ? r.order : 99,
     tripwire_count: Array.isArray(r.tripwires) ? r.tripwires.length : 0,
   };
-}
-
-/**
- * Overview / book strip stance one-liner from house_prior.view_excerpt.
- * Must not stop at "." (breaks "U.S.", "800G", etc.). Nested **Stance:** **body** is common.
- */
-function stanceLine(housePrior, extended) {
-  if (!housePrior) return null;
-  const ex = String(housePrior.view_excerpt || '');
-  const clean = (s) => String(s || '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
-
-  // Full line after Stance: (prefer — do not use [^\n.]+ which truncates at U.S.)
-  let m = ex.match(/\*\*Stance:\*\*\s*(.+?)(?=\s*(?:Not a rating|###|\n\n|$))/is)
-    || ex.match(/\*\*Stance:\s*(.+?)\*\*(?=\s*(?:Not a rating|###|\n\n|$))/is)
-    || ex.match(/(?:^|\n)\s*\*\*Stance[^:]*:\*\*\s*(.+?)(?=\n\n|\n###|$)/is)
-    || ex.match(/(?:^|\n)\s*Stance:\s*(.+?)(?=\n\n|\n###|$)/im);
-
-  if (!m && extended) {
-    m = ex.match(/I am \*\*very bullish\*\*[^.]*\./i)
-      || ex.match(/very bullish on[^.]{0,200}/i);
-    if (m) return clean(m[0]).slice(0, 480);
-  }
-
-  if (m) {
-    const body = clean(m[1] != null ? m[1] : m[0]);
-    if (body) return body.slice(0, 480);
-  }
-  // Fallback: first long bold sentence in excerpt after "Stance"
-  const idx = ex.search(/Stance/i);
-  if (idx >= 0) {
-    const tail = ex.slice(idx).replace(/^Stance:?\*?\*?\s*/i, '');
-    const line = clean(tail.split(/\n/)[0] || '');
-    if (line.length > 40) return line.slice(0, 480);
-  }
-  return housePrior.play || null;
 }
 
 /**
@@ -221,7 +188,7 @@ export function createThinModel(profile) {
         list: `GET /api/${slug}/house/proposals`,
         accept: `POST /api/${slug}/house/proposals/:id/accept`,
         reject: `POST /api/${slug}/house/proposals/:id/reject`,
-        mcp_propose: 'propose_house_view (MCP) — stores draft only; glass ACCEPT writes house',
+        mcp_propose: 'propose_house_view (MCP) — stores draft only; GO commit_on_go or glass ACCEPT writes house',
         note: 'Agent proposes; human ACCEPT on glass. Never silent house write.',
       },
       contract_doc: 'plans/THIN-DESK-CONTRACT.md',
@@ -423,15 +390,16 @@ export function createThinModel(profile) {
         const s = slimRisk(raw);
         const disp = resolveDisplayStatus(s.status, s.name, sorMap);
         let tripwire_count = s.tripwire_count;
-        // If pack has 0 tripwires, try SoR count so register "Trips" column isn't falsely empty
-        if (!tripwire_count) {
-          try {
-            const snap = getSorRiskSnapshot(risksSourceRel, { riskId: s.id, riskName: s.name });
-            if (snap.tripwire_count > 0) tripwire_count = snap.tripwire_count;
-          } catch { /* ignore */ }
-        }
+        let summary = s.summary || '';
+        try {
+          const snap = getSorRiskSnapshot(risksSourceRel, { riskId: s.id, riskName: s.name });
+          if (!tripwire_count && snap.tripwire_count > 0) tripwire_count = snap.tripwire_count;
+          const sorSum = String(snap.summary || '').trim();
+          if (sorSum && (summary.length < 180 || sorSum.length > summary.length)) summary = sorSum;
+        } catch { /* ignore */ }
         return {
           ...s,
+          summary,
           status: disp.status,
           status_source: disp.status_source,
           pack_status: disp.pack_status || s.status,
@@ -485,7 +453,9 @@ export function createThinModel(profile) {
     }));
     let tripwires = packTw;
     let tripwire_source = 'pack';
-    // Prefer SoR tripwires when pack empty or count lags (same class of bug as status lag)
+    let summary = r.summary || '';
+    let summary_source = 'pack';
+    // Prefer SoR tripwires/summary when pack empty, count lags, or compile truncated (~160 chars).
     try {
       const snap = getSorRiskSnapshot(risksSourceRel, {
         riskId: r.id,
@@ -499,17 +469,14 @@ export function createThinModel(profile) {
           state: t.state || '',
           as_of: t.as_of || null,
         }));
-        tripwire_source = packTw.length === 0 ? 'sor' : 'sor';
+        tripwire_source = 'sor';
+      }
+      const sorSum = String(snap.summary || '').trim();
+      if (sorSum && (summary.length < 180 || sorSum.length > summary.length)) {
+        summary = sorSum;
+        summary_source = 'sor';
       }
     } catch { /* no SoR section yet */ }
-
-    const notes = [];
-    if (disp.status_source === 'sor') {
-      notes.push('Showing SoR status (pack lags). COMPILE BOOK to update ontology store.');
-    }
-    if (tripwire_source === 'sor') {
-      notes.push('Showing SoR tripwires (pack lags or empty). COMPILE BOOK to sync monitors.');
-    }
 
     return {
       available: true,
@@ -523,7 +490,7 @@ export function createThinModel(profile) {
       status_source: disp.status_source,
       pack_status: disp.pack_status || r.status || null,
       grade: r.grade || '—',
-      summary: r.summary || '',
+      summary,
       houseview_trigger: !!r.houseview_trigger,
       series: Array.isArray(r.series) ? r.series : [],
       updated: r.updated || null,
@@ -531,7 +498,6 @@ export function createThinModel(profile) {
       tripwires,
       tripwire_source,
       pack_tripwire_count: packTw.length,
-      note: notes.length ? notes.join(' ') : undefined,
     };
   }
 
@@ -709,6 +675,7 @@ export function createThinModel(profile) {
           rationale: body.rationale,
           summary: body.summary,
           source: body.source || 'agent',
+          intent: body.intent,
         });
       }
       return proposeHouse({
@@ -719,6 +686,7 @@ export function createThinModel(profile) {
         rationale: body.rationale,
         summary: body.summary,
         source: body.source || 'agent',
+        intent: body.intent,
       });
     } catch (e) {
       return {
@@ -751,6 +719,48 @@ export function createThinModel(profile) {
   function houseProposalReject(id) {
     try {
       return { ...rejectHouseProposal(slug, id), desk: deskId, ticker: TICKER };
+    } catch (e) {
+      return {
+        ok: false,
+        available: false,
+        error: e.message || String(e),
+        desk: deskId,
+        ticker: TICKER,
+      };
+    }
+  }
+
+  /** GO in Grok — same write path as glass ACCEPT. Not agent_accept. */
+  function goCommit(body = {}) {
+    try {
+      const kind = String(body.kind || 'house').toLowerCase();
+      if (kind === 'register' || kind === 'risks') {
+        return {
+          ...goCommitRegister({
+            slug,
+            houseFile,
+            risksSourceRel,
+            utterance: body.utterance || body.go,
+            proposalIds: body.proposal_ids || body.proposalIds,
+            ticker: TICKER,
+            compile: body.compile === true,
+          }),
+          desk: deskId,
+          ticker: TICKER,
+        };
+      }
+      return {
+        ...goCommitHouse({
+          slug,
+          proposalId: body.proposal_id || body.proposalId,
+          houseFile,
+          utterance: body.utterance || body.go,
+          ticker: TICKER,
+          compile: body.compile === true,
+        }),
+        desk: deskId,
+        ticker: TICKER,
+      };
     } catch (e) {
       return {
         ok: false,
@@ -1060,7 +1070,7 @@ export function createThinModel(profile) {
         'Hand-edit ontology/store/by_ticker/*.json',
         'Save research to Desktop/Downloads',
         'Chat-only (no file) — will not appear on glass',
-        'Silent-write house or risks — Grok proposes; glass ACCEPT only',
+        'Silent-write house or risks — Grok proposes; GO commit_on_go or glass ACCEPT writes',
         neverGen,
       ],
       commands: {
@@ -1080,7 +1090,7 @@ export function createThinModel(profile) {
         { id: 'S3', text: 'Hit COMPILE BOOK on glass (preferred) or ./ont compile' },
         { id: 'S4', text: 'Hit REFRESH BOOK on the glass' },
         { id: 'S5', text: 'See the change on Risks / Overview' },
-        { id: 'S6', text: 'House / risks only via glass ACCEPT of a proposal (or explicit save)' },
+        { id: 'S6', text: 'House / risks via GO commit_on_go or glass ACCEPT of a proposal (or explicit save)' },
       ],
     };
   }
@@ -1100,6 +1110,7 @@ export function createThinModel(profile) {
     housePropose,
     houseProposalAccept,
     houseProposalReject,
+    goCommit,
     riskProposalsList,
     riskProposalGet,
     riskPropose,

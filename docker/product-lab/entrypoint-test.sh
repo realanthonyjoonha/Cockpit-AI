@@ -90,7 +90,10 @@ if [ -d "$HOOKS" ]; then
   for h in $(ls -1 "$HOOKS"/*.sh 2>/dev/null | sort); do
     found=1
     echo "  → hook $(basename "$h")"
-    bash "$h" "$WORKDIR" || exit 1
+    if ! bash "$h" "$WORKDIR"; then
+      echo "  ✗ hook $(basename "$h") FAIL" >&2
+      exit 1
+    fi
   done
   if [ "$found" -eq 0 ]; then echo "  · no hooks"; fi
 fi

@@ -22,8 +22,24 @@ import {
   patchRunMeta,
   failResearchRun,
   researchRunDir,
+  getResearchRun,
   tickerId as researchTickerId,
 } from './thinResearchRuns.js';
+
+function waitPidFile(file, timeoutMs = 4000) {
+  const t0 = Date.now();
+  const spin = new Int32Array(new SharedArrayBuffer(4));
+  while (Date.now() - t0 < timeoutMs) {
+    try {
+      if (fs.existsSync(file)) {
+        const n = parseInt(String(fs.readFileSync(file, 'utf8')).trim(), 10);
+        if (Number.isInteger(n) && n > 1) return n;
+      }
+    } catch { /* */ }
+    Atomics.wait(spin, 0, 0, 80);
+  }
+  return null;
+}
 
 const SERVER_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_REPO = path.resolve(SERVER_ROOT, '..');
@@ -176,7 +192,14 @@ export const GROK_AGENTS = [
   {
     action: 'risk-add',
     label: 'Add risk',
-    hint: 'Research + propose NEW risk · glass ACCEPT',
+    hint: 'Research + propose NEW risk · GO / glass ACCEPT',
+    needs_desk: true,
+    variants: ['desk', 'register'],
+  },
+  {
+    action: 'register-session',
+    label: 'Edit register in Grok',
+    hint: 'Dump 08 · GO writes · SAVE DRAFT parks · EDIT revises',
     needs_desk: true,
     variants: ['desk', 'register'],
     default_for: ['register'],
@@ -184,7 +207,7 @@ export const GROK_AGENTS = [
   {
     action: 'risk-tripwires',
     label: 'Risk tripwires',
-    hint: 'Research tripwires · propose set · glass ACCEPT',
+    hint: 'Research tripwires · propose set · GO / glass ACCEPT',
     needs_desk: true,
     needs_risk: true,
     variants: ['desk', 'risk', 'register'],
@@ -205,8 +228,8 @@ export const GROK_AGENTS = [
   },
   {
     action: 'propose',
-    label: 'Propose house',
-    hint: 'Draft house edit → glass ACCEPT',
+    label: 'Edit house in Grok',
+    hint: 'Dump in Grok · GO writes · SAVE DRAFT parks · EDIT revises',
     needs_desk: true,
     variants: ['desk', 'house'],
     default_for: ['house'],
@@ -512,6 +535,9 @@ export function buildInitialPrompt(opts = {}) {
         case 'risk-add':
           core = withDesk('/cockpit-risk-add');
           break;
+        case 'register-session':
+          core = withDesk('/cockpit-register') + ' --session';
+          break;
         case 'risk-tripwires':
           core = withDeskRisk('/cockpit-risk-tripwires');
           break;
@@ -522,7 +548,7 @@ export function buildInitialPrompt(opts = {}) {
           core = withDesk('/cockpit-match');
           break;
         case 'propose':
-          core = withDesk('/cockpit-propose');
+          core = withDesk('/cockpit-propose') + ' --session';
           break;
         case 'pending':
           core = withDesk('/cockpit-pending');
@@ -748,9 +774,27 @@ export function openGrokBuild(opts = {}) {
     };
   }
 
+  const runTicker = research_seed?.ticker || (opts.ticker ? researchTickerId(opts.ticker) : null);
+  const runDir = (research_seed?.ok && research_seed.run_id && runTicker)
+    ? researchRunDir(runTicker, research_seed.run_id)
+    : null;
+  let liveRun = null;
+  if (runDir && research_seed.run_id && runTicker) {
+    try { liveRun = getResearchRun(runTicker, research_seed.run_id); } catch { liveRun = null; }
+  }
+  const trackInteractive = !!(
+    runDir
+    && !headless?.ok
+    && liveRun
+    && (liveRun.status === 'queued' || liveRun.status === 'running')
+  );
+  const pidFile = trackInteractive ? path.join(runDir, 'terminal.pid') : null;
+
   const cmd = headless?.ok
     ? `clear; echo 'Grok pipeline running HEADLESS (pid ${headless.pid}) — live log below. No typing needed.'; tail -n 40 -f ${shellQuote(headless.log)}`
-    : `cd ${shellQuote(repo)} && ${shellQuote(grok)} ${shellQuote(launchPrompt)}`;
+    : (pidFile
+      ? `cd ${shellQuote(repo)} && tty > ${shellQuote(path.join(runDir, 'terminal.tty'))} && printf '%s\\n' $$ > ${shellQuote(pidFile)} && exec ${shellQuote(grok)} ${shellQuote(launchPrompt)}`
+      : `cd ${shellQuote(repo)} && ${shellQuote(grok)} ${shellQuote(launchPrompt)}`);
 
   const script = `tell application "Terminal"
   activate
@@ -764,6 +808,19 @@ end tell`;
         stdio: 'ignore',
       });
       child.unref();
+      if (pidFile && research_seed?.run_id && runTicker) {
+        const pid = waitPidFile(pidFile, 4000);
+        if (pid) {
+          try {
+            attachWorker(runTicker, research_seed.run_id, {
+              pid,
+              spawned_at: new Date().toISOString(),
+              prompt: launchPrompt.slice(0, 200),
+              seed: research_seed.path || null,
+            });
+          } catch { /* queued→running is best-effort; cancel still matches run_id */ }
+        }
+      }
     }
     let note = 'Opened Terminal → Grok Build (cwd=this monorepo; project MCP pin for cockpit-research).';
     if (street_seed?.ok) {

@@ -26,6 +26,18 @@ grep -q 'filingPageDigest' "$MC/src/pages/thin/FilingMapDossier.jsx"
 grep -q 'Digest' "$MC/src/pages/thin/FilingMapDossier.jsx"
 grep -q 'FilingsSignal' "$MC/src/pages/thin/Overview.jsx"
 grep -q '/filings' "$MC/src/pages/thin/Overview.jsx"
+# form·date separator, accession jail, houseStance (tree under test)
+test -f "$MC/src/pages/thin/filingLink.js"
+grep -q "['\"] · ['\"]" "$MC/src/pages/thin/Overview.jsx"
+grep -q 'looksLikeAccession' "$MC/src/pages/thin/filingLink.js"
+grep -q 'Open on EDGAR' "$MC/src/pages/thin/filingLink.js"
+grep -q 'fmap-print .v' "$MC/src/theme.css"
+grep -q 'isScaffoldStance' "$MC/server/houseStance.js"
+test -f "$MC/scripts/house-stance-test.mjs"
+(cd "$MC" && node scripts/house-stance-test.mjs)
+if [ -f "$MC/src/pages/thin/filingLink.js" ] && grep -q 'looksLikeAccession' "$MC/src/pages/thin/filingLink.js"; then
+  grep -q "['\"] · ['\"]" "$MC/src/pages/thin/Overview.jsx"
+fi
 grep -q 'filingsStripMode' "$MC/src/pages/thin/Filings.jsx"
 grep -q 'filingsLedgerExtras' "$MC/src/pages/thin/Filings.jsx"
 grep -q 'never_mapped' "$MC/src/pages/thin/filingMapPaint.js"

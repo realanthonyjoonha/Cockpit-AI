@@ -123,15 +123,21 @@ async function healthOne(slug, opts = {}) {
     add('S6_model_room', true, 'rooms not declared at top-level (skip)');
   }
 
-  // Soft: research room (saved deep compiles)
-  if (rooms.length && !rooms.includes('research')) {
-    add('S6_research_room', false, 'top-level rooms[] missing research (soft factory warn)');
+  // Compile room retired from advertised rooms (run APIs stay for thesis/model_read).
+  if (rooms.length && rooms.includes('research')) {
+    add('S6_research_room', false, 'top-level rooms[] still advertises research (retired)');
+  } else {
+    add('S6_research_room', true, 'rooms omit research (compile room retired)');
+  }
+
+  if (rooms.length && !rooms.includes('reports')) {
+    add('S6_reports_room', false, 'top-level rooms[] missing reports (soft factory warn)');
     failed -= 1;
     checks[checks.length - 1].soft = true;
-  } else if (rooms.includes('research')) {
-    add('S6_research_room', true, 'rooms includes research');
+  } else if (rooms.includes('reports')) {
+    add('S6_reports_room', true, 'rooms includes reports');
   } else {
-    add('S6_research_room', true, 'rooms not declared at top-level (skip)');
+    add('S6_reports_room', true, 'rooms not declared at top-level (skip)');
   }
 
   if (rooms.length && !rooms.includes('background')) {

@@ -19,8 +19,10 @@ function LastPrint({ print, known, chip, printItem }) {
       {known ? (
         <div className="v">
           <b>{print.form}</b>
+          {' · '}
           <span className="mono">{print.date || print.filed}</span>
           {printItem ? <span className="dimmer" style={{ fontSize: 11 }}>{printItem}</span> : null}
+          {' · '}
           <span className={`chipC${chip.cls ? ` ${chip.cls}` : ''}`}>{chip.t}</span>
           {print.url ? (
             <a className="filing-link" href={print.url} target="_blank" rel="noopener noreferrer">

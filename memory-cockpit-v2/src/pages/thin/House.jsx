@@ -207,6 +207,9 @@ export default function ThinHouse({ desk }) {
           >
             <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>PENDING</span>
             <span className="dim" style={{ fontSize: 9 }}>HOUSE</span>
+            <span className={`chipC ${p.will_write === 'CONFIRMED' ? 'ok' : 'watch'}`} style={{ fontSize: 9 }}>
+              WILL WRITE: {p.will_write === 'CONFIRMED' ? 'CONFIRMED' : 'FORMING'}
+            </span>
             <span style={{ flex: 1, minWidth: 120 }}>{p.summary || 'House draft'}</span>
             <button
               type="button"
@@ -236,6 +239,9 @@ export default function ThinHouse({ desk }) {
               <span className="dim" style={{ fontSize: 9, letterSpacing: 0.3 }}>REVIEW</span>
               <span style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
                 {activeProposal.summary || 'House draft'}
+              </span>
+              <span className={`chipC ${activeProposal.will_write === 'CONFIRMED' ? 'ok' : 'watch'}`} style={{ fontSize: 9 }}>
+                WILL WRITE: {activeProposal.will_write === 'CONFIRMED' ? 'CONFIRMED' : 'FORMING'}
               </span>
             </div>
             {activeProposal.rationale ? (

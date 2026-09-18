@@ -26,6 +26,7 @@ import {
 import {
   pidAlive,
   killProcessGroup,
+  reapResearchRunProcesses,
   spawnResearchWorker,
   reconcileRun,
   stalledOverlay,
@@ -291,20 +292,28 @@ export function patchRunMeta(ticker, runId, patcher, opts = {}) {
 
 export function attachWorker(ticker, runId, worker = {}) {
   const now = new Date().toISOString();
-  return patchRunMeta(ticker, runId, (m) => ({
-    ...m,
-    status: m.status === 'queued' ? 'running' : (m.status || 'running'),
-    worker: {
-      ...(m.worker || {}),
-      pid: worker.pid || null,
-      spawned_at: worker.spawned_at || now,
-      log: worker.log || null,
-      prompt: worker.prompt || null,
-      seed: worker.seed || null,
-      heartbeat_at: worker.heartbeat_at || now,
-      pid_dead_since: null,
-    },
-  }));
+  return patchRunMeta(ticker, runId, (m) => {
+    if (m.status === 'complete' || m.immutable === true) {
+      return { ok: false, error: 'run is complete (immutable) — will not attach worker' };
+    }
+    if (m.status === 'cancelled') {
+      return { ok: false, error: 'run was cancelled — will not attach worker' };
+    }
+    return {
+      ...m,
+      status: m.status === 'queued' ? 'running' : (m.status || 'running'),
+      worker: {
+        ...(m.worker || {}),
+        pid: worker.pid || null,
+        spawned_at: worker.spawned_at || now,
+        log: worker.log || null,
+        prompt: worker.prompt || null,
+        seed: worker.seed || null,
+        heartbeat_at: worker.heartbeat_at || now,
+        pid_dead_since: null,
+      },
+    };
+  });
 }
 
 export function heartbeatResearchRun(ticker, runId) {
@@ -994,11 +1003,29 @@ export function cancelResearchRun(ticker, runId, opts = {}) {
   if (meta.immutable === true || meta.status === 'complete') {
     return { ok: false, error: 'run is complete (immutable) — cannot cancel', decision_support_only: true };
   }
+  const extraPids = [];
+  if (meta.worker?.pid) extraPids.push(Number(meta.worker.pid));
+  try {
+    const tp = path.join(dir, 'terminal.pid');
+    if (fs.existsSync(tp)) {
+      const n = parseInt(String(fs.readFileSync(tp, 'utf8')).trim(), 10);
+      if (Number.isInteger(n) && n > 1) extraPids.push(n);
+    }
+  } catch { /* */ }
+
   if (meta.status === 'cancelled') {
-    return { ok: true, run_id: rid, status: 'cancelled', note: 'already cancelled', decision_support_only: true };
+    const leftover = reapResearchRunProcesses({ runId: rid, runDir: dir, extraPids });
+    return {
+      ok: true,
+      run_id: rid,
+      status: 'cancelled',
+      note: 'already cancelled',
+      killed_pids: leftover?.killed || [],
+      decision_support_only: true,
+    };
   }
-  const pid = meta.worker?.pid;
-  if (pid) killProcessGroup(pid);
+  const reaped = reapResearchRunProcesses({ runId: rid, runDir: dir, extraPids });
+  const killed = Array.isArray(reaped?.killed) ? reaped.killed : [];
   const now = new Date().toISOString();
   const patched = patchRunMeta(id, rid, (m) => ({
     ...m,
@@ -1013,7 +1040,8 @@ export function cancelResearchRun(ticker, runId, opts = {}) {
     ticker: id,
     status: 'cancelled',
     cancelled_at: now,
-    killed_pid: pid || null,
+    killed_pid: killed[0] || null,
+    killed_pids: killed,
     decision_support_only: true,
     ...listResearchRuns(id),
   };
@@ -1024,7 +1052,15 @@ export function failResearchRun(ticker, runId, error) {
   const rid = String(runId || '').replace(/[^A-Za-z0-9._-]/g, '');
   const dir = researchRunDir(id, rid);
   const meta = dir ? readJsonSafe(path.join(dir, 'meta.json')) : null;
-  if (meta?.worker?.pid) killProcessGroup(meta.worker.pid);
+  if (dir) {
+    reapResearchRunProcesses({
+      runId: rid,
+      runDir: dir,
+      extraPids: meta?.worker?.pid ? [meta.worker.pid] : [],
+    });
+  } else if (meta?.worker?.pid) {
+    killProcessGroup(meta.worker.pid);
+  }
   const now = new Date().toISOString();
   return patchRunMeta(ticker, runId, (m) => ({
     ...m,

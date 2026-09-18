@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { VAULT_DIR, isInsideVault, renderMd, fm } from './vault.js';
 import { saveHouseMarkdown, readHouseMarkdown, HOUSE_MAX_BYTES } from './thinHouseSave.js';
 import { assertVaultWriteMatches } from './writeAssert.js';
+import { assertProposeHouseMarkdown, houseMarkdownStatus } from './houseStance.js';
 
 const PROPOSALS_DIR = path.join(VAULT_DIR, 'cockpit', 'proposals');
 
@@ -18,7 +19,6 @@ function storePath(slug) {
 }
 
 function ensureDir() {
-  if (!fs.existsSync(VAULT_DIR)) return;
   if (!fs.existsSync(PROPOSALS_DIR)) {
     fs.mkdirSync(PROPOSALS_DIR, { recursive: true, mode: 0o755 });
   }
@@ -95,6 +95,7 @@ function clip(s, n = 280) {
   return `${t.slice(0, n - 1)}…`;
 }
 
+/** LCS line diff. Fine for house files (typically well under 800 lines). */
 export function diffLines(oldText, newText) {
   const a = splitLines(oldText);
   const b = splitLines(newText);
@@ -168,6 +169,10 @@ export function hunksFromOps(ops, context = 2, maxHunkLines = 80) {
   return out;
 }
 
+/**
+ * Glass review payload: field deltas + body hunks + HTML of proposed body.
+ * Current house is compared so the reader is not dumped a YAML wall.
+ */
 export function reviewHouseProposal(currentMd, proposedMd) {
   const cur = parseHouseParts(currentMd);
   const next = parseHouseParts(proposedMd);
@@ -261,6 +266,7 @@ export function proposeHouseFromCurrent(opts) {
     rationale: opts.rationale,
     summary: opts.summary,
     source: opts.source || 'agent',
+    intent: opts.intent,
   });
   return {
     ...out,
@@ -282,6 +288,7 @@ export function proposeHouse(opts) {
   const houseFile = String(opts.houseFile || '');
   if (!slug || !ticker || !houseFile) throw new Error('slug, ticker, houseFile required');
 
+  const willWrite = assertProposeHouseMarkdown(opts.markdown, opts.intent);
   const bytes = validateMarkdown(opts.markdown);
   const store = readStore(slug);
   const id = `hp_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`;
@@ -297,6 +304,7 @@ export function proposeHouse(opts) {
     rationale: String(opts.rationale || '').slice(0, 4000),
     summary: String(opts.summary || opts.rationale || 'House draft').slice(0, 400),
     source: String(opts.source || 'agent').slice(0, 80),
+    will_write: willWrite,
     created_at: new Date().toISOString(),
     accepted_at: null,
     rejected_at: null,
@@ -319,13 +327,13 @@ export function proposeHouse(opts) {
       summary: proposal.summary,
       rationale: proposal.rationale,
       source: proposal.source,
+      will_write: proposal.will_write,
       created_at: proposal.created_at,
     },
-    note: 'Proposal stored. House file NOT written. Accept on glass House page to apply.',
+    note: 'CONFIRMED proposal stored. House file NOT written yet. commit_on_go writes. FORMING is never proposed to glass.',
     next_steps: [
-      `Open glass #/${slug}/house`,
-      'Review pending agent proposal → ACCEPT or REJECT',
-      'After ACCEPT: COMPILE BOOK → REFRESH',
+      `commit_on_go desk=${slug} kind=house proposal_id=${id} utterance=GO`,
+      'Glass ACCEPT of CONFIRMED is the alternate commit if commit_on_go did not run',
     ],
     decision_support_only: true,
   };
@@ -364,6 +372,7 @@ export function listHouseProposals(slug, opts = {}) {
       created_at: p.created_at,
       accepted_at: p.accepted_at,
       rejected_at: p.rejected_at,
+      will_write: p.will_write || houseMarkdownStatus(p.markdown),
       markdown: includeMd ? p.markdown : undefined,
       markdown_preview: includeMd
         ? undefined
@@ -381,11 +390,24 @@ export function getHouseProposal(slug, id, opts = {}) {
   const store = readStore(slug);
   const p = store.proposals.find((x) => x.id === id);
   if (!p) return null;
+  let review = null;
+  try {
+    let current = opts.currentMarkdown;
+    if (current == null && p.house_file) {
+      const raw = readHouseMarkdown(p.house_file);
+      current = raw?.markdown || '';
+    }
+    review = reviewHouseProposal(current || '', p.markdown || '');
+  } catch {
+    review = null;
+  }
   return {
     available: true,
     proposal: {
       ...p,
+      will_write: p.will_write || houseMarkdownStatus(p.markdown),
       markdown: opts.includeMarkdown === false ? undefined : p.markdown,
+      review,
     },
   };
 }

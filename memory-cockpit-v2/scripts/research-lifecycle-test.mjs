@@ -113,6 +113,67 @@ else bad('false stall from started_at');
 try { process.kill(live.pid, 'SIGKILL'); } catch { /* */ }
 cancelResearchRun('QQQTEST', e.run_id);
 
+const { pidAlive, killProcessesMatching } = await import(path.join(ROOT, 'server', 'researchRunsWorker.js'));
+const kt = startResearchRun('KILLCMD', { job: 'thesis_report', thesis_mode: 'earnings-update' }, { desk: 'killcmd' });
+const ghost = spawn(process.execPath, ['-e', `/* ${kt.run_id} */\nsetInterval(() => {}, 400)`], {
+  detached: true,
+  stdio: 'ignore',
+});
+ghost.unref();
+await new Promise((r) => setTimeout(r, 150));
+if (!pidAlive(ghost.pid)) bad('ghost process died before cancel');
+else ok('ghost process running (stand-in for Terminal grok)');
+const cGhost = cancelResearchRun('KILLCMD', kt.run_id);
+await new Promise((r) => setTimeout(r, 150));
+if (pidAlive(ghost.pid)) bad(`cancel left Terminal-like pid ${ghost.pid} alive killed=${JSON.stringify(cGhost.killed_pids)}`);
+else ok('cancel kills process whose cmdline contains run_id');
+
+const leftover = spawn(process.execPath, ['-e', `/* ${kt.run_id} */\nsetInterval(() => {}, 400)`], {
+  detached: true,
+  stdio: 'ignore',
+});
+leftover.unref();
+await new Promise((r) => setTimeout(r, 150));
+const again = cancelResearchRun('KILLCMD', kt.run_id);
+await new Promise((r) => setTimeout(r, 150));
+if (pidAlive(leftover.pid)) bad('second cancel on already-cancelled left grok alive');
+else ok('CANCEL again still kills leftover Grok for that run_id');
+if (!Array.isArray(again.killed_pids)) bad('already-cancelled should return killed_pids');
+else ok('already-cancelled reports killed_pids');
+
+const treeRun = startResearchRun('TREERUN', { job: 'thesis_report', thesis_mode: 'earnings-update' }, { desk: 'treerun' });
+const childPidFile = path.join(tmpVault, 'tree-child.pid');
+const treeParent = spawn(process.execPath, ['-e', `
+  const { spawn } = require('child_process');
+  const fs = require('fs');
+  const c = spawn('sleep', ['30'], { stdio: 'ignore' });
+  fs.writeFileSync(${JSON.stringify(childPidFile)}, String(c.pid));
+  /* ${treeRun.run_id} */
+  setInterval(() => {}, 400);
+`], { detached: true, stdio: 'ignore' });
+treeParent.unref();
+await new Promise((r) => setTimeout(r, 250));
+const childPid = fs.existsSync(childPidFile)
+  ? parseInt(fs.readFileSync(childPidFile, 'utf8').trim(), 10)
+  : null;
+if (!pidAlive(treeParent.pid)) bad('tree parent died before cancel');
+else ok('tree parent running');
+cancelResearchRun('TREERUN', treeRun.run_id);
+await new Promise((r) => setTimeout(r, 250));
+if (pidAlive(treeParent.pid)) bad('cancel left parent grok-like pid alive');
+else ok('cancel kills parent');
+if (childPid && pidAlive(childPid)) bad(`cancel leaked child pid ${childPid}`);
+else ok('cancel kills descendant (no child leak)');
+
+const bystander = spawn('sleep', ['20'], { detached: true, stdio: 'ignore' });
+bystander.unref();
+await new Promise((r) => setTimeout(r, 80));
+cancelResearchRun('TREERUN', treeRun.run_id);
+await new Promise((r) => setTimeout(r, 80));
+if (!pidAlive(bystander.pid)) bad('cancel killed unrelated process');
+else ok('cancel does not kill unrelated processes');
+try { process.kill(bystander.pid, 'SIGKILL'); } catch { /* */ }
+
 // retry from failed
 const rtry = retryResearchRun('ZZZZTEST', d.run_id, { launch: false });
 if (rtry.ok && (rtry.status === 'queued')) ok('retry API from failed → queued');

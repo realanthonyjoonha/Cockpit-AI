@@ -2,7 +2,10 @@
   "mcpServers": {
     "cockpit-research-dogfood": {
       "command": "bash",
-      "args": ["scripts/cursor-dogfood-mcp.sh"]
+      "args": ["scripts/cursor-dogfood-mcp.sh"],
+      "env": {
+        "COCKPIT_DOGFOOD_SLUGS": "nvda,mu,lly"
+      }
     }
   }
 }

@@ -1,10 +1,10 @@
 // researchRunsWorker.js — spawn / pid / heartbeat / kill for research pipeline.
 // Decision-support only. Does not write house/risks/pack. Pid on run meta via patchRunMeta.
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { isInteractiveResearchJob } from './researchRunsSchema.js';
+import { isThesisReportJob, isInteractiveResearchJob } from './researchRunsSchema.js';
 
 export const HEARTBEAT_STALE_MS = 5 * 60 * 1000;
 export const PID_DEAD_GRACE_MS = 15 * 1000;
@@ -30,10 +30,218 @@ export function killProcessGroup(pid) {
   if (!Number.isInteger(n) || n <= 0) return { ok: false, error: 'no pid' };
   try {
     try { process.kill(-n, 'SIGTERM'); } catch { process.kill(n, 'SIGTERM'); }
-    return { ok: true, pid: n };
   } catch (e) {
-    return { ok: false, error: e.message || String(e), pid: n };
+    try { process.kill(n, 'SIGTERM'); } catch { /* */ }
   }
+  // Grok TUI often ignores SIGTERM — escalate.
+  try { process.kill(-n, 'SIGKILL'); } catch { /* */ }
+  try { process.kill(n, 'SIGKILL'); } catch { /* already dead */ }
+  return { ok: true, pid: n };
+}
+
+/**
+ * Kill processes whose command line contains a unique run_id (interactive
+ * Terminal grok has no worker.pid). Never touches Grok Bot.app or this process.
+ */
+export function killProcessesMatching(needle) {
+  return reapResearchRunProcesses({ runId: needle });
+}
+
+function parsePsTable(stdout) {
+  const rows = [];
+  for (const line of String(stdout || '').split('\n')) {
+    const m = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
+    if (!m) continue;
+    rows.push({
+      pid: parseInt(m[1], 10),
+      ppid: parseInt(m[2], 10),
+      cmd: m[3] || '',
+    });
+  }
+  return rows;
+}
+
+/** Linux: /proc so CANCEL works in slim Docker (no BSD `ps -o command=`). */
+function listFromProc() {
+  const proc = '/proc';
+  if (!fs.existsSync(path.join(proc, 'self'))) return [];
+  let ents;
+  try { ents = fs.readdirSync(proc); } catch { return []; }
+  const rows = [];
+  for (const name of ents) {
+    if (!/^\d+$/.test(name)) continue;
+    const pid = parseInt(name, 10);
+    if (!Number.isInteger(pid) || pid <= 0) continue;
+    let ppid = 0;
+    try {
+      const stat = fs.readFileSync(path.join(proc, name, 'stat'), 'utf8');
+      const rparen = stat.lastIndexOf(')');
+      const rest = rparen >= 0 ? stat.slice(rparen + 1).trim().split(/\s+/) : [];
+      ppid = parseInt(rest[1], 10) || 0;
+    } catch { continue; }
+    let cmd = '';
+    try {
+      cmd = fs.readFileSync(path.join(proc, name, 'cmdline'), 'utf8').replace(/\0/g, ' ').trim();
+    } catch { cmd = ''; }
+    if (!cmd) {
+      try { cmd = fs.readFileSync(path.join(proc, name, 'comm'), 'utf8').trim(); } catch { cmd = ''; }
+    }
+    rows.push({ pid, ppid, cmd });
+  }
+  return rows;
+}
+
+function listProcessTable() {
+  const fromProc = listFromProc();
+  if (fromProc.length) return fromProc;
+  const attempts = [
+    ['-axww', '-o', 'pid=,ppid=,command='],
+    ['-axww', '-o', 'pid=,ppid=,args='],
+    ['-ax', '-o', 'pid=,ppid=,command='],
+    ['-ax', '-o', 'pid=,ppid=,args='],
+  ];
+  for (const args of attempts) {
+    const r = spawnSync('ps', args, { encoding: 'utf8' });
+    if (r.status !== 0) continue;
+    const rows = parsePsTable(r.stdout);
+    if (rows.length) return rows;
+  }
+  return [];
+}
+
+function isProtectedPid(row) {
+  if (!row || !Number.isInteger(row.pid) || row.pid <= 1) return true;
+  if (row.pid === process.pid || row.pid === process.ppid) return true;
+  const cmd = row.cmd || '';
+  if (/Grok Bot\.app/i.test(cmd)) return true;
+  if (/cockpit-kernel-glass/i.test(cmd)) return true;
+  if (/memory-cockpit-v2\/server\/index\.js/.test(cmd)) return true;
+  return false;
+}
+
+function closeTerminalTabs(opts = {}) {
+  if (process.platform !== 'darwin') return { ok: false, reason: 'not darwin' };
+  const ttys = [...new Set((opts.ttys || []).map((t) => String(t || '').trim()).filter(Boolean))];
+  const names = [...new Set((opts.windowNames || []).map((t) => String(t || '').trim()).filter((t) => t.length >= 8))];
+  if (!ttys.length && !names.length) return { ok: true, closed: 0, reason: 'no tty' };
+  const ttyList = ttys.map((t) => JSON.stringify(t)).join(', ');
+  const nameList = names.map((t) => JSON.stringify(t)).join(', ');
+  const script = `
+tell application "System Events"
+  if not (exists process "Terminal") then return
+end tell
+tell application "Terminal"
+  set ttyWanted to {${ttyList || ''}}
+  set nameWanted to {${nameList || ''}}
+  set closable to {}
+  repeat with w in windows
+    try
+      set n to name of w as string
+      set matchName to false
+      if (count of nameWanted) > 0 then
+        repeat with needle in nameWanted
+          if n contains (needle as string) then set matchName to true
+        end repeat
+      end if
+      set matchTty to false
+      if (count of ttyWanted) > 0 then
+        try
+          set tt to (tty of selected tab of w) as string
+          repeat with wanted in ttyWanted
+            if tt is equal to (wanted as string) then set matchTty to true
+          end repeat
+        end try
+      end if
+      if matchTty or matchName then set end of closable to w
+    end try
+  end repeat
+  repeat with w in closable
+    try
+      close w saving no
+    end try
+  end repeat
+end tell`;
+  const r = spawnSync('osascript', ['-e', script], { encoding: 'utf8', timeout: 8000 });
+  return { ok: r.status === 0, status: r.status, ttys, stderr: (r.stderr || '').slice(0, 200) };
+}
+
+/**
+ * Kill Grok + descendants + anything whose argv points at this run folder.
+ * Does not kill glass, Grok Bot.app, or other desks' grok sessions.
+ */
+export function reapResearchRunProcesses(opts = {}) {
+  const token = String(opts.runId || opts.needle || '');
+  if (token.length < 12 || !/^[A-Za-z0-9._-]+$/.test(token)) {
+    return { ok: false, killed: [], error: 'needle too short or invalid' };
+  }
+  const dir = opts.runDir ? String(opts.runDir).replace(/\/$/, '') : '';
+  const shortDir = dir.includes('/research/')
+    ? dir.slice(dir.indexOf('/research/'))
+    : '';
+  const extra = Array.isArray(opts.extraPids) ? opts.extraPids : [];
+  const table = listProcessTable();
+  const roots = new Set();
+  for (const p of extra) {
+    const n = Number(p);
+    if (Number.isInteger(n) && n > 1) roots.add(n);
+  }
+  for (const row of table) {
+    if (isProtectedPid(row)) continue;
+    if (row.cmd.includes(token)) { roots.add(row.pid); continue; }
+    if (dir && row.cmd.includes(dir)) { roots.add(row.pid); continue; }
+    if (shortDir && row.cmd.includes(shortDir)) roots.add(row.pid);
+  }
+  const killSet = new Set(roots);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const row of table) {
+      if (isProtectedPid(row)) continue;
+      if (killSet.has(row.ppid) && !killSet.has(row.pid)) {
+        killSet.add(row.pid);
+        grew = true;
+      }
+    }
+  }
+  const killed = [];
+  for (const pid of killSet) {
+    const row = table.find((r) => r.pid === pid);
+    if (row && isProtectedPid(row)) continue;
+    killProcessGroup(pid);
+    killed.push(pid);
+  }
+  const ttys = [];
+  if (dir) {
+    try {
+      const ttyPath = path.join(dir, 'terminal.tty');
+      if (fs.existsSync(ttyPath)) {
+        const t = String(fs.readFileSync(ttyPath, 'utf8')).trim();
+        if (t) ttys.push(t);
+      }
+    } catch { /* */ }
+  }
+  let closed = null;
+  try {
+    closed = closeTerminalTabs({ ttys });
+  } catch { closed = { ok: false }; }
+  const leftover = [];
+  for (const row of listProcessTable()) {
+    if (isProtectedPid(row)) continue;
+    if (row.cmd.includes(token) || (dir && row.cmd.includes(dir)) || (shortDir && row.cmd.includes(shortDir))) {
+      leftover.push(row.pid);
+    }
+  }
+  for (const pid of leftover) {
+    if (killed.includes(pid)) continue;
+    killProcessGroup(pid);
+    killed.push(pid);
+  }
+  return {
+    ok: true,
+    killed,
+    needle: token,
+    terminal_close: closed,
+  };
 }
 
 export function logMtimeMs(logPath) {
@@ -81,6 +289,8 @@ export function heartbeatAgeMs(meta, now = Date.now()) {
 export function stalledOverlay(meta, now = Date.now()) {
   const st = meta?.status;
   if (st !== 'running' && st !== 'queued') return false;
+  // Thesis lane is interactive OPEN GROK — no headless pid/heartbeat.
+  if (isInteractiveResearchJob(meta?.job) && !(meta?.worker?.pid)) return false;
   const age = heartbeatAgeMs(meta, now);
   if (age == null) return false;
   return age > HEARTBEAT_STALE_MS;
@@ -108,7 +318,7 @@ export function spawnRefuseReason(ticker, runId, deps) {
   if (spawnInProgress.has(id)) {
     return { refuse: true, already_in_flight: true, reason: 'spawn in progress', run_id: runId || null };
   }
-  const inflight = deps.findInFlightRun(id);
+  const inflight = deps.findInFlightRun(id, { lane: 'compile' });
   if (!inflight) return { refuse: false };
   const pid = inflight.worker?.pid;
   const live = pidAlive(pid);
@@ -268,7 +478,7 @@ export function reconcileRun(ticker, meta, deps, now = Date.now()) {
   }
 
   if (!pid) {
-    // Interactive thesis_report / model_read / filing_map stay queued with worker: null by design.
+    // Interactive thesis_report / model_read stay queued with worker: null by design.
     if (isInteractiveResearchJob(meta.job)) {
       return { stalled: false, meta };
     }

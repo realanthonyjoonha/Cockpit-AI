@@ -1,6 +1,6 @@
 // Shared thin-desk Update — write_path_mode: meta_only (UP-C v1.1).
 // Paths + ritual + COMPILE BOOK via BookStrip.
-// House/risks: Grok propose_* → glass ACCEPT (never silent write).
+// House/risks: Grok propose_* after GO → commit_on_go (never silent write; never FORMING).
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 import BookStrip from './BookStrip.jsx';

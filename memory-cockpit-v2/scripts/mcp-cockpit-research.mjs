@@ -6,8 +6,8 @@
  * Future host:   Claude Code / Desktop  (npm run claude:mcp-install)
  * Also works:    any MCP client (Codex, etc.) pointing at this script.
  *
- * Tools: read book + propose_house_view (draft store only).
- * House file written ONLY when human ACCEPT on glass (not by MCP).
+ * Tools: read book + propose_house_view (draft store only) + commit_on_go after user GO.
+ * SAVE DRAFT stays in Grok (no FORMING chip). Glass ACCEPT of CONFIRMED is alternate.
  * Decision-support only. No API key in the glass.
  */
 import {
@@ -16,6 +16,7 @@ import {
   listHouseProposals,
   acceptHouseProposal,
 } from '../server/houseProposals.js';
+import { goCommitHouse, goCommitRegister } from '../server/goCommit.js';
 import {
   proposeRiskStatus,
   proposeAddRisk,
@@ -206,7 +207,7 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
       'Desks = config/thin-desks.json (re-read on file change). ' +
       'monorepo_root is the human tree (usually ~/Desktop/cockpit-kernel); monorepo_real is the inode if that path is a symlink. Same tree — do not treat Trading/cockpit as a different product. ' +
       'github/edgartools/tasks MCPs are unrelated. One cockpit-research pin per session. ' +
-      'If pin_ok is false, STOP. agent_accept off = glass ACCEPT only.',
+      'If pin_ok is false, STOP. After user GO, commit_on_go writes. SAVE DRAFT / EDIT never propose. Never FORMING on glass. agent_accept stays off on kernel.',
   });
 });
 
@@ -225,7 +226,7 @@ server.tool(
       exists: raw.exists,
       path: raw.path,
       markdown: raw.markdown,
-      write_policy: 'Do not write house directly. Use propose_house_view; user ACCEPTs on glass.',
+      write_policy: 'Do not write house-view-*.md directly. propose_house_view then commit_on_go after user GO (glass ACCEPT is alternate).',
       decision_support_only: true,
     });
   },
@@ -347,15 +348,16 @@ server.tool(
 
 server.tool(
   'propose_house_view',
-  'Propose house draft (does NOT write vault house). PREFER propose_house_from_current for small edits. Else markdown_path under /tmp, or full markdown. Human ACCEPT on glass.',
+  'Propose CONFIRMED house after user GO (does NOT write vault house). Never FORMING. After propose, call commit_on_go. SAVE DRAFT / EDIT must not call this.',
   {
     desk: z.string().describe('slug or ticker, e.g. nbis'),
     markdown: z.string().optional().describe('Full house-view markdown. Avoid if large — use markdown_path or propose_house_from_current.'),
     markdown_path: z.string().optional().describe('Absolute path under /tmp or vault cockpit/proposals/'),
     rationale: z.string().optional(),
     summary: z.string().optional(),
+    intent: z.string().optional().describe('go | save_draft — must match markdown status'),
   },
-  async ({ desk, markdown, markdown_path, rationale, summary }) => {
+  async ({ desk, markdown, markdown_path, rationale, summary, intent }) => {
     const { desk: d, profile } = resolveDesk(desk);
     try {
       let md = markdown;
@@ -373,11 +375,12 @@ server.tool(
         rationale,
         summary,
         source: 'grok_mcp',
+        intent,
       });
       return textResult({
         ...out,
-        glass: `Open http://127.0.0.1:4681/#/${d.slug}/house → review pending proposal → ACCEPT or REJECT`,
-        invariant: 'House file unchanged until human ACCEPT. Then COMPILE BOOK + REFRESH.',
+        glass: `Viewer http://127.0.0.1:4682/#/${d.slug}/house — GO → commit_on_go; SAVE DRAFT stays in Grok`,
+        invariant: 'House file unchanged until commit_on_go (after GO) or glass ACCEPT.',
       });
     } catch (e) {
       return textResult({ ok: false, error: e.message || String(e) });
@@ -387,7 +390,7 @@ server.tool(
 
 server.tool(
   'propose_house_from_current',
-  'EFFICIENT propose: load current vault house, apply exact find→replace (each find must match once), store pending proposal. Prefer this over full-file propose. Does NOT write vault house until glass ACCEPT.',
+  'EFFICIENT propose: load current vault house, apply exact find→replace (each find must match once), store pending proposal. Prefer this over full-file propose. After user GO, commit_on_go. Does NOT write until then (or glass ACCEPT).',
   {
     desk: z.string().describe('slug or ticker'),
     replacements: z.array(z.object({
@@ -396,8 +399,9 @@ server.tool(
     })).describe('Ordered exact replacements'),
     rationale: z.string().optional().describe('Pack-grounded why'),
     summary: z.string().optional().describe('One-line glass banner'),
+    intent: z.string().optional().describe('go | save_draft'),
   },
-  async ({ desk, replacements, rationale, summary }) => {
+  async ({ desk, replacements, rationale, summary, intent }) => {
     const { desk: d, profile } = resolveDesk(desk);
     try {
       const out = proposeHouseFromCurrent({
@@ -408,12 +412,54 @@ server.tool(
         rationale,
         summary,
         source: 'grok_mcp',
+        intent,
       });
       return textResult({
         ...out,
-        glass: `Open http://127.0.0.1:4681/#/${d.slug}/house → REVIEW → ACCEPT or REJECT`,
-        invariant: 'Vault house unchanged until human ACCEPT. Then COMPILE BOOK + REFRESH.',
+        glass: `Viewer http://127.0.0.1:4682/#/${d.slug}/house`,
+        invariant: 'Vault house unchanged until commit_on_go after GO, or glass ACCEPT.',
         efficiency: 'Built from current house via exact replacements — do not mine chat history.',
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'commit_on_go',
+  'Write vault after the user said GO in this chat. Same path as glass ACCEPT. Requires pending CONFIRMED house proposal_id for kind=house. kind=register requires live house CONFIRMED. Do NOT call after SAVE DRAFT or EDIT. Pass utterance verbatim. Not agent_accept.',
+  {
+    desk: z.string(),
+    kind: z.string().describe('house | register'),
+    proposal_id: z.string().optional().describe('Required for kind=house (pending CONFIRMED id)'),
+    utterance: z.string().describe('User line verbatim (GO / looks good / CONFIRM / ACCEPT REGISTER)'),
+  },
+  async ({ desk, kind, proposal_id, utterance }) => {
+    try {
+      pinGuard();
+      const { desk: d, profile } = resolveDesk(desk);
+      const houseFile = d.house_file || profile.houseFile;
+      const k = String(kind || 'house').toLowerCase();
+      const out = (k === 'register' || k === 'risks')
+        ? goCommitRegister({
+          slug: d.slug,
+          houseFile,
+          risksSourceRel: profile.risksSource,
+          utterance,
+          ticker: d.ticker || profile.ticker,
+        })
+        : goCommitHouse({
+          slug: d.slug,
+          proposalId: proposal_id,
+          houseFile,
+          utterance,
+          ticker: d.ticker || profile.ticker,
+        });
+      return textResult({
+        ...out,
+        glass: `Viewer http://127.0.0.1:4682/#/${d.slug}/${k === 'register' ? 'risks' : 'house'}`,
+        invariant: 'Wrote because user GO. SAVE DRAFT must not call this. Glass ACCEPT remains alternate.',
       });
     } catch (e) {
       return textResult({ ok: false, error: e.message || String(e) });

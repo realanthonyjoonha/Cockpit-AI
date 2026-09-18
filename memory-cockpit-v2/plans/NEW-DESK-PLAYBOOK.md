@@ -57,7 +57,7 @@ Opt out only with `--light` / explicit “quick pass.” See `.grok/commands/coc
 - [ ] Sources distillations for claim source-slugs under `wiki/sources/`
 - [ ] Draft `08-risks-catalysts.md` (section A before `## B)`) with mechanisms + tripwires
 - [ ] `wiki/log.md` one-liner if material
-- [ ] House view **only** on Anthony’s explicit save: `house-view-<slug>.md` (stays FORMING until CONFIRM)
+- [ ] House view **only** on Anthony’s explicit save: `house-view-<slug>.md` (FORMING stub until **GO** in Grok + `commit_on_go` of a CONFIRMED proposal; **EDIT** dumps again with no write; never propose FORMING to glass)
 
 **Part 1 gate (binding):** `ontology/PART1-GATE.md` · plan `plans/2026-07-21-part1-reliability-verify-loop.md`
 
@@ -66,7 +66,7 @@ Opt out only with `--light` / explicit “quick pass.” See `.grok/commands/coc
 - [ ] Wire risk compile path (like NBIS `risks_source` or MU `risks_dir`)
 - [ ] `cd ~/Trading/ontology && ./ont compile TICKER`
 - [ ] **`./ont verify TICKER`** — structural fail-closed (exit 0)
-- [ ] After Anthony CONFIRM + RISKS ACCEPT:  
+- [ ] After GO + `commit_on_go` house, then GO + `commit_on_go` register:  
   `./ont verify TICKER --require-confirmed --require-risks-accepted`
 - [ ] Smoke: `./ont ask TICKER "house view"` and `"what is on watch"`
 - [ ] Never hand-edit `ontology/store/`
@@ -80,6 +80,8 @@ Obey **THIN-DESK-CONTRACT.md** + **THIN-DESK-UI-PARITY.md**. UI chrome is **shar
 - [ ] Optional thin wrappers under `src/pages/<slug>/` only if App routing still needs them; prefer registry-driven routes
 - [ ] **Slug resolve invariant:** desk slug must **not** be in `RESERVED_API_SLUGS` (`thinDeskMount.js`). After add: `npm run test:thin-slug-resolve` + `curl /api/{slug}/house` (catalog-only is not enough — NBIS 2026-08-04)
 - [ ] **Desk health gate:** `node scripts/desk-health.mjs --slug {slug}` (and `--base-url` if glass up) must **PASS** before calling the desk glass-ready (`/cockpit-new-desk` §5c)
+- [ ] **House closeout (DEEP):** `node scripts/house-closeout.mjs --slug {slug}` must **PASS** (pending non-scaffold `propose_house` **or** live house is not the stub). Print the **full proposed house** in the Grok terminal. TSLA-class skip = FAIL.
+- [ ] **Register closeout (DEEP, after house CONFIRMED):** Same Grok session continues. Align `08` to the confirmed house (add/drop only if user says). Dump full `08`. User **GO** → `commit_on_go` kind=register. `node scripts/register-closeout.mjs --slug {slug}` must **PASS**. House not CONFIRMED → FAIL first.
 - [ ] `npm run format-check` + `npm run smoke` green
 - [ ] `npm run build` → reload / kickstart server if needed
 
