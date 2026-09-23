@@ -97,6 +97,23 @@ def compile_focus(ticker: str) -> dict[str, Any]:
     if not sources:
         gaps.append("no long-form sources cataloged — check packs/*/ source_globs")
 
+    # Drivers: optional 09. Missing/empty → []. Never a pack gap. Does not count as risks.
+    drivers: list = []
+    drv_src = cfg.get("drivers_source")
+    if not drv_src:
+        drv_src = f"raw/{slug}-research/09-drivers.md"
+    try:
+        from compile.from_nebius_drivers import load_drivers_source
+
+        dpath = Path(drv_src).expanduser()
+        if not dpath.is_absolute():
+            dpath = paths.WIKI / dpath
+        d_prefix = str(cfg.get("ticker") or ticker or slug or "desk").lower()
+        d_prefix = re.sub(r"[^a-z0-9]+", "", d_prefix) or "desk"
+        drivers = load_drivers_source(dpath, id_prefix=d_prefix)
+    except Exception:
+        drivers = []
+
     watch = [r["name"] for r in risks if r.get("status") == "WATCH"]
     fired = [r["name"] for r in risks if r.get("status") == "FIRED"]
 
@@ -126,6 +143,11 @@ def compile_focus(ticker: str) -> dict[str, Any]:
         "object": company,
         "claims": wiki["claims"],
         "risks": risks,
+        "drivers": drivers,
+        "drivers_summary": {
+            "count": len(drivers),
+            "with_log": sum(1 for d in drivers if d.get("log")),
+        },
         "series_snapshot": series,
         "catalysts": catalysts,
         # Catalog only — full bodies loaded via api.sources.get_source when needed

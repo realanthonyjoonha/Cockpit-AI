@@ -6,7 +6,7 @@ import path from 'path';
 import { loadPack } from './pack.js';
 import { listResearchRuns, getResearchRun, researchRunDir } from './thinResearchRuns.js';
 import { resolveDeskIdentity } from './streetAgentSeed.js';
-import { humanJobLabel, resolveThesisRegister, describeRegisterScope, normalizeThesisPace, describeThesisPace, defaultThesisOrder, formatThesisOrder, isModelReadJob, isThesisReportJob, isFilingMapJob } from './researchRunsSchema.js';
+import { humanJobLabel, resolveThesisRegister, describeRegisterScope, resolveThesisDrivers, describeDriverScope, normalizeThesisPace, describeThesisPace, defaultThesisOrder, formatThesisOrder, isModelReadJob, isThesisReportJob, isFilingMapJob } from './researchRunsSchema.js';
 import { MODEL_READ_ORDER, formatModelReadOrder } from './modelReadGraph.js';
 
 function normalizeMode(mode) {
@@ -39,6 +39,14 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
         || run?.thesis?.register_scope || run?.inputs?.register_scope,
       register_ids: opts.register_ids || opts.registerIds
         || run?.thesis?.register_ids || run?.inputs?.register_ids,
+    })
+    : null;
+  const thesisDrivers = job === 'thesis_report'
+    ? resolveThesisDrivers({
+      driver_scope: opts.driver_scope || opts.driverScope
+        || run?.thesis?.driver_scope || run?.inputs?.driver_scope,
+      driver_ids: opts.driver_ids || opts.driverIds
+        || run?.thesis?.driver_ids || run?.inputs?.driver_ids,
     })
     : null;
   const thesisPace = job === 'thesis_report'
@@ -122,7 +130,14 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
       runId ? `2. **run_id (required):** \`${runId}\` — write under \`${vaultRel}\`` : '2. If no run_id, POST /api/{slug}/research/runs `{ job: "thesis_report", thesis_mode }` then use returned run_id',
       '3. **House: always on.** MCP `get_house_view` + `get_pack_snapshot`. Steelman → delta vs house → red-team. Not a toggle.',
       `4. **Register scope (glass chose — do not re-ask):** ${describeRegisterScope(thesisRegister.register_scope, thesisRegister.register_ids)}`,
-      `   **ORDER (required — write this exact list in config.py; do not add sections):** ${formatThesisOrder(defaultThesisOrder(thesisMode, thesisRegister.register_scope))}`,
+      `   **Drivers scope (glass chose — do not re-ask):** ${describeDriverScope(thesisDrivers.driver_scope, thesisDrivers.driver_ids)}`,
+      `   **ORDER (required — write this exact list in config.py; do not add sections):** ${formatThesisOrder(defaultThesisOrder(thesisMode, thesisRegister.register_scope, thesisDrivers.driver_scope))}`,
+      thesisDrivers.driver_scope === 'off'
+        ? '   Do **not** add `drivers`. No engines chapter. One setup line is enough: `Drivers not in this note.`'
+        : '   - **drivers:** `get_driver_sor`. In-scope engine = name, house cite, what is watched, dated log (print / news / on demand), still open. Not a second house essay. No status. Out of scope: one line `not in this note.` Empty 09: say none are pinned; do not invent engines. If a finding contradicts the house, ask — do not rewrite the house. A new fact is `propose_driver_log` then the user GO (09 only).',
+      thesisDrivers.driver_scope === 'pick' && thesisDrivers.driver_ids.length
+        ? `   - driver ids: ${thesisDrivers.driver_ids.map((x) => `\`${x}\``).join(', ')}`
+        : null,
       thesisRegister.register_scope === 'skim'
         ? '   Do **not** add `register-updated` or `tripwires`. No register chapter, no WATCH table.'
         : null,
@@ -307,6 +322,8 @@ export function writeResearchRunsAgentSeed(deskOrTicker, opts = {}) {
     register_scope: thesisRegister?.register_scope || null,
     register_ids: thesisRegister?.register_ids || null,
     thesis_pace: thesisPace,
+    driver_scope: thesisDrivers?.driver_scope || null,
+    driver_ids: thesisDrivers?.driver_ids || null,
     n_runs: list.runs?.length || 0,
   };
 }

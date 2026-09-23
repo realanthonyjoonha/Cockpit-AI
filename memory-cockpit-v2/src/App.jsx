@@ -30,6 +30,10 @@ function useHash() {
 function activeThinRoom(hash, slug) {
   if (hash.startsWith(`#/${slug}/risk/`)) return `#/${slug}/risks`;
   if (hash.startsWith(`#/${slug}/risks`)) return `#/${slug}/risks`;
+  if (hash.startsWith(`#/${slug}/driver/`)) return `#/${slug}/drivers`;
+  if (hash.startsWith(`#/${slug}/drivers`)) return `#/${slug}/drivers`;
+  if (hash.startsWith(`#/${slug}/metric/`)) return `#/${slug}/drivers`;
+  if (hash.startsWith(`#/${slug}/metrics`)) return `#/${slug}/drivers`;
   if (hash.startsWith(`#/${slug}/house`)) return `#/${slug}/house`;
   if (hash.startsWith(`#/${slug}/sources`)) return `#/${slug}/sources`;
   if (hash.startsWith(`#/${slug}/street`)) return `#/${slug}/street`;

@@ -14,7 +14,7 @@ import { writeStreetAgentSeed } from './streetAgentSeed.js';
 import { writeWorkingModelAgentSeed } from './workingModelAgentSeed.js';
 import { writeResearchRunsAgentSeed } from './researchRunsAgentSeed.js';
 import { writeLearnAgentSeed } from './learnAgentSeed.js';
-import { resolveThesisRegister, shortRegisterToken, normalizeThesisPace } from './researchRunsSchema.js';
+import { resolveThesisRegister, resolveThesisDrivers, shortRegisterToken, normalizeThesisPace } from './researchRunsSchema.js';
 import { spawnResearchWorker } from './researchRunsWorker.js';
 import {
   findInFlightRun,
@@ -199,7 +199,7 @@ export const GROK_AGENTS = [
   {
     action: 'register-session',
     label: 'Edit register in Grok',
-    hint: 'Dump 08 · GO writes · SAVE DRAFT parks · EDIT revises',
+    hint: 'Dump 08 · GO writes register · SAVE DRAFT Grok-only · EDIT revises',
     needs_desk: true,
     variants: ['desk', 'register'],
     default_for: ['register'],
@@ -211,6 +211,70 @@ export const GROK_AGENTS = [
     needs_desk: true,
     needs_risk: true,
     variants: ['desk', 'risk', 'register'],
+  },
+  {
+    action: 'drivers-session',
+    label: 'Edit drivers in Grok',
+    hint: 'Name engines · GO writes 09 · SAVE DRAFT Grok-only · EDIT revises',
+    needs_desk: true,
+    variants: ['desk', 'drivers'],
+    default_for: ['drivers'],
+  },
+  {
+    action: 'driver-add',
+    label: 'Add driver',
+    hint: 'Research + propose a NEW driver · GO writes',
+    needs_desk: true,
+    variants: ['desk', 'drivers'],
+  },
+  {
+    action: 'driver-check',
+    label: 'Driver check',
+    hint: 'Print, news, or on demand · GO appends one log line · does not rewrite the house',
+    needs_desk: true,
+    needs_risk: true,
+    variants: ['desk', 'driver', 'drivers'],
+    default_for: ['driver'],
+  },
+  {
+    action: 'driver-monitors',
+    label: 'Add open question',
+    hint: 'Add one still-open question · GO appends it · not a risk tripwire',
+    needs_desk: true,
+    needs_risk: true,
+    variants: ['desk', 'driver', 'drivers'],
+  },
+  {
+    action: 'driver-research-print',
+    label: 'Latest print',
+    hint: 'On demand · what the last print said about this driver',
+    needs_desk: true,
+    needs_risk: true,
+    variants: ['driver'],
+  },
+  {
+    action: 'driver-research-news',
+    label: 'News since last',
+    hint: 'On demand · headlines since the last check',
+    needs_desk: true,
+    needs_risk: true,
+    variants: ['driver'],
+  },
+  {
+    action: 'driver-research-open',
+    label: 'Open questions',
+    hint: 'On demand · work one still-open question',
+    needs_desk: true,
+    needs_risk: true,
+    variants: ['driver'],
+  },
+  {
+    action: 'driver-research-note',
+    label: 'Log a finding',
+    hint: 'On demand · append what you just found. Do not rewrite the house',
+    needs_desk: true,
+    needs_risk: true,
+    variants: ['driver'],
   },
   {
     action: 'steelman',
@@ -229,7 +293,7 @@ export const GROK_AGENTS = [
   {
     action: 'propose',
     label: 'Edit house in Grok',
-    hint: 'Dump in Grok · GO writes · SAVE DRAFT parks · EDIT revises',
+    hint: 'Dump in Grok · GO writes · SAVE DRAFT Grok-only · EDIT revises',
     needs_desk: true,
     variants: ['desk', 'house'],
     default_for: ['house'],
@@ -254,7 +318,7 @@ export const GROK_AGENTS = [
     label: 'Cockpit menu',
     hint: 'Full /cockpit slash menu',
     needs_desk: false,
-    variants: ['desk', 'risk', 'register', 'house'],
+    variants: ['desk', 'risk', 'register', 'house', 'drivers', 'driver'],
   },
 ];
 
@@ -268,7 +332,7 @@ const ALLOWED_ACTIONS = new Set([
   // Retired glass catalog; pipeline/tests may still POST this action.
   'research-compile',
 ]);
-const ALLOWED_VARIANTS = new Set(['desk', 'risk', 'register', 'house', 'start']);
+const ALLOWED_VARIANTS = new Set(['desk', 'risk', 'register', 'house', 'start', 'drivers', 'driver']);
 
 /**
  * @param {import('http').IncomingMessage} req
@@ -342,6 +406,8 @@ export function listGrokAgents(opts = {}) {
     note: ({
       risk: 'POST /api/open-grok { action, desk, risk_id?, risk_name? } — risk-detail seed.',
       register: 'POST /api/open-grok { action, desk } — register menu (add / check / tripwires).',
+      drivers: 'POST /api/open-grok { action, desk } — drivers menu (edit / add / check / monitors).',
+      driver: 'POST /api/open-grok { action, desk, risk_id?, risk_name? } — driver-detail seed.',
       house: 'POST /api/open-grok { action, desk } — house menu (propose / steelman / match).',
       start: 'POST /api/open-grok { action: "new-desk", ticker? } — underwrite next company from START.',
       desk: 'POST /api/open-grok { action, desk } opens Terminal → Grok Build with that slash command.',
@@ -419,6 +485,11 @@ export function buildInitialPrompt(opts = {}) {
             parts.push(reg.register_scope);
           }
           parts.push(normalizeThesisPace(opts.thesis_pace || opts.thesisPace));
+          const drv = resolveThesisDrivers(opts);
+          if (drv.driver_scope === 'all') parts.push('drivers-all');
+          else if (drv.driver_scope === 'pick' && drv.driver_ids.length) {
+            parts.push('drivers-pick', drv.driver_ids.join(','));
+          }
           core = parts.join(' ');
           break;
         }
@@ -541,6 +612,30 @@ export function buildInitialPrompt(opts = {}) {
         case 'risk-tripwires':
           core = withDeskRisk('/cockpit-risk-tripwires');
           break;
+        case 'drivers-session':
+          core = withDesk('/cockpit-drivers') + ' --session';
+          break;
+        case 'driver-add':
+          core = withDesk('/cockpit-driver-add');
+          break;
+        case 'driver-check':
+          core = withDeskRisk('/cockpit-driver-check');
+          break;
+        case 'driver-monitors':
+          core = withDeskRisk('/cockpit-driver-monitors');
+          break;
+        case 'driver-research-print':
+          core = `${withDeskRisk('/cockpit-driver-research')} --print`;
+          break;
+        case 'driver-research-news':
+          core = `${withDeskRisk('/cockpit-driver-research')} --news`;
+          break;
+        case 'driver-research-open':
+          core = `${withDeskRisk('/cockpit-driver-research')} --open`;
+          break;
+        case 'driver-research-note':
+          core = `${withDeskRisk('/cockpit-driver-research')} --note`;
+          break;
         case 'steelman':
           core = withDesk('/cockpit-steelman');
           break;
@@ -658,6 +753,8 @@ export function openGrokBuild(opts = {}) {
         register_scope: opts.register_scope || opts.registerScope || null,
         register_ids: opts.register_ids || opts.registerIds || null,
         thesis_pace: opts.thesis_pace || opts.thesisPace || null,
+        driver_scope: opts.driver_scope || opts.driverScope || null,
+        driver_ids: opts.driver_ids || opts.driverIds || null,
       });
     } catch (e) {
       research_seed = { ok: false, error: e.message || String(e) };

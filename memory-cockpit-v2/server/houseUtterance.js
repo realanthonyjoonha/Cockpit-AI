@@ -7,7 +7,7 @@ export const DUMP_PROMPT =
   '**GO** (writes CONFIRMED) · **SAVE DRAFT** (Grok only, no glass chip) · **EDIT** (change it here, no write)';
 
 export const REGISTER_DUMP_PROMPT =
-  '**GO** (writes register) · **SAVE DRAFT** (pending chips) · **EDIT** (change Rn here, no write)';
+  '**GO** (writes register) · **SAVE DRAFT** (Grok only, no glass chip) · **EDIT** (change it here, no write)';
 
 const GO_RE = /^(go|looks good|that['’]?s my house|confirm|accept register)\b/i;
 const SAVE_RE = /^save[\s_-]*draft\b/i;

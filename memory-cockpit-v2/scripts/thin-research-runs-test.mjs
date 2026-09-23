@@ -325,6 +325,18 @@ if (!orderOmitsRegister(defaultThesisOrder('earnings-update', 'house-only'))) {
 if (orderOmitsRegister(defaultThesisOrder('deep-dive', 'all'))) {
   bad('deep-dive all lost register-updated');
 } else ok('deep-dive all still has register-updated');
+const earnAll = defaultThesisOrder('earnings-update', 'all');
+const earnDrivers = defaultThesisOrder('earnings-update', 'all', 'all');
+if (earnAll.includes('drivers')) bad('drivers section leaked into the default ORDER');
+else ok('default ORDER has no drivers chapter');
+if (earnDrivers[0] !== 'print-vs-house' || earnDrivers[1] !== 'drivers' || !earnDrivers.includes('register-updated')) {
+  bad(`earnings drivers ORDER ${earnDrivers.join(',')}`);
+} else ok('drivers insert after the print, register stays');
+if (defaultThesisOrder('deep-dive', 'skim', 'all').includes('register-updated')) {
+  bad('drivers-all on skim brought the register back');
+} else if (defaultThesisOrder('deep-dive', 'skim', 'all')[2] !== 'drivers') {
+  bad(`skim+drivers ORDER ${defaultThesisOrder('deep-dive', 'skim', 'all').join(',')}`);
+} else ok('skim can still carry a drivers section');
 if (!seedSkimTxt.includes(skimOrder.join(' · '))) {
   bad('skim seed missing exact ORDER list');
 } else ok('skim seed lists exact ORDER');
@@ -332,6 +344,28 @@ const skimGet = getResearchRun('SKIMSEED', thSkimSeed.run_id);
 if ((skimGet.thesis?.order || []).join(',') !== skimOrder.join(',')) {
   bad(`skim persist ORDER ${JSON.stringify(skimGet.thesis)}`);
 } else ok('skim run persists ORDER');
+if (skimGet.thesis?.driver_scope !== 'off') bad(`default driver scope ${skimGet.thesis?.driver_scope}`);
+else ok('thesis default driver_scope off');
+cancelResearchRun('SKIMSEED', thSkimSeed.run_id);
+const thDrv = startResearchRun('DRVTEST', {
+  job: 'thesis_report', thesis_mode: 'earnings-update',
+  driver_scope: 'pick', driver_ids: ['d1-ads-mix', 'd1-ads-mix'],
+}, { desk: 'drvtest' });
+const thDrvGet = getResearchRun('DRVTEST', thDrv.run_id);
+if (thDrvGet.thesis?.driver_scope !== 'pick' || (thDrvGet.thesis?.driver_ids || []).join(',') !== 'd1-ads-mix') {
+  bad(`driver pick persist ${JSON.stringify(thDrvGet.thesis)}`);
+} else if ((thDrvGet.thesis?.order || [])[1] !== 'drivers') {
+  bad(`driver pick ORDER ${JSON.stringify(thDrvGet.thesis?.order)}`);
+} else ok('driver pick persists and inserts drivers');
+const seedDrv = writeResearchRunsAgentSeed('DRVTEST', {
+  mode: 'pipeline', run_id: thDrv.run_id, job: 'thesis_report', thesis_mode: 'earnings-update',
+  driver_scope: 'pick', driver_ids: ['d1-ads-mix'],
+});
+const seedDrvTxt = seedDrv.ok && seedDrv.path ? fs.readFileSync(seedDrv.path, 'utf8') : '';
+if (!seedDrvTxt.includes('only d1-ads-mix') || !seedDrvTxt.includes('Not a second house') || !seedDrvTxt.includes('propose_driver_log')) {
+  bad(`driver seed missing scope (${seedDrv.error || 'no match'})`);
+} else ok('driver seed names the engine and refuses a second house');
+cancelResearchRun('DRVTEST', thDrv.run_id);
 
 if (parseConfigPyOrder('ORDER = ["setup", "register-updated", "exec"]')?.join(',') !== 'setup,register-updated,exec') {
   bad('parseConfigPyOrder');

@@ -16,7 +16,18 @@ import {
   listHouseProposals,
   acceptHouseProposal,
 } from '../server/houseProposals.js';
-import { goCommitHouse, goCommitRegister } from '../server/goCommit.js';
+import { goCommitHouse, goCommitRegister, goCommitDrivers } from '../server/goCommit.js';
+import {
+  listHouseDriverCandidates,
+  DRIVER_CANDIDATE_HINT,
+  listDriverProposals,
+  proposeKeepDriver,
+  proposeSkipDriver,
+  proposeDriverLog,
+  parseDriversMarkdown,
+  readDriversSource,
+  driversSourceRel,
+} from '../server/driverProposals.js';
 import {
   proposeRiskStatus,
   proposeAddRisk,
@@ -258,7 +269,7 @@ server.tool(
       }).slice(0, 10);
     }
 
-    // Same SoR overlay as glass risks/overview — pack.risk_summary alone lags after ACCEPT
+    // Same SoR overlay as glass risks/overview — pack.risk_summary lags after GO
     let sorMap = null;
     try {
       sorMap = readSorStatusMap(profile.risksSource);
@@ -272,6 +283,7 @@ server.tool(
         status: disp.status,
         status_source: disp.status_source,
         pack_status: r.status || null,
+        kind: r.kind || 'risk',
         grade: r.grade || null,
         summary: (r.summary || '').slice(0, 200),
         order: r.order,
@@ -311,7 +323,7 @@ server.tool(
       gaps: (pack.gaps || []).slice(0, 15),
       sor_ahead_of_pack: sorLag,
       note: sorLag
-        ? 'SoR risk status ahead of pack — risk_summary.watch is SoR-aware (includes ACCEPTed WATCH). COMPILE BOOK to sync store.'
+        ? 'SoR risk status ahead of pack — risk_summary.watch is SoR-aware. COMPILE BOOK to sync store.'
         : 'Pack and SoR status aligned. COMPILE BOOK after house/risk SoR edits.',
       decision_support_only: true,
     });
@@ -428,10 +440,10 @@ server.tool(
 
 server.tool(
   'commit_on_go',
-  'Write vault after the user said GO in this chat. Same path as glass ACCEPT. Requires pending CONFIRMED house proposal_id for kind=house. kind=register requires live house CONFIRMED. Do NOT call after SAVE DRAFT or EDIT. Pass utterance verbatim. Not agent_accept.',
+  'Write vault after the user said GO. Same path as glass ACCEPT. kind=house needs pending CONFIRMED proposal_id. kind=register requires live house CONFIRMED. Do NOT call after SAVE DRAFT or EDIT. Not agent_accept.',
   {
     desk: z.string(),
-    kind: z.string().describe('house | register'),
+    kind: z.string().describe('house | register | drivers'),
     proposal_id: z.string().optional().describe('Required for kind=house (pending CONFIRMED id)'),
     utterance: z.string().describe('User line verbatim (GO / looks good / CONFIRM / ACCEPT REGISTER)'),
   },
@@ -441,7 +453,24 @@ server.tool(
       const { desk: d, profile } = resolveDesk(desk);
       const houseFile = d.house_file || profile.houseFile;
       const k = String(kind || 'house').toLowerCase();
-      const out = (k === 'register' || k === 'risks')
+      if (k === 'metrics') {
+        return textResult({ ok: false, error: 'kind=metrics is not wired. Use kind=register or kind=drivers.' });
+      }
+      if (k === 'drivers') {
+        const out = goCommitDrivers({
+          slug: d.slug,
+          houseFile,
+          utterance,
+          ticker: d.ticker || profile.ticker,
+        });
+        return textResult({
+          ...out,
+          glass: `Viewer http://127.0.0.1:4682/#/${d.slug}/drivers`,
+          invariant: 'Wrote 09 because user GO. 08 unchanged. SAVE DRAFT must not call this.',
+        });
+      }
+      const isRegister = k === 'register' || k === 'risks';
+      const out = isRegister
         ? goCommitRegister({
           slug: d.slug,
           houseFile,
@@ -458,7 +487,7 @@ server.tool(
         });
       return textResult({
         ...out,
-        glass: `Viewer http://127.0.0.1:4682/#/${d.slug}/${k === 'register' ? 'risks' : 'house'}`,
+        glass: `Viewer http://127.0.0.1:4682/#/${d.slug}/${isRegister ? 'risks' : 'house'}`,
         invariant: 'Wrote because user GO. SAVE DRAFT must not call this. Glass ACCEPT remains alternate.',
       });
     } catch (e) {
@@ -487,7 +516,7 @@ server.tool(
 
 server.tool(
   'propose_risk_status',
-  'Propose INTACT|WATCH|FIRED for an existing risk. Does NOT write SoR until glass ACCEPT on risk detail.',
+  'Propose INTACT|WATCH|FIRED for an existing risk. Does NOT write SoR until GO / commit_on_go (glass ACCEPT alternate).',
   {
     desk: z.string(),
     risk_id: z.string().optional().describe('pack risk id e.g. nbis-r3-…'),
@@ -516,8 +545,8 @@ server.tool(
       });
       return textResult({
         ...out,
-        glass: `http://127.0.0.1:4681/#/${d.slug}/risks (open risk detail → ACCEPT)`,
-        invariant: 'SoR unchanged until ACCEPT. Then COMPILE BOOK.',
+        glass: `http://127.0.0.1:4682/#/${d.slug}/risks`,
+        invariant: 'SoR unchanged until GO (commit_on_go). Then COMPILE BOOK if pack lags.',
       });
     } catch (e) {
       return textResult({ ok: false, error: e.message || String(e) });
@@ -527,12 +556,13 @@ server.tool(
 
 server.tool(
   'propose_add_risk',
-  'Propose NEW risk on register (add_risk). Research first via pack/search; does NOT write SoR until glass ACCEPT on Risks page.',
+  'Propose NEW risk on register (add_risk). Research first via pack/search; does NOT write SoR until GO / glass ACCEPT on Risks page.',
   {
     desk: z.string(),
     title: z.string().describe('Short name without Rn prefix'),
     summary: z.string().describe('One-line summary for status line'),
-    mechanism: z.string().optional().describe('How it hits equity story'),
+    mechanism: z.string().optional().describe('How it hits the house'),
+    kind: z.string().optional().describe('unused — omit (risk register, not metrics)'),
     grade: z.string().optional().describe('A|B|C default B'),
     status: z.string().optional().describe('INTACT|WATCH|FIRED default WATCH'),
     tripwires: z.array(z.object({
@@ -555,6 +585,7 @@ server.tool(
           title: args.title,
           summary: args.summary,
           mechanism: args.mechanism,
+          kind: args.kind,
           grade: args.grade,
           status: args.status,
           tripwires: args.tripwires,
@@ -565,13 +596,39 @@ server.tool(
       });
       return textResult({
         ...out,
-        glass: `http://127.0.0.1:4681/#/${d.slug}/risks → ACCEPT pending add_risk`,
-        invariant: 'SoR unchanged until ACCEPT. Then COMPILE BOOK. Decision-support only.',
+        glass: `http://127.0.0.1:4682/#/${d.slug}/risks`,
+        invariant: 'SoR unchanged until GO (commit_on_go). Decision-support only.',
       });
     } catch (e) {
       return textResult({ ok: false, error: e.message || String(e) });
     }
   },
+);
+
+server.tool(
+  'propose_add_metric',
+  'Not wired. Use propose_add_risk (risk register). No Metrics page yet.',
+  {
+    desk: z.string(),
+    title: z.string().describe('Short name without Rn prefix'),
+    summary: z.string().describe('One-line summary for status line'),
+    mechanism: z.string().optional().describe('How it hits the house'),
+    kind: z.string().optional().describe('unused — omit'),
+    grade: z.string().optional().describe('A|B|C default B'),
+    status: z.string().optional().describe('INTACT|WATCH|FIRED default WATCH'),
+    tripwires: z.array(z.object({
+      signal: z.string().optional(),
+      tripwire: z.string().optional(),
+      state: z.string().optional(),
+      as_of: z.string().optional(),
+    })).optional(),
+    rationale: z.string().optional(),
+    as_of: z.string().optional(),
+  },
+  async () => textResult({
+    ok: false,
+    error: 'not wired. Use propose_add_risk (register) or propose_keep_driver (drivers). Does not write 08.',
+  }),
 );
 
 server.tool(
@@ -586,7 +643,7 @@ server.tool(
     try {
       return textResult({
         ...listRiskProposals(d.slug, { status: status || undefined }),
-        glass: `http://127.0.0.1:4681/#/${d.slug}/risks`,
+        glass: `http://127.0.0.1:4682/#/${d.slug}/risks`,
         decision_support_only: true,
       });
     } catch (e) {
@@ -621,8 +678,174 @@ server.tool(
 );
 
 server.tool(
+  'get_metric_sor',
+  'Not wired. Use get_risk_sor (register) or get_driver_sor (drivers).',
+  {
+    desk: z.string().optional(),
+    risk_id: z.string().optional(),
+    risk_name: z.string().optional(),
+  },
+  async () => textResult({
+    ok: false,
+    error: 'not wired. Use get_risk_sor (register) or get_driver_sor (drivers). Does not read 08 as metrics.',
+  }),
+);
+
+server.tool(
+  'list_house_driver_candidates',
+  'Does not dump house headings. You name 2–5 business engines with house_cite. User KEEP. Never auto-keep.',
+  { desk: z.string() },
+  async ({ desk }) => {
+    try {
+      pinGuard();
+      const { desk: d, profile } = resolveDesk(desk);
+      const hv = readHouseMarkdown(d.house_file || profile.houseFile);
+      const candidates = listHouseDriverCandidates(hv.markdown);
+      return textResult({
+        ok: true,
+        slug: d.slug,
+        candidates,
+        hint: DRIVER_CANDIDATE_HINT,
+        glass: `http://127.0.0.1:4682/#/${d.slug}/drivers`,
+        invariant: 'Human names engines. house_cite required. Never auto-keep. Not a house TOC.',
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'propose_keep_driver',
+  'KEEP a named engine (pending). Requires house_cite from the CONFIRMED house. GO writes 09. Does not write 08 or the house. No status.',
+  {
+    desk: z.string(),
+    house_cite: z.string().describe('Quote from the live CONFIRMED house. The engine must already be in that house.'),
+    title: z.string().describe('Engine name. Not a house heading.'),
+    watching: z.string().optional().describe('What the user wants watched on this engine'),
+    why: z.string().optional().describe('One paragraph: why this side of the business is the bull case'),
+    figures: z.array(z.object({
+      item: z.string(),
+      figure: z.string(),
+      note: z.string().optional(),
+    })).optional(),
+    candidate_id: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      pinGuard();
+      const { desk: d, profile } = resolveDesk(args.desk);
+      const hv = readHouseMarkdown(d.house_file || profile.houseFile);
+      const out = proposeKeepDriver({
+        slug: d.slug,
+        title: args.title,
+        house_cite: args.house_cite,
+        watching: args.watching,
+        why: args.why,
+        figures: args.figures,
+        candidate_id: args.candidate_id,
+        houseMarkdown: hv.markdown,
+      });
+      return textResult({
+        ...out,
+        glass: `http://127.0.0.1:4682/#/${d.slug}/drivers`,
+        invariant: 'Pending until GO kind=drivers. house_cite must be in the CONFIRMED house. No status.',
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'propose_driver_log',
+  'Append one log line and/or one still-open question to a kept driver (pending). GO writes 09 only. Does not write the house or 08.',
+  {
+    desk: z.string(),
+    driver: z.string().describe('D1 or the engine title'),
+    date: z.string().optional().describe('YYYY-MM-DD. Required with fact.'),
+    via: z.string().optional().describe('print | news | open | note | house'),
+    fact: z.string().optional(),
+    open: z.string().optional().describe('One still-open question to add'),
+    figures: z.array(z.object({
+      item: z.string(),
+      figure: z.string(),
+      note: z.string().optional(),
+    })).optional().describe('Replace the figures strip when a print updates the numbers'),
+  },
+  async (args) => {
+    try {
+      pinGuard();
+      const { desk: d } = resolveDesk(args.desk);
+      const out = proposeDriverLog({ slug: d.slug, ...args });
+      return textResult({
+        ...out,
+        glass: `http://127.0.0.1:4682/#/${d.slug}/drivers`,
+        invariant: 'Pending until GO kind=drivers. Appends to 09 only. If the finding contradicts the house, ask — do not rewrite the house.',
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'propose_skip_driver',
+  'SKIP a house quote (not a driver). Requires house_cite. Does not write 09/08.',
+  {
+    desk: z.string(),
+    house_cite: z.string(),
+    title: z.string().optional(),
+  },
+  async (args) => {
+    try {
+      pinGuard();
+      const { desk: d } = resolveDesk(args.desk);
+      return textResult(proposeSkipDriver({ slug: d.slug, ...args }));
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'get_driver_sor',
+  'Read 09 drivers (kept lines). Empty [] if no 09.',
+  { desk: z.string() },
+  async ({ desk }) => {
+    try {
+      pinGuard();
+      const { desk: d } = resolveDesk(desk);
+      const { text, exists } = readDriversSource(driversSourceRel(d.slug));
+      return textResult({
+        ok: true,
+        slug: d.slug,
+        exists,
+        drivers: exists ? parseDriversMarkdown(text) : [],
+        glass: `http://127.0.0.1:4682/#/${d.slug}/drivers`,
+      });
+    } catch (e) {
+      return textResult({ ok: false, error: e.message || String(e) });
+    }
+  },
+);
+
+server.tool(
+  'list_driver_proposals',
+  'List pending/accepted driver KEEP/SKIP proposals.',
+  {
+    desk: z.string(),
+    status: z.string().optional(),
+  },
+  async ({ desk, status }) => {
+    const { desk: d } = resolveDesk(desk);
+    return textResult(listDriverProposals(d.slug, { status }));
+  },
+);
+
+server.tool(
   'propose_risk_tripwires',
-  'Propose tripwire table for an existing risk (replace). Research with user first; SoR writes only on glass ACCEPT.',
+  'Propose tripwire table for an existing risk (replace). Research with user first; SoR writes on GO / commit_on_go.',
   {
     desk: z.string(),
     risk_id: z.string().optional(),
@@ -654,8 +877,8 @@ server.tool(
       });
       return textResult({
         ...out,
-        glass: `http://127.0.0.1:4681/#/${d.slug}/risks → ACCEPT set_tripwires`,
-        invariant: 'SoR unchanged until ACCEPT (or agent_accept grant). User should have approved each tripwire.',
+        glass: `http://127.0.0.1:4682/#/${d.slug}/risks`,
+        invariant: 'SoR unchanged until GO (commit_on_go) or glass ACCEPT. User should have approved each tripwire.',
       });
     } catch (e) {
       return textResult({ ok: false, error: e.message || String(e) });

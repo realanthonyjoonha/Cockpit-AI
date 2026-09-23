@@ -180,7 +180,7 @@ export default function FilingMapDossier({
             </div>
           ) : (
             <div className="dimmer" style={{ fontSize: 11, marginTop: 6 }}>
-              Creates pending proposals only. ACCEPT on House / Risks, then COMPILE BOOK.
+              Creates pending proposals only. GO / ACCEPT on House / Risks, then COMPILE BOOK.
             </div>
           )}
         </div>
@@ -189,7 +189,7 @@ export default function FilingMapDossier({
         <div className="fmap-closeout" style={{ marginBottom: 12, fontSize: 12 }}>
           {createdN > 0 ? (
             <span>
-              Proposed {createdN} · review House / Risks → ACCEPT
+              Proposed {createdN} · review House / Risks → GO / ACCEPT
               {Array.isArray(result.created) ? (
                 <span className="dimmer"> · {result.created.map((c) => c.id).filter(Boolean).join(', ')}</span>
               ) : null}

@@ -149,7 +149,7 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
             ) : (
               <>
                 Shell is live with registered desk(s). Underwrite another name with the same factory —
-                no new UI. You still CONFIRM house and ACCEPT risks.
+                no new UI. You still GO house and risks in Grok.
               </>
             )}
           </p>
@@ -189,7 +189,7 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
           </div>
           <p className="start-cta-note">
             Opens Grok in this monorepo with deep parallel research (default).
-            Assist only — you CONFIRM house and ACCEPT risks. No invented book.
+            Assist only — you GO house and risks. No invented book.
           </p>
           {flash && (
             <span

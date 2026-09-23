@@ -74,16 +74,21 @@ def parse_nebius_risks_md(
             re.M | re.I,
         )
         if sum_m:
-            summary = _strip(sum_m.group(1))[:160]
+            summary = _strip(sum_m.group(1))[:1200]
         if not summary:
             mech = re.search(r"\*\*Mechanism:\*\*\s*(.+?)(?:\n\n|\n\|)", body, re.S)
             if mech:
-                summary = _strip(mech.group(1))[:160]
+                summary = _strip(mech.group(1))[:1200]
 
         mechanism = ""
         mm = re.search(r"\*\*Mechanism:\*\*\s*(.+?)(?:\n\n|\n\|)", body, re.S)
         if mm:
             mechanism = _strip(mm.group(1))
+
+        kind = "risk"
+        km = re.search(r"\*\*Kind:\*\*\s*(print|condition|risk|catalyst)\b", body, re.I)
+        if km:
+            kind = km.group(1).lower()
 
         tripwires: list[dict] = []
         # parse markdown table rows
@@ -113,6 +118,7 @@ def parse_nebius_risks_md(
         risks.append({
             "id": risk_id,
             "type": "Risk",
+            "kind": kind,
             "name": f"{rid_raw} — {name}",
             "status": status,
             "grade": grade,
@@ -171,7 +177,7 @@ status: {r.get('status') or 'INTACT'}
 grade: {r.get('grade') or 'B'}
 order: {r.get('order', 99)}
 hv: false
-summary: "{summary[:200]}"
+summary: "{summary[:1200]}"
 category: {r_cat}
 updated: {r.get('updated') or '2026-07-19'}
 ---

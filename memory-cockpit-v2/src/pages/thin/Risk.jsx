@@ -6,6 +6,19 @@ import GrokAgents from './GrokAgents.jsx';
 
 const STATUSES = ['INTACT', 'WATCH', 'FIRED'];
 
+function normStatus(s) {
+  return String(s || '').toUpperCase();
+}
+
+/** Default propose target must differ from live status or PROPOSE stays disabled. */
+function nextStatus(cur) {
+  const s = normStatus(cur);
+  if (s === 'INTACT') return 'WATCH';
+  if (s === 'WATCH') return 'FIRED';
+  if (s === 'FIRED') return 'WATCH';
+  return 'WATCH';
+}
+
 /** @param {{ desk: { slug: string, ticker: string, label: string }, id: string }} props */
 export default function ThinRisk({ desk, id }) {
   const { slug, ticker, label } = desk;
@@ -25,10 +38,7 @@ export default function ThinRisk({ desk, id }) {
     return api(`${slug}/risk/${encodeURIComponent(id)}`)
       .then((data) => {
         setR(data);
-        if (data?.status && STATUSES.includes(data.status)) {
-          // default propose target: nudge toward WATCH if intact, else keep peer options
-          setToStatus(data.status === 'INTACT' ? 'WATCH' : data.status === 'WATCH' ? 'FIRED' : 'WATCH');
-        }
+        if (data?.status) setToStatus(nextStatus(data.status));
         return data;
       })
       .catch(() => {
@@ -66,6 +76,10 @@ export default function ThinRisk({ desk, id }) {
     loadRisk();
   }, [loadRisk]);
   useEffect(() => { if (r) loadPending(); }, [r, loadPending]);
+  useEffect(() => {
+    if (!r?.status) return;
+    setToStatus((prev) => (normStatus(prev) === normStatus(r.status) ? nextStatus(r.status) : prev));
+  }, [r?.id, r?.status]);
 
   const btnSm = { padding: '3px 8px', fontSize: 10 };
 
@@ -90,8 +104,8 @@ export default function ThinRisk({ desk, id }) {
 
   async function proposeStatus() {
     if (busy || !r) return;
-    if (toStatus === r.status) {
-      setBanner('Pick a different status');
+    if (normStatus(toStatus) === normStatus(r.status)) {
+      setBanner('Pick a different status than live — PROPOSE is a change, not a no-op');
       return;
     }
     setBusy(true);
@@ -293,9 +307,6 @@ export default function ThinRisk({ desk, id }) {
           <h2>CLOSEOUT · PROPOSE STATUS</h2>
           {pending.length > 0 && <span className="m">{pending.length} pending</span>}
         </div>
-        <div className="dimmer" style={{ padding: '4px 16px 0', fontSize: 11 }}>
-          After Risk check: pick status → PROPOSE → ACCEPT. Never silent-write.
-        </div>
         {banner && (
           <div style={{ padding: '6px 16px 0', fontSize: 11, color: 'var(--ok, #5cba8a)' }}>
             {banner}
@@ -340,7 +351,8 @@ export default function ThinRisk({ desk, id }) {
           <button
             type="button"
             className="desk-btn on"
-            disabled={busy || toStatus === r.status}
+            disabled={busy || normStatus(toStatus) === normStatus(r.status)}
+            title={normStatus(toStatus) === normStatus(r.status) ? 'Pick a different status' : 'Propose status change'}
             onClick={proposeStatus}
             style={{ padding: '4px 10px', fontSize: 10 }}
           >

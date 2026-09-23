@@ -34,6 +34,12 @@ else ok('thinRail has Background entry');
 if (!railFn) { /* already bad */ }
 else if (!/\/filings/.test(railFn[0])) bad('thinRail missing Filings');
 else ok('thinRail has Filings entry');
+if (!railFn) { /* already bad */ }
+else if (!/\/drivers/.test(railFn[0]) || !/Drivers/.test(railFn[0])) bad('thinRail missing Drivers');
+else ok('thinRail has Drivers entry');
+if (!railFn) { /* already bad */ }
+else if (!/\/risks/.test(railFn[0]) || !/Risks/.test(railFn[0])) bad('thinRail missing Risks');
+else ok('thinRail still has Risks entry');
 
 const overview = read('src/pages/thin/Overview.jsx');
 if (/\/ask/.test(overview) || /ask the book/.test(overview)) bad('Overview still chips to Ask');

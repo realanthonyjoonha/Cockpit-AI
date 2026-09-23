@@ -49,7 +49,7 @@ $COCKPIT_VAULT/cockpit/research/{TICKER}/runs/{stamp}_filing_map_{TICKER}/
   "digest": "Same or longer; Filings page paints this first if present.",
   "rows": [{ "accession": "", "form": "", "filed": "", "in_book": false,
     "what": { "text": "multi-sentence what-changed for this accession", "excerpt": "verbatim from acquired/", "grade": "A" },
-    "house_hits": [], "risk_hits": [], "add_risk_candidates": [], "gaps": [] }]
+    "house_hits": [], "risk_hits": [], "driver_hits": [], "add_risk_candidates": [], "gaps": [] }]
 }
 ```
 
@@ -66,5 +66,5 @@ Args include `chat` or glass OPEN GROK `mode: chat` on a **complete** `run_id`:
 1. Do **not** start a new `filing_map`. Do not POST `/research/runs`.
 2. Read `inbox.json` + `delta.json` + `summary.md`.
 3. Talk: explain tests, argue house hits, dig deeper (`/cockpit-risk-check` / `/cockpit-report`) **only citing those accessions**.
-4. Book edits: `propose_house_from_current` / `propose_risk_status` / `propose_add_risk` only. Human ACCEPT. No silent write.
-5. **Glass closeout:** on a complete map, Filings dossier **PROPOSE FROM MAP** → dry-run preview → **CONFIRM PROPOSE** calls `POST /api/{slug}/research/runs/{run_id}/propose-from-map`. Same propose_* stores; still human ACCEPT + COMPILE BOOK. Fill pass remains no-propose.
+4. Book edits: `propose_house_from_current` / `propose_risk_status` / `propose_add_risk` / `propose_keep_driver` (house_cite required) as **distinct** tools. User **GO**. No silent write. Never FORMING.
+5. **Glass closeout:** on a complete map, Filings dossier **PROPOSE FROM MAP** → dry-run preview → **CONFIRM PROPOSE** calls `POST /api/{slug}/research/runs/{run_id}/propose-from-map`. Same propose_* stores; still GO / ACCEPT + COMPILE BOOK if pack lags. Fill pass remains no-propose.

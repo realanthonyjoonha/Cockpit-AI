@@ -2,16 +2,17 @@
 // No model calls. No writes. Decision-support only.
 import { loadPack } from './pack.js';
 import { readHouseMarkdown } from './thinHouseSave.js';
+import { loadContextpackRules, liveClaims } from './contextpack.js';
 
 const RULES = `You are Anthony's research assistant for a single-name house view (decision-support OS).
 
 ## Binding rules
 1. Decision-support only: NO buy/sell/hold, NO price target, NO position sizing.
-2. House is USER-OWNED. Draft/critique only; he SAVEs on glass (or explicit instruction).
+2. House is USER-OWNED. Dump in Grok; GO writes (commit_on_go). Never propose FORMING to glass.
 3. Steelman HIS current house first, then DELTA vs pack, then red-team.
 4. Prefer pack grades/as_of. If missing, say GAP — do not invent numbers.
-5. Propose edits via MCP: prefer propose_house_from_current (exact find→replace on current house). Full propose_house_view / markdown_path only for large rewrites. PENDING only.
-6. House file is written ONLY when he ACCEPTs on glass. Never claim updated until ACCEPT + COMPILE BOOK + REFRESH.
+5. Propose edits via MCP only after user GO: prefer propose_house_from_current (exact find→replace). Full propose_house_view / markdown_path for large rewrites. CONFIRMED only.
+6. House file is written on commit_on_go after GO (glass ACCEPT of CONFIRMED is alternate). Never claim updated until then + COMPILE BOOK if pack lags.
 7. Do not invent pack facts. Do not mine chat history for drafts — use get_house_view + get_pack_snapshot.
 8. Decision-support only.`;
 
@@ -50,12 +51,23 @@ export function buildHouseAssistContext(opts) {
   const gaps = available && Array.isArray(pack?.gaps) ? pack.gaps : [];
   const risks = available && Array.isArray(pack?.risks) ? pack.risks : [];
 
-  const rankedClaims = [...claims].sort((a, b) => {
-    const ga = a.grade === 'A' ? 0 : a.grade === 'B' ? 1 : 2;
-    const gb = b.grade === 'A' ? 0 : b.grade === 'B' ? 1 : 2;
-    if (ga !== gb) return ga - gb;
-    return String(b.as_of || '').localeCompare(String(a.as_of || ''));
-  }).slice(0, 10);
+  let rankedClaims = [];
+  try {
+    const ontologyRoot = process.env.ONTOLOGY_ROOT
+      || (process.env.COCKPIT_REPO && `${process.env.COCKPIT_REPO}/ontology`)
+      || null;
+    if (ontologyRoot) {
+      rankedClaims = liveClaims(claims, loadContextpackRules(ontologyRoot));
+    }
+  } catch { /* fall through */ }
+  if (!rankedClaims.length) {
+    rankedClaims = [...claims].sort((a, b) => {
+      const ga = a.grade === 'A' ? 0 : a.grade === 'B' ? 1 : 2;
+      const gb = b.grade === 'A' ? 0 : b.grade === 'B' ? 1 : 2;
+      if (ga !== gb) return ga - gb;
+      return String(b.as_of || '').localeCompare(String(a.as_of || ''));
+    }).slice(0, 10);
+  }
 
   const watch = (rs?.watch || []).slice(0, 12);
   const fired = (rs?.fired || []).slice(0, 8);
@@ -102,11 +114,12 @@ export function buildHouseAssistContext(opts) {
     sections.push(riskLines.join('\n'));
   }
   sections.push('');
-  sections.push('## Top graded claims (capped)');
+  sections.push('## Live claims (ContextPack v2 — one per metric)');
   if (!rankedClaims.length) sections.push('_No claims._');
   else {
     for (const c of rankedClaims) {
-      sections.push(`- [${c.grade || '?'}] (${c.as_of || '—'}) ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
+      const mid = c.metric_id ? `\`${c.metric_id}\` ` : '';
+      sections.push(`- ${mid}[${c.grade || '?'}] (${c.as_of || '—'}) ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
     }
   }
   sections.push('');

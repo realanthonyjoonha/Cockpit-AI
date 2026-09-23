@@ -1,9 +1,25 @@
 # AGENTS.md — read this first
 
-**You are working in a Cockpit clone (Cockpit-AI / product or kernel).**  
-If you only open one file after clone/fork, open **this**, then the links below.
+**You are working in Anthony’s cockpit research OS (private repo).**  
+Cold session (trees, build, ship, which docs are stale): **[`docs/SESSION.md`](./docs/SESSION.md)**.  
+If you only open one file after clone/fork, open **SESSION.md**, then **this** for hard law.
 
-**Cursor Project e2e (isolated Filings dogfood):** [`docs/CURSOR-E2E.md`](./docs/CURSOR-E2E.md) · `./scripts/dogfood-e2e.sh` · MCP `.cursor/mcp.json`. Seal is `$PWD/.cockpit-dogfood`, desk **dogf** only. Never attach Anthony’s vault.
+---
+
+## Easy mode (Anthony’s cognitive load)
+
+Anthony should **not** re-derive kernel / product / scenario every turn.  
+**You** own trees, factory scale, and ship gates. He only picks a **mode**:
+
+| Human says | You do |
+|------------|--------|
+| **Operate** / desk research | `OPERATE.md` + slash agents · **kernel** MCP pin · no ship |
+| **Build** / new feature | **`/cockpit-feature`** · brief first · PLATFORM · factory only · no push |
+| **Ship** | **`/cockpit-ship`** · privacy + lab-e2e + release-check · push **only** if he says **push** |
+
+Cold map: **[`docs/SESSION.md`](./docs/SESSION.md)**. Modes: **[`docs/EASY.md`](./docs/EASY.md)**.  
+Scalability law: desk **N** gets features via **registry + thin templates** — never per-ticker forks.  
+Friends get shell via `friend-upgrade` — **never** his research books.
 
 ---
 
@@ -11,12 +27,13 @@ If you only open one file after clone/fork, open **this**, then the links below.
 
 1. **Decision-support only** — no buy/sell/hold, price targets, or position sizing.  
 2. **Do not invent** facts, claims, risks, or house views. Prefer pack + vault.  
-3. **House + risk register are human-owned** — write only on explicit save **or** glass **ACCEPT** of an agent proposal.  
-   MCP may **propose** house/risks but must **not** claim vault is written until ACCEPT.  
-4. **Never hand-edit** `ontology/store/` (compile output only). After risk/house ACCEPT: **COMPILE BOOK**.  
+3. **House + risk register are human-owned** — write on user **GO** (`commit_on_go`) or glass **ACCEPT** of a **CONFIRMED** proposal. Never propose FORMING to glass. MCP must **not** claim the vault is written until `commit_on_go` or ACCEPT. Glass: `#/{desk}/risks`.  
+4. **Never hand-edit** `ontology/store/` (compile output only). After GO / ACCEPT: **COMPILE BOOK** if pack lags.  
 5. **Daily briefs are not pack input** — `cockpit/briefs/` is ops archive only.  
 6. **Never commit secrets** — `.access.json`, `.session-secret`, `.env`.  
-7. **Scale by factory** — no new per-ticker UI/server forks for operate features (see `PROJECT-STATE.md`).
+7. **Scale by factory** — no new per-ticker UI/server forks for operate features (see `PROJECT-STATE.md`).  
+8. **Ship to friends = platform only** — never vault/house/packs/desks. After platform work: `./scripts/lab-e2e.sh` **and** `./scripts/release-check.sh --full` before claiming friends can upgrade. **No git push** unless human asks. See `RELEASE.md` · daily use `OPERATE.md` · easy modes `docs/EASY.md`.  
+9. **Feature work** — run **`/cockpit-feature`** (mandatory brief). Before “implement done”: `./scripts/feature-ready.sh` when available.
 
 ---
 
@@ -28,8 +45,9 @@ ontology/          →  compile / verify / ask / packs
 memory-cockpit-v2/ →  website (glass) + API
 ```
 
-**Live product today:** Memory desk + thin desks **NEBIUS** + **MICROSOFT**.  
-**Ask on glass** = deterministic pack Q&A (**not** an LLM).
+**This kernel tree** is the dogfood monorepo (thin desks in `memory-cockpit-v2/config/thin-desks.json`).  
+**Product** (`~/Desktop/cockpit-product` / Cockpit-AI) is the friend empty shell (`desks: []`).  
+**Ask on glass** = deterministic pack Q&A (**not** an LLM). Desk list SoR is the registry in the tree you are in — do not trust older “NEBIUS + MICROSOFT only” or “0 desks” lines elsewhere.
 
 ---
 
@@ -37,27 +55,30 @@ memory-cockpit-v2/ →  website (glass) + API
 
 | # | File | Why |
 |---|------|-----|
-| **1** | **This file** (`AGENTS.md`) | Hard rules |
-| **2** | **[`PROJECT-STATE.md`](./PROJECT-STATE.md)** | **Current handoff:** what’s built, philosophy, operate surface, next work |
-| **3** | [`GENERAL-CONTEXT.md`](./GENERAL-CONTEXT.md) | Longer history, Path 1/2 plan, runbook |
-| **4** | [`research-wiki/RESEARCH-PATHS.md`](./research-wiki/RESEARCH-PATHS.md) | Where every research file goes |
-| **5** | [`ontology/AGENTS.md`](./ontology/AGENTS.md) | Underwrite + pack-first commands |
-| **6** | [`ontology/PART1-GATE.md`](./ontology/PART1-GATE.md) | `ont verify` gate |
-| **7** | By task (below) | Only what you need |
+| **1** | **[`docs/SESSION.md`](./docs/SESSION.md)** | Trees, modes, build/ship scars (start here) |
+| **2** | **This file** (`AGENTS.md`) | Hard rules |
+| **3** | **[`docs/EASY.md`](./docs/EASY.md)** | Operate / Build / Ship |
+| **4** | Task table below | Only what you need |
+| **5** | [`PROJECT-STATE.md`](./PROJECT-STATE.md) | Longer handoff — may lag desk count; registry is SoR |
 
 **New human / Fresh Mac (no prior context):**  
-[`COLD-START.md`](./COLD-START.md) (product shell scripts) → [`SETUP-GROK-COCKPIT.md`](./SETUP-GROK-COCKPIT.md) (Grok detail) → this file + `PROJECT-STATE.md`.
+[`docs/SESSION.md`](./docs/SESSION.md) → [`COLD-START.md`](./COLD-START.md) (product shell scripts) → this file.
 
 ### Task → open next
 
 | If the user asks you to… | Open |
 |--------------------------|------|
-| Build platform / glass / agents / AFK feature loop | **`docs/DEVELOP.md`** · blank E2E **`docs/LAB.md`** / `lab-e2e.sh` · ship → **`RELEASE.md`** |
+| **Easy modes** / stop tracking trees | **`docs/EASY.md`** · `/cockpit-feature` · `/cockpit-ship` |
+| Build platform / glass / agents / AFK feature loop | **`/cockpit-feature`** → **`docs/DEVELOP.md`** · blank E2E **`docs/LAB.md`** / `lab-e2e.sh` · ship → **`/cockpit-ship`** / **`RELEASE.md`** |
+| Ship to friends / “can we push” | **`/cockpit-ship`** · **`RELEASE.md`** · never books |
 | Multi-instance / many glasses (eng) | **`docs/MULTI-INSTANCE.md`** · `./scripts/run-glass-instance.sh PORT` |
+| Parallel test scenarios + MCP pin safety | **`docs/SCENARIO-PIN.md`** · `./scripts/scenario-up.sh A --port 4691 --slugs …` |
 | Grok as first-time customer / test feature from scratch | **`docs/CUSTOMER-SIM.md`** · `/cockpit-customer-sim` · `./scripts/customer-sim-preflight.sh` |
+| **Cursor Project e2e** / isolated Filings dogfood | **`docs/CURSOR-E2E.md`** · `./scripts/dogfood-e2e.sh` · MCP `.cursor/mcp.json` |
 | Daily operate / which agent for what | **`OPERATE.md`** |
-| Ship platform to friends / dual-tree | **`RELEASE.md`** + `docs/PRODUCT-KERNEL-SOR.md` |
-| Glass desk dead but pack green | `memory-cockpit-v2/scripts/desk-health.mjs` |
+| Ship platform to friends / dual-tree | **`RELEASE.md`** + `./scripts/release-check.sh --full` + `docs/PRODUCT-KERNEL-SOR.md` |
+| Product vs kernel drift / mirror agents | **`docs/PRODUCT-KERNEL-SOR.md`** + `./scripts/sync-agent-surface.sh` |
+| Glass desk dead but pack green | `memory-cockpit-v2/scripts/desk-health.mjs` + `test:thin-slug-resolve` |
 | “Where are we?” / continue after git pull | **`PROJECT-STATE.md`** |
 | Underwrite / “what’s on watch” / thesis | `ontology/AGENTS.md` then `./ont agent TICKER "…"` **or** Grok MCP `/cockpit-steelman` / `/cockpit-risk-check` |
 | Grok MCP / OPEN GROK / house or risk propose→accept | [`SETUP-GROK-COCKPIT.md`](./SETUP-GROK-COCKPIT.md) + [`memory-cockpit-v2/plans/AGENT-HOST-MCP.md`](./memory-cockpit-v2/plans/AGENT-HOST-MCP.md) + [`WRITE-PATH-RISKS.md`](./memory-cockpit-v2/plans/WRITE-PATH-RISKS.md) |
@@ -86,9 +107,12 @@ memory-cockpit-v2/ →  website (glass) + API
 Default runtime paths on Anthony’s Mac:
 
 ```text
-~/Trading/memory-cockpit-v2
-~/Trading/ontology
-~/Trading/research-wiki
+~/Desktop/cockpit-kernel                 # build / dogfood (this file’s tree)
+~/Desktop/cockpit-kernel/memory-cockpit-v2
+~/Desktop/cockpit-kernel/ontology
+~/Desktop/cockpit-kernel/research-wiki
+~/Desktop/cockpit-product                # friend empty shell
+~/cockpit-personal/repo                  # Grok Bot twin — not factory SoR
 ```
 
 If the clone is elsewhere, set:
@@ -143,14 +167,12 @@ Claim format:
 
 | Path | Name | Status | Work |
 |------|------|--------|------|
-| **1** | Operate live glass | **Not built** (plan) | Allowlisted edits (house/risks) + pack-grounded agents |
-| **2** | Bootstrap + scale | **Partial** | Cold-start scripts, server factory, add company |
+| **1** | Operate live glass | **Built** (factory thin desks + agents; human ACCEPT) | House/risks propose→ACCEPT, pack-grounded slash agents |
+| **2** | Bootstrap + scale | **Built** (cold-start + registry + `pages/thin/*`) | New company via playbook, not per-ticker UI forks |
 
-**Today:** read path is strong; writes are mostly files; server still per-ticker clones.
+**Today:** operate is factory-shaped (`pages/thin/*` + `thin-desks.json` + shared server). Do not add `server/{ticker}*.js` or `pages/{ticker}/` operate forks.
 
-**Operate ↔ factory:** Path 1 agents (daily, steelman, propose, …) must scale from **registry + templates + pack/house** — not per-ticker forks. Factory incomplete if desk #N needs hand-copied seeds/server/UI. See `GENERAL-CONTEXT.md` §7.2 · checklist `memory-cockpit-v2/plans/NEW-DESK-PLAYBOOK.md` §D.
-
-Stack when building (priority order): allowlist → mutations+tests → factory → cold-start → agents → real company #3.
+**Operate ↔ factory:** daily/steelman/propose/… must scale from **registry + templates + pack/house**. Desk #N needs zero new UI code. See `docs/SESSION.md` · `GENERAL-CONTEXT.md` §7.2 · `memory-cockpit-v2/plans/NEW-DESK-PLAYBOOK.md`.
 
 Details: [`GENERAL-CONTEXT.md`](./GENERAL-CONTEXT.md).
 
@@ -188,8 +210,8 @@ Details: [`GENERAL-CONTEXT.md`](./GENERAL-CONTEXT.md).
 | Path 1 (edits, agents, dogfood) | Anthony |
 | Path 2 (factory, bootstrap, Path B wiring) | Collaborator / friend |
 
-If unsure which path a task is on, **ask the human** before coding.
+If the human said operate / build / ship, follow [`docs/SESSION.md`](./docs/SESSION.md) — do not ask them to pick a tree.
 
 ---
 
-*After this file → read `GENERAL-CONTEXT.md` for full state, runbook, strengths, limits, and Path 1/2 plan.*
+*After this file → [`docs/SESSION.md`](./docs/SESSION.md) if you skipped it. `GENERAL-CONTEXT.md` is history, not the live desk list.*

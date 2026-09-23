@@ -1,5 +1,5 @@
 ---
-description: Interactive Grok Build session — dump the full house here. GO writes, SAVE DRAFT parks, EDIT revises with no write.
+description: Interactive Grok Build session — dump the full house here. GO writes, SAVE DRAFT stays in Grok, EDIT revises with no write.
 argument-hint: "[desk] [--session]"
 ---
 
@@ -47,10 +47,22 @@ Do **not** stop. Do **not** require a second OPEN GROK. Do **not** wait for glas
 1. Live house must be **CONFIRMED** (commit_on_go already wrote). If still FORMING, do **not** start register-closeout.
 2. Load `08` + that house. **Align register** (ask; no silent-delete): WATCH what the stance lives on; drop/add only if they say so.
 3. Dump **full proposed `08`** in one fence.
-4. Same three words. **EDIT** → dump `08` again. **GO** (or ACCEPT REGISTER) → propose chips → **`commit_on_go` kind=register**. **SAVE DRAFT** → pending chips only. Glass `#/{desk}/risks` is a viewer.
+4. Same three words. **EDIT** → dump `08` again. **GO** (or ACCEPT REGISTER) → propose chips → **`commit_on_go` kind=register**. **SAVE DRAFT** → Grok only. Glass `#/{desk}/risks` is a viewer.
 5. `node scripts/register-closeout.mjs --slug {desk}` must **PASS**. COMPILE BOOK if pack lags.
 
 SAVE DRAFT house → do **not** flow into register-closeout.
+
+## After register-closeout PASS — same terminal, drivers
+
+Do **not** stop. Do **not** dump house headings as Drivers.
+
+1. Live house **CONFIRMED**. Register-closeout **PASS**.
+2. Ask which **business engines** they want watched closer (AWS growth, neoclouds, ads mix). Suggest only engines **quoted from that house**. **None auto-kept.**
+3. User **KEEP / SKIP / empty**. KEEP → `propose_keep_driver` (**house_cite required**). Not in the house → house GO first, then KEEP.
+4. **GO** → **`commit_on_go` kind=drivers** (writes 09, not 08). **SAVE DRAFT** → Grok only.
+5. `node scripts/drivers-closeout.mjs --slug {desk}` — **zero Dn = PASS**.
+
+SAVE DRAFT register → do **not** flow into drivers.
 
 ## Do not
 

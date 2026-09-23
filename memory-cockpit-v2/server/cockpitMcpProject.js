@@ -85,9 +85,13 @@ export function ensureProjectCockpitMcp(monorepoRoot, opts = {}) {
   const rawName = (opts.mcpName != null && String(opts.mcpName).trim())
     ? String(opts.mcpName)
     : (scenarioMcpName || process.env.COCKPIT_MCP_NAME || 'cockpit-research');
-  const serverName = mcpServerName(rawName);
+  let serverName = mcpServerName(rawName);
   if (testingCockpit && serverName === 'cockpit-research') {
     return { ok: false, error: 'testing cockpit must not pin mcp_servers.cockpit-research' };
+  }
+  // Scenario folders must never steal operate name cockpit-research (user pin + kernel).
+  if (fs.existsSync(scenarioPath) && serverName === 'cockpit-research') {
+    serverName = mcpServerName(scenarioName || 'scenario');
   }
   if (testingCockpit) {
     const inTree = path.join(root, 'research-wiki');

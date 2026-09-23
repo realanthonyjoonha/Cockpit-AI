@@ -3,7 +3,7 @@
 FROM node:22-bookworm-slim
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends bash git ca-certificates curl rsync procps \
+  && apt-get install -y --no-install-recommends bash git ca-certificates curl rsync procps python3 \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /work

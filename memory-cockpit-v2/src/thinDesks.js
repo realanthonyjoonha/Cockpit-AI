@@ -79,6 +79,7 @@ export function thinRail(desk) {
     ['◧', `${L} Overview — stance + claims`, `#/${s}/overview`],
     ['⚠', `${L} Risks`, `#/${s}/risks`],
     ['§', `${L} House view`, `#/${s}/house`],
+    ['▣', `${L} Drivers`, `#/${s}/drivers`],
     ['⧉', `${L} Sources — pack catalog`, `#/${s}/sources`],
     ['$', `${L} Street — published targets (not house)`, `#/${s}/street`],
     ['∑', `${L} Model — working assumptions + bridge`, `#/${s}/model`],

@@ -36,6 +36,7 @@ MARK="$(echo "$TICKER" | cut -c1)"
 HOUSE="house-view-${SLUG}.md"
 RAW="raw/${SLUG}-research"
 RISKS_SRC="${RAW}/08-risks-catalysts.md"
+DRIVERS_SRC="${RAW}/09-drivers.md"
 RISKS_GEN="${RAW}/risks"
 ENTITY="wiki/entities/${SLUG}.md"
 TODAY="$(date -u +%Y-%m-%d)"
@@ -130,6 +131,32 @@ EOF
   echo "  + $RISKS_SRC (empty section A)"
 else
   echo "  · $RISKS_SRC exists (left unchanged)"
+fi
+
+if [ ! -f "$ROOT/research-wiki/$DRIVERS_SRC" ]; then
+  cat > "$ROOT/research-wiki/$DRIVERS_SRC" <<EOF
+# Drivers — $NAME ($TICKER)
+
+**Scaffold only.** User pins engines. Empty is valid.
+Each \`### Dn\` needs **House:** (a quote from the confirmed house) and **Watching:**.
+No status. Grok never auto-keeps. Decision-support only.
+
+<!--
+### D1 — Title
+- **House:** «quote from live house»
+- **Watching:** what to follow
+
+**Log**
+
+| Date | Via | Fact |
+| --- | --- | --- |
+
+**Open**
+-->
+EOF
+  echo "  + $DRIVERS_SRC (empty)"
+else
+  echo "  · $DRIVERS_SRC exists (left unchanged)"
 fi
 
 touch "$ROOT/research-wiki/${RISKS_GEN}/.gitkeep"

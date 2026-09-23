@@ -26,7 +26,7 @@ This is **underwrite** the book, then (default) **one Street operate bootstrap**
 ## Hard rules
 
 1. **Decision-support only** — no buy/sell/hold, price targets, or position sizing.  
-2. **Never invent** graded claims, CONFIRMED house stance, or WATCH risk register to “finish” a desk.  
+2. **Never invent** graded claims, CONFIRMED house stance, or a risk register to “finish” a desk.  
 3. **Human owns** the book. In Grok they say **GO**, **SAVE DRAFT**, or **EDIT**. **GO writes** via `commit_on_go` / `go-commit.mjs`. **EDIT** and **SAVE DRAFT** never propose. Glass never gets a FORMING house proposal.  
 4. **Never hand-edit** `ontology/store/`. Compile rebuilds packs.  
 5. Prefer empty scaffold + real research over fake fullness.  
@@ -113,7 +113,8 @@ Do **not** call research “done” until:
 | Risks SoR | Draft R1… with mechanism + **≥ 2** tripwires each (or GAP table) |
 | Status file | `00-research-status.md` depth table + residual gaps |
 | House closeout | Live CONFIRMED **or** pending **CONFIRMED** proposal (never FORMING) + **full house markdown printed in this terminal**. `node scripts/house-closeout.mjs --slug SLUG` must **PASS**. FORMING on glass is a fail. |
-| Register closeout | **After house is CONFIRMED** (GO in Grok + `commit_on_go`). `08` has ≥4 `### Rn` + tripwire tables, **and** pending `add_risk` chips **or** 08 header **ACCEPTED**. Dump **full 08** in this terminal. Then GO → `commit_on_go` kind=register. `node scripts/register-closeout.mjs --slug SLUG` must **PASS**. House not CONFIRMED → this bar **FAIL**s first. |
+| Register closeout | **After house is CONFIRMED** (GO in Grok + `commit_on_go`). `08` has ≥4 `### Rn` with tripwire tables, **and** pending `add_risk` chips **or** 08 header **ACCEPTED**. Dump **full 08** in this terminal. Then GO → `commit_on_go` kind=register. `node scripts/register-closeout.mjs --slug SLUG` must **PASS**. House not CONFIRMED → this bar **FAIL**s first. |
+| Drivers closeout | **After register-closeout PASS**. User pins **business engines** from that house (not headings). Empty KEEP is PASS. GO → `commit_on_go` kind=drivers. `node scripts/drivers-closeout.mjs --slug SLUG` must **PASS**. Grok never auto-keeps. |
 
 If the market is thin on primary, document **GAP** and still max out what exists — do not fake Deep.
 
@@ -178,13 +179,14 @@ npm run test:desk-health
 | **PASS** | Desk is operable on glass (process layer; live if base-url given) |
 | **FAIL** | **Do not** claim “glass ready.” Report failing check ids (S1 reserved / S2 resolve / S3 live). Fix reserved-slug or registry; restart glass if live fail. **Do not** re-run deep research as the first fix. |
 | **house-closeout FAIL** | Live house is still the scaffold **and** there is no pending research-enough proposal (TSLA 2026-09-17). **`propose_house`**, dump the **full markdown in this terminal**, re-run the check. **Do not** claim DEEP done. |
-| **register-closeout FAIL** | House not **CONFIRMED** yet, **or** `08` thin, **or** DRAFT with no `add_risk` chips. GO house first (`commit_on_go` / `go-commit.mjs`). Then dump full `08` in Grok, GO, `commit_on_go` kind=register, re-run. |
+| **register-closeout FAIL** | House not **CONFIRMED** yet, **or** `08` thin, **or** DRAFT with no `add_risk` chips. GO house first (`commit_on_go` / `go-commit.mjs`). Then dump full `08` in Grok, GO, `commit_on_go` kind=register, re-run. Do not start Drivers. |
+| **drivers-closeout FAIL** | Register closeout has not passed, or a `### Dn` has no **House:** cite. Empty 09 is PASS. Do not pin headings. GO `kind=drivers` only after register-closeout PASS. |
 
 Routing health may PASS while house-closeout FAILs. Both are required for DEEP. LIGHT may skip house-closeout (book not underwrite-complete).
 
 ### 6–7. Human gates (book only) — or scenario agent ACCEPT
 
-6. **House first, then register — same Grok terminal.** Dump full house → **GO** (CONFIRMED + **`commit_on_go` / `go-commit.mjs`**), **SAVE DRAFT** (Grok only), or **EDIT**. **Do not propose FORMING.** When house is **CONFIRMED**, **do not end the session.** Align `08` to that house (add/drop only if they say so) → dump **full `08`** → they say **GO** / **SAVE DRAFT** / **EDIT** → on GO: propose chips → **`commit_on_go` kind=register** → `register-closeout.mjs` **PASS**.  
+6. **House, then register, then drivers — same Grok terminal.** Dump full house → **GO** (CONFIRMED + **`commit_on_go` / `go-commit.mjs`**), **SAVE DRAFT** (Grok only), or **EDIT**. **Do not propose FORMING.** When house is **CONFIRMED**, **do not end the session.** Align `08` to that house (add/drop only if they say so) → dump **full `08`** → they say **GO** / **SAVE DRAFT** / **EDIT** → on GO: propose chips → **`commit_on_go` kind=register** → `register-closeout.mjs` **PASS**. **SAVE DRAFT on the register does not start Drivers.** Then ask which business engines to pin (quote the house; never headings; never auto-keep). Empty is valid. **GO** → **`commit_on_go` kind=drivers** → `drivers-closeout.mjs` **PASS**. Drivers GO refuses until the register closeout would pass.  
    Never claim vault written until `commit_on_go`. Never leave DEEP with only the scaffold house. Never treat register as closed while house is FORMING. Never require a second OPEN GROK after house GO. Never propose FORMING. Never `commit_on_go` after SAVE DRAFT or **EDIT**. Do not wait for glass ACCEPT after GO.  
 
    **Scenario monorepo only** (`.cockpit-scenario.json` with `agent_accept: true`, MCP `COCKPIT_AGENT_ACCEPT=1`):  

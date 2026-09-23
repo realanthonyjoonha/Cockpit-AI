@@ -1,5 +1,5 @@
 ---
-description: Due-diligence check on a thin-desk risk (what moved vs tripwires; no status write)
+description: Due-diligence check on a named risk (what moved vs tripwires; no status write)
 argument-hint: "[desk] [risk id or R3 or name fragment]"
 ---
 
@@ -33,7 +33,8 @@ If desk unknown / MCP monorepo has no row: show `list_desks` output (`monorepo_r
 3. **Tripwires** — table or bullets: signal · tripwire · state · as_of  
 4. **What moved** — dated sources; map each → tripwire or `not in book`; soft → **[soft]**  
 5. **Direction** — **easing | stable | elevated** (your read of evidence vs tripwires; say if GAP)  
-6. **Suggested status** — keep / move to INTACT|WATCH|FIRED — **not applied**; say “propose via glass risk detail when ready”  
+6. **Suggested status** — keep / move to INTACT|WATCH|FIRED — **not applied**; say “propose via glass risk detail when ready”
+6b. **House:** do not auto-propose. Ask only if the suggested move **contradicts** the stance, is a new **flip trigger**, or they say the house should mention it.  
 7. **Gaps** — if `sor_ahead_of_pack`, say COMPILE BOOK to fully sync pack JSON  
 8. **Footer** — decision-support only · no vault/ontology write  
 

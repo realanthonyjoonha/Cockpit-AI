@@ -4,6 +4,8 @@ import { apiPost } from '../../api.js';
 import ThinOverview from './Overview.jsx';
 import ThinRisks from './Risks.jsx';
 import ThinRisk from './Risk.jsx';
+import ThinDrivers from './Drivers.jsx';
+import ThinDriver from './Driver.jsx';
 import ThinHouse from './House.jsx';
 import ThinSources from './Sources.jsx';
 import ThinStreet from './Street.jsx';
@@ -44,10 +46,18 @@ export default function DeskRouter({ desk, route }) {
 
   const k = `${prefix}:${packTick}`;
   if (!sub || sub === 'overview' || sub.startsWith('overview')) return <ThinOverview key={k} desk={desk} />;
+  if (sub.startsWith('driver/') || sub.startsWith('metric/')) {
+    const needle = sub.startsWith('driver/') ? 'driver/' : 'metric/';
+    const idx = rawSub.toLowerCase().indexOf(needle);
+    const idPart = idx >= 0 ? rawSub.slice(idx + needle.length) : sub.slice(needle.length);
+    return <ThinDriver key={k} desk={desk} id={decodeURIComponent(idPart)} />;
+  }
   if (sub.startsWith('risk/')) {
-    const idPart = rawSub.includes('/') ? rawSub.slice(rawSub.toLowerCase().indexOf('risk/') + 5) : sub.slice(5);
+    const idx = rawSub.toLowerCase().indexOf('risk/');
+    const idPart = idx >= 0 ? rawSub.slice(idx + 'risk/'.length) : sub.slice('risk/'.length);
     return <ThinRisk key={k} desk={desk} id={decodeURIComponent(idPart)} />;
   }
+  if (sub.startsWith('drivers') || sub.startsWith('metrics')) return <ThinDrivers key={k} desk={desk} />;
   if (sub.startsWith('risks')) return <ThinRisks key={k} desk={desk} />;
   if (sub.startsWith('house')) return <ThinHouse key={k} desk={desk} />;
   if (sub.startsWith('sources')) return <ThinSources key={k} desk={desk} />;

@@ -98,7 +98,7 @@ Docs: [`examples/README.md`](./examples/README.md) · [`examples/microsoft/READM
 | MEMORY | Specialist (live monorepo / if vault data exists) |
 | Thin desks | Only after registry row (example or real underwriting) |
 
-**Underwrite door (product shell):** on START, optional ticker + **Build next company** opens Grok in this monorepo with the new-desk ritual. Available **before** company #1 (empty registry). No invented house/WATCH — you CONFIRM/ACCEPT on glass.
+**Underwrite door (product shell):** on START, optional ticker + **Build next company** opens Grok in this monorepo with the new-desk ritual. Available **before** company #1 (empty registry). No invented house/WATCH — you **GO** in Grok (`commit_on_go` writes CONFIRMED). Never propose FORMING to glass.
 
 **Desk reliability (end-user):** glass mounts thin desks **live** from `config/thin-desks.json` (mtime reload). New scaffold → desk appears without rebuild/restart. Slug = lowercased ticker (`TSM` → `#/tsm`); unknown hashes show **Desk not found** (with suggestions), never silent bounce to START.
 

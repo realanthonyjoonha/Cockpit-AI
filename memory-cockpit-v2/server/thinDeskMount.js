@@ -220,6 +220,18 @@ export function mountThinDesks(app, { j, ja }) {
   app.get('/api/:slug/meta', j(withDesk((rt) => rt.model.meta())));
   app.get('/api/:slug/overview', j(withDesk((rt) => rt.model.overview())));
   app.get('/api/:slug/risks', j(withDesk((rt) => rt.model.risks())));
+  app.get('/api/:slug/metrics', j(withDesk((rt) => rt.model.drivers())));
+  app.get('/api/:slug/metric/:id', j(withDesk((rt, req) => rt.model.driverDetail(req.params.id))));
+  app.get('/api/:slug/drivers', j(withDesk((rt) => rt.model.drivers())));
+  app.get('/api/:slug/driver/:id', j(withDesk((rt, req) => rt.model.driverDetail(req.params.id))));
+  app.get('/api/:slug/drivers/candidates', j(withDesk((rt) => rt.model.driverCandidates())));
+  app.get('/api/:slug/drivers/proposals', j(withDesk((rt, req) => rt.model.driverProposalsList({
+    status: req.query.status,
+  }))));
+  app.post('/api/:slug/drivers/keep', j(withDesk((rt, req) => rt.model.driverKeep(req.body || {}))));
+  app.post('/api/:slug/drivers/log', j(withDesk((rt, req) => rt.model.driverLog(req.body || {}))));
+  app.post('/api/:slug/drivers/skip', j(withDesk((rt, req) => rt.model.driverSkip(req.body || {}))));
+  app.post('/api/:slug/drivers/proposals/:id/accept', j(withDesk((rt, req) => rt.model.driverProposalAccept(req.params.id))));
   app.get('/api/:slug/risk/:id', j(withDesk((rt, req) => rt.model.riskDetail(req.params.id))));
   app.get('/api/:slug/house', j(withDesk((rt) => rt.model.house())));
   app.post('/api/:slug/house/save', j(withDesk((rt, req) => rt.model.saveHouse(req.body || {}))));

@@ -185,7 +185,7 @@ export default function ThinFilings({ desk }) {
       { dry_run: !!dryRun },
     );
     if (out?.ok && !dryRun && Array.isArray(out.created) && out.created.length) {
-      setFlash(`PROPOSED ${out.created.length} · ACCEPT on House / Risks`);
+      setFlash(`PROPOSED ${out.created.length} · GO / ACCEPT on House / Risks`);
     } else if (out?.ok && dryRun) {
       setFlash(`Preview · ${(out.counts && out.counts.actionable) || 0} actionable`);
     } else if (out && out.ok === false) {

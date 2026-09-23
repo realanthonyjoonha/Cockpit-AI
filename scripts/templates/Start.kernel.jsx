@@ -149,7 +149,7 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
             ) : (
               <>
                 Shell is live with registered desk(s). Underwrite another name with the same factory —
-                no new UI. You still CONFIRM house and ACCEPT risks.
+                no new UI. You still GO house and risks in Grok.
               </>
             )}
           </p>
@@ -382,7 +382,7 @@ export default function Start({ desks: desksProp, onRefreshDesks } = {}) {
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Desk</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Attn</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>House</th>
-                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Risks</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px' }}>Metrics</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Street</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Filings</th>
                   <th style={{ textAlign: 'left', padding: '6px 10px' }}>Compile</th>

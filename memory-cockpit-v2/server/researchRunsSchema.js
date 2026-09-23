@@ -166,23 +166,25 @@ export function shortRegisterToken(id) {
   return m ? `R${m[1]}` : s;
 }
 
-/** Section ORDER for config.py. skim drops register-updated and tripwires. */
-export function defaultThesisOrder(mode, registerScope) {
+/** Section ORDER for config.py. skim drops register-updated and tripwires. drivers inserts only when asked. */
+export function defaultThesisOrder(mode, registerScope, driverScope) {
   const m = normalizeThesisMode(mode);
   const skim = normalizeRegisterScope(registerScope) === 'skim';
+  let order;
   if (m === 'earnings-update') {
-    return skim
+    order = skim
       ? ['print-vs-house', 'gaps', 'exec']
       : ['print-vs-house', 'register-updated', 'tripwires', 'gaps', 'exec'];
-  }
-  if (m === 'initiation') {
-    return skim
+  } else if (m === 'initiation') {
+    order = skim
       ? ['spine', 'delta-vs-house', 'financials', 'monitorables', 'exec']
       : ['spine', 'delta-vs-house', 'financials', 'register-updated', 'monitorables', 'exec'];
+  } else {
+    order = skim
+      ? ['setup', 'delta-vs-house', 'mechanism', 'monitorables', 'exec']
+      : ['setup', 'delta-vs-house', 'register-updated', 'mechanism', 'monitorables', 'exec'];
   }
-  return skim
-    ? ['setup', 'delta-vs-house', 'mechanism', 'monitorables', 'exec']
-    : ['setup', 'delta-vs-house', 'register-updated', 'mechanism', 'monitorables', 'exec'];
+  return insertDriversSection(order, driverScope);
 }
 
 export function formatThesisOrder(order) {
@@ -245,6 +247,69 @@ export function skimThesisViolations(opts = {}) {
   return errors;
 }
 
+/** Drivers on a thesis note. Off omits the section. Not a second house. */
+export const DRIVER_SCOPES = new Set(['all', 'pick', 'off']);
+
+const DRIVER_SCOPE_ALIAS = {
+  none: 'off',
+  skip: 'off',
+  omit: 'off',
+  'drivers-off': 'off',
+  'drivers-all': 'all',
+  'drivers-pick': 'pick',
+};
+
+export function normalizeDriverScope(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (!s) return 'off';
+  const mapped = DRIVER_SCOPE_ALIAS[s] || s;
+  return DRIVER_SCOPES.has(mapped) ? mapped : 'off';
+}
+
+export function normalizeDriverIds(raw) {
+  return normalizeRegisterIds(raw);
+}
+
+/**
+ * Off is the default so an older note does not grow a drivers chapter.
+ * Pick with no ids falls back to off (do not silently widen to every engine).
+ */
+export function resolveThesisDrivers(raw = {}) {
+  let driver_scope = normalizeDriverScope(
+    raw.driver_scope || raw.driverScope || raw.thesis_drivers || raw.thesisDrivers,
+  );
+  let driver_ids = normalizeDriverIds(
+    raw.driver_ids || raw.driverIds,
+  );
+  if (driver_scope === 'pick' && !driver_ids.length) driver_scope = 'off';
+  if (driver_scope !== 'pick') driver_ids = [];
+  return { driver_scope, driver_ids };
+}
+
+export function describeDriverScope(scope, ids) {
+  const { driver_scope, driver_ids } = resolveThesisDrivers({
+    driver_scope: scope,
+    driver_ids: ids,
+  });
+  if (driver_scope === 'all') {
+    return 'all — every pinned engine: house cite, what is watched, latest log, still open. Not a second house. No status.';
+  }
+  if (driver_scope === 'pick') {
+    return `pick — only ${driver_ids.join(', ')}; other engines one line, not in this note`;
+  }
+  return 'off — omit drivers from ORDER. No engines chapter.';
+}
+
+function insertDriversSection(order, driverScope) {
+  if (normalizeDriverScope(driverScope) === 'off') return order;
+  if (order.includes('drivers')) return order;
+  const out = order.slice();
+  const after = out.findIndex((s) => s === 'print-vs-house' || s === 'delta-vs-house');
+  const at = after >= 0 ? after + 1 : Math.min(1, out.length);
+  out.splice(at, 0, 'drivers');
+  return out;
+}
+
 export function describeRegisterScope(scope, ids) {
   const { register_scope, register_ids } = resolveThesisRegister({
     register_scope: scope,
@@ -272,6 +337,7 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
       inputs: {
         focus, prior_run_id, as_of_request,
         thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
+        driver_scope: null, driver_ids: null,
         model_read_order: order,
       },
       thesis: null,
@@ -286,6 +352,7 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
       inputs: {
         focus, prior_run_id, as_of_request,
         thesis_mode: null, checkpoint: null, register_scope: null, register_ids: null, thesis_pace: null, thesis_order: null,
+        driver_scope: null, driver_ids: null,
       },
       thesis: null,
       model_read: null,
@@ -300,9 +367,14 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
   );
   const mode = normalizeThesisMode(raw.thesis_mode || raw.inputs?.thesis_mode || raw.thesis?.mode);
   const pace = normalizeThesisPace(raw.thesis_pace || raw.inputs?.thesis_pace || raw.thesis?.thesis_pace);
-  const order = Array.isArray(raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order)
-    ? (raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order)
-    : defaultThesisOrder(mode, reg.register_scope);
+  const drivers = resolveThesisDrivers({
+    driver_scope: raw.driver_scope || raw.inputs?.driver_scope || raw.thesis?.driver_scope,
+    driver_ids: raw.driver_ids || raw.inputs?.driver_ids || raw.thesis?.driver_ids,
+  });
+  const explicitOrder = raw.thesis_order || raw.inputs?.thesis_order || raw.thesis?.order;
+  const order = Array.isArray(explicitOrder)
+    ? explicitOrder
+    : defaultThesisOrder(mode, reg.register_scope, drivers.driver_scope);
   return {
     inputs: {
       focus,
@@ -314,6 +386,8 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
       register_ids: reg.register_ids,
       thesis_pace: pace,
       thesis_order: order,
+      driver_scope: drivers.driver_scope,
+      driver_ids: drivers.driver_ids,
     },
     thesis: {
       mode,
@@ -323,6 +397,8 @@ function collectThesisFields(raw, job, { complete = false } = {}) {
       register_ids: reg.register_ids,
       thesis_pace: pace,
       order,
+      driver_scope: drivers.driver_scope,
+      driver_ids: drivers.driver_ids,
     },
   };
 }
@@ -749,6 +825,12 @@ export function indexRowFromMeta(meta) {
       : null,
     thesis_pace: isThesisReportJob(meta.job)
       ? normalizeThesisPace(meta.inputs?.thesis_pace || meta.thesis?.thesis_pace)
+      : null,
+    driver_scope: isThesisReportJob(meta.job)
+      ? (meta.inputs?.driver_scope || meta.thesis?.driver_scope || null)
+      : null,
+    driver_ids: isThesisReportJob(meta.job)
+      ? normalizeDriverIds(meta.inputs?.driver_ids || meta.thesis?.driver_ids)
       : null,
     job_label: humanJobLabel(meta.job),
   };

@@ -1,5 +1,5 @@
 // streetAgentSeed.js — build a page-context seed for OPEN GROK from Street.
-// Includes current Street snapshot + house (read-only) + risk register summary.
+// Includes current Street snapshot + house (read-only) + risk register / WATCH summary.
 // mode: pipeline (REFRESH STREET) | chat (OPEN GROK).
 // Decision-support only. Does not write house/risks/pack.
 import fs from 'fs';

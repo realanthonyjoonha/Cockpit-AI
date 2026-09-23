@@ -13,6 +13,7 @@ const REQUIRED = [
   'overview',
   'risks',
   'house',
+  'drivers',
   'sources',
   'street',
   'model',

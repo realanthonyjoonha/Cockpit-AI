@@ -19,6 +19,7 @@ import {
   normalizeThesisCheckpoint,
   normalizeThesisPace,
   resolveThesisRegister,
+  resolveThesisDrivers,
   defaultThesisOrder,
   researchLane,
   jobMatchesLane,
@@ -544,6 +545,10 @@ export function getResearchRun(ticker, runId, opts = {}) {
         ? meta.thesis.register_ids
         : (Array.isArray(meta.inputs?.register_ids) ? meta.inputs.register_ids : []),
       thesis_pace: meta.thesis?.thesis_pace || meta.inputs?.thesis_pace || 'stop',
+      driver_scope: meta.thesis?.driver_scope || meta.inputs?.driver_scope || null,
+      driver_ids: Array.isArray(meta.thesis?.driver_ids)
+        ? meta.thesis.driver_ids
+        : (Array.isArray(meta.inputs?.driver_ids) ? meta.inputs.driver_ids : []),
       order: Array.isArray(meta.thesis?.order || meta.inputs?.thesis_order)
         ? (meta.thesis?.order || meta.inputs?.thesis_order)
         : null,
@@ -637,11 +642,12 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
     ? normalizeThesisMode(body.thesis_mode || body.thesisMode)
     : null;
   const thesisRegister = isThesisReportJob(job) ? resolveThesisRegister(body) : null;
+  const thesisDrivers = isThesisReportJob(job) ? resolveThesisDrivers(body) : null;
   const thesisPace = isThesisReportJob(job)
     ? normalizeThesisPace(body.thesis_pace || body.thesisPace)
     : null;
   const thesisOrder = isThesisReportJob(job)
-    ? defaultThesisOrder(thesisMode, thesisRegister.register_scope)
+    ? defaultThesisOrder(thesisMode, thesisRegister.register_scope, thesisDrivers.driver_scope)
     : null;
   const meta = {
     schema_version: RESEARCH_RUNS_SCHEMA_VERSION,
@@ -664,6 +670,8 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       register_ids: thesisRegister?.register_ids || null,
       thesis_pace: thesisPace,
       thesis_order: thesisOrder,
+      driver_scope: thesisDrivers?.driver_scope || null,
+      driver_ids: thesisDrivers?.driver_ids || null,
       model_read_order: isModelReadJob(job) ? MODEL_READ_ORDER : null,
     },
     model_read: isModelReadJob(job) ? {
@@ -679,6 +687,8 @@ export function startResearchRun(ticker, body = {}, opts = {}) {
       register_ids: thesisRegister.register_ids,
       thesis_pace: thesisPace,
       order: thesisOrder,
+      driver_scope: thesisDrivers.driver_scope,
+      driver_ids: thesisDrivers.driver_ids,
     } : null,
     worker: null,
     promotion: {
@@ -876,6 +886,14 @@ export function publishResearchRun(ticker, runId, body = {}, opts = {}) {
         || body.inputs?.thesis_pace
         || existingMeta?.inputs?.thesis_pace
         || existingMeta?.thesis?.thesis_pace,
+      driver_scope: body.driver_scope
+        || body.inputs?.driver_scope
+        || existingMeta?.inputs?.driver_scope
+        || existingMeta?.thesis?.driver_scope,
+      driver_ids: body.driver_ids
+        || body.inputs?.driver_ids
+        || existingMeta?.inputs?.driver_ids
+        || existingMeta?.thesis?.driver_ids,
     },
     {
       ticker: id,

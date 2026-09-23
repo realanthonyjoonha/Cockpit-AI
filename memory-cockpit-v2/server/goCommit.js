@@ -8,6 +8,7 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { VAULT_DIR, isInsideVault } from './vault.js';
+import { registerCloseout } from '../scripts/register-closeout.mjs';
 import {
   getHouseProposal,
   acceptHouseProposal,
@@ -18,6 +19,17 @@ import {
   readRisksSource,
   saveRisksSource,
 } from './riskProposals.js';
+import {
+  listDriverProposals,
+  acceptDriverProposal,
+  readDriversSource,
+  saveDriversSource,
+  driversSourceRel,
+  markDriversAcceptedHeader,
+  parseDriversMarkdown,
+  emptyHeader,
+  assertPendingDrivers,
+} from './driverProposals.js';
 import {
   houseMarkdownStatus,
   isScaffoldHouseMarkdown,
@@ -288,6 +300,104 @@ export function goCommitRegister(opts = {}) {
     next_steps: [
       compile.ran && compile.ok ? 'Pack compiled' : `COMPILE BOOK if pack lags (#/${slug}/risks)`,
       `node scripts/register-closeout.mjs --slug ${slug}`,
+    ],
+    decision_support_only: true,
+  };
+}
+
+/**
+ * Apply pending KEEP chips into 09. House must be CONFIRMED. Does not touch 08.
+ * Empty pending → empty 09 ACCEPTED (valid).
+ */
+export function goCommitDrivers(opts = {}) {
+  const slug = String(opts.slug || '').toLowerCase();
+  const houseFile = String(opts.houseFile || `house-view-${slug}.md`);
+  const rel = String(opts.driversSourceRel || driversSourceRel(slug));
+  assertGoUtterance(opts.utterance);
+  if (!slug) throw new Error('slug required');
+
+  const liveHouse = readHouseMarkdown(houseFile);
+  if (houseMarkdownStatus(liveHouse.markdown) !== 'CONFIRMED') {
+    throw new Error('House is not CONFIRMED. GO the house first (commit_on_go kind=house).');
+  }
+  const register = registerCloseout(slug, { vault: VAULT_DIR });
+  if (!register.pass) {
+    throw new Error(`Register is not closed. ${register.reason} Drivers start after register-closeout PASS.`);
+  }
+
+  const listed = Array.isArray(opts.proposalIds || opts.proposal_ids)
+    ? (opts.proposalIds || opts.proposal_ids).map(String)
+    : null;
+  const pending = listDriverProposals(slug, { status: 'pending' }).proposals
+    .filter((p) => !listed || listed.includes(p.id));
+
+  if (opts.markdown) {
+    const md = String(opts.markdown);
+    const rows = parseDriversMarkdown(md);
+    const heads = md.match(/### D\d+/g) || [];
+    if (heads.length && rows.length !== heads.length) {
+      throw new Error('every ### Dn needs a House: cite and an engine name, not a house heading');
+    }
+    assertPendingDrivers({
+      pending: rows.map((row) => ({
+        kind: 'keep_driver',
+        title: row.name,
+        house_cite: row.house,
+      })),
+      text: '',
+      houseMarkdown: liveHouse.markdown,
+    });
+    saveDriversSource(rel, markDriversAcceptedHeader(md).text);
+  } else {
+    const { text, exists } = readDriversSource(rel);
+    assertPendingDrivers({ pending, text, houseMarkdown: liveHouse.markdown });
+    if (!exists || !text.trim()) {
+      saveDriversSource(rel, emptyHeader(slug));
+    }
+    for (const p of pending) {
+      acceptDriverProposal({
+        slug,
+        id: p.id,
+        driversSourceRel: rel,
+        houseMarkdown: liveHouse.markdown,
+      });
+    }
+    const after = readDriversSource(rel);
+    const marked = markDriversAcceptedHeader(after.text || emptyHeader(slug));
+    saveDriversSource(rel, marked.text);
+  }
+
+  const snapshot = snapshotRel(rel, slug, 'drivers');
+  const compile = opts.compile === false
+    ? { ran: false, reason: 'compile false' }
+    : tryOntCompile(opts.ticker);
+  const session = stampSession(slug, {
+    phase: 'DRIVERS_COMMITTED',
+    drivers_committed_at: new Date().toISOString(),
+    drivers_snapshot: snapshot,
+    compile,
+  });
+  const audit = appendGoCommitAudit({
+    kind: 'drivers',
+    slug,
+    utterance: String(opts.utterance || '').slice(0, 80),
+    snapshot,
+    applied: pending.filter((p) => p.kind === 'keep_driver' || p.kind === 'log_driver').length,
+    compile_ran: !!compile.ran,
+  });
+  return {
+    ok: true,
+    available: true,
+    kind: 'drivers',
+    slug,
+    snapshot,
+    session,
+    audit_log: audit,
+    compile,
+    note: 'Drivers written from GO. 09 only. House and 08 unchanged.',
+    next_steps: [
+      compile.ran && compile.ok ? 'Pack compiled' : `COMPILE BOOK if pack lags (#/${slug}/drivers)`,
+      `node scripts/drivers-closeout.mjs --slug ${slug}`,
     ],
     decision_support_only: true,
   };

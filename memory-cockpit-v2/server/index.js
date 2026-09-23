@@ -111,6 +111,8 @@ app.post('/api/open-grok', (req, res) => {
       register_scope: body.register_scope || body.registerScope,
       register_ids: body.register_ids || body.registerIds,
       thesis_pace: body.thesis_pace || body.thesisPace,
+      driver_scope: body.driver_scope || body.driverScope,
+      driver_ids: body.driver_ids || body.driverIds,
     });
     return res.json(out);
   } catch (e) {

@@ -24,17 +24,25 @@ const FALLBACK_ALL = [
   { action: 'filing-map', label: 'Filing map', hint: 'SEC accession → house / register · Overview MAP FILINGS', needs_desk: true, variants: ['desk'] },
   { action: 'risk-check', label: 'Risk check', hint: 'DD vs tripwires · then PROPOSE STATUS on this page', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'], default_for: ['risk'] },
   { action: 'risk-add', label: 'Add risk', hint: 'Research + propose NEW risk · GO / glass ACCEPT', needs_desk: true, variants: ['desk', 'register'] },
-  { action: 'register-session', label: 'Edit register in Grok', hint: 'Dump 08 · GO writes · SAVE DRAFT parks · EDIT revises', needs_desk: true, variants: ['desk', 'register'], default_for: ['register'] },
+  { action: 'register-session', label: 'Edit register in Grok', hint: 'Dump 08 · GO writes register · SAVE DRAFT Grok-only · EDIT revises', needs_desk: true, variants: ['desk', 'register'], default_for: ['register'] },
   { action: 'risk-tripwires', label: 'Risk tripwires', hint: 'Research tripwires · propose set · GO / glass ACCEPT', needs_desk: true, needs_risk: true, variants: ['desk', 'risk', 'register'] },
+  { action: 'drivers-session', label: 'Edit drivers in Grok', hint: 'Name engines · GO writes 09 · SAVE DRAFT Grok-only · EDIT revises', needs_desk: true, variants: ['desk', 'drivers'], default_for: ['drivers'] },
+  { action: 'driver-add', label: 'Add driver', hint: 'Research + propose a NEW driver · GO writes', needs_desk: true, variants: ['desk', 'drivers'] },
+  { action: 'driver-check', label: 'Driver check', hint: 'Print, news, or on demand · GO appends one log line · does not rewrite the house', needs_desk: true, needs_risk: true, variants: ['desk', 'driver', 'drivers'], default_for: ['driver'] },
+  { action: 'driver-monitors', label: 'Add open question', hint: 'Add one still-open question · GO appends it · not a risk tripwire', needs_desk: true, needs_risk: true, variants: ['desk', 'driver', 'drivers'] },
+  { action: 'driver-research-print', label: 'Latest print', hint: 'On demand · last print on this driver', needs_desk: true, needs_risk: true, variants: ['driver'] },
+  { action: 'driver-research-news', label: 'News since last', hint: 'On demand · headlines since the last check', needs_desk: true, needs_risk: true, variants: ['driver'] },
+  { action: 'driver-research-open', label: 'Open questions', hint: 'On demand · work one still-open question', needs_desk: true, needs_risk: true, variants: ['driver'] },
+  { action: 'driver-research-note', label: 'Log a finding', hint: 'On demand · append a finding. Do not rewrite the house', needs_desk: true, needs_risk: true, variants: ['driver'] },
   { action: 'steelman', label: 'Steelman', hint: 'House vs pack WATCH', needs_desk: true, variants: ['desk', 'house'] },
   { action: 'match', label: 'Match WATCH', hint: 'House labels vs pack WATCH', needs_desk: true, variants: ['desk', 'house'] },
-  { action: 'propose', label: 'Edit house in Grok', hint: 'Dump in Grok · GO writes · SAVE DRAFT parks · EDIT revises', needs_desk: true, variants: ['desk', 'house'], default_for: ['house'] },
+  { action: 'propose', label: 'Edit house in Grok', hint: 'Dump in Grok · GO writes · SAVE DRAFT Grok-only · EDIT revises', needs_desk: true, variants: ['desk', 'house'], default_for: ['house'] },
   { action: 'pending', label: 'Pending proposals', hint: 'List pending house proposals', needs_desk: true, variants: ['desk', 'house'] },
   { action: 'desks', label: 'List desks', hint: 'Thin desk registry', needs_desk: false, variants: ['desk'] },
-  { action: 'menu', label: 'Cockpit menu', hint: 'Full /cockpit slash menu', needs_desk: false, variants: ['desk', 'risk', 'register', 'house'] },
+  { action: 'menu', label: 'Cockpit menu', hint: 'Full /cockpit slash menu', needs_desk: false, variants: ['desk', 'risk', 'register', 'house', 'drivers', 'driver'] },
 ];
 
-const ALLOWED = new Set(['desk', 'risk', 'register', 'house']);
+const ALLOWED = new Set(['desk', 'risk', 'register', 'house', 'drivers', 'driver']);
 
 function normalizeVariant(v) {
   const x = String(v || 'desk').toLowerCase();
@@ -104,7 +112,7 @@ export default function GrokAgents({
       const base = String(desk || '').replace(/^\/+|\/+$/g, '');
       if (base) body.desk = base;
       // Only risk-detail seeds identity; register leaves risk optional (agent asks).
-      if (v === 'risk') {
+      if (v === 'risk' || v === 'driver') {
         if (riskId) body.risk_id = riskId;
         if (riskName) body.risk_name = riskName;
       }

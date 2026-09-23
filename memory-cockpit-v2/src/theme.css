@@ -122,6 +122,50 @@ main { padding: 16px 20px 48px; min-width: 0; max-width: 1280px; }
 .shd h2 { margin: 0; font-size: 11px; letter-spacing: .12em; font-weight: 700; color: var(--text-head); text-transform: uppercase; }
 .shd .m { margin-left: auto; font-size: 9.5px; color: var(--dim); }
 
+.kind-legend { padding: 10px 16px 12px; border-bottom: 1px solid var(--hairline); background: var(--quote-bg); }
+.kind-legend .lede { margin: 0 0 10px; font-size: 11.5px; line-height: 1.55; color: var(--sec); }
+.kind-legend .lede b { color: var(--text-head); font-weight: 650; }
+.kind-legend .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.kind-legend .k { font-size: 11px; line-height: 1.5; color: var(--sec-2); }
+.kind-legend .k .t { display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+  letter-spacing: .08em; color: var(--accent-soft); margin-bottom: 3px; }
+.kind-legend .foot { margin: 10px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--dim); }
+.kind-blurb { padding: 8px 16px 12px; font-size: 11.5px; line-height: 1.55; color: var(--sec); border-top: 1px solid var(--hairline); }
+.kind-blurb b { color: var(--accent-soft); font-family: var(--mono); font-size: 10px; letter-spacing: .06em; }
+@media (max-width: 720px) {
+  .kind-legend .grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- driver dossier: one card, figures as a bar ---------- */
+.doss .prose { max-width: none; padding: 14px 16px 4px; font-size: 13px; line-height: 1.55; }
+.doss .prose p { margin: 0 0 10px; }
+.doss .lede { font-size: 14px; line-height: 1.5; color: var(--text-strong); }
+.dfacts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-top: 1px solid var(--hairline); }
+.dfact { padding: 12px 16px; border-right: 1px solid var(--hairline); }
+.dfact:last-child { border-right: 0; }
+.dfact .n { font-family: var(--mono); font-size: 16px; font-weight: 650; color: var(--text-head); letter-spacing: 0; }
+.dfact .l { margin-top: 4px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.dfact .s { margin-top: 3px; font-size: 11px; color: var(--sec); line-height: 1.35; }
+
+/* ---------- driver research thread (not a register table) ---------- */
+.dthread { padding: 4px 16px 16px; }
+.dthread .why { font-size: 13px; line-height: 1.45; margin: 0 0 8px; }
+.dthread .cite { font-size: 11px; color: var(--dim); margin: 0 0 12px; }
+.dnote {
+  display: grid;
+  grid-template-columns: 6.2rem 4.2rem minmax(0, 1fr);
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.dnote .when { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+.dnote .via { font-size: 10px; letter-spacing: .08em; font-weight: 700; color: var(--accent-soft); text-transform: uppercase; }
+@media (max-width: 720px) {
+  .dnote { grid-template-columns: 1fr; gap: 2px; }
+}
+
 /* ---------- spec row (operating conditions) ---------- */
 .specrow { display: grid; grid-template-columns: repeat(4, 1fr); }
 .spec { padding: 11px 14px; border-right: 1px solid var(--hairline); }

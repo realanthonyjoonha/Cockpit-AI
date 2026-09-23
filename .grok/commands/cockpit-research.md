@@ -118,7 +118,7 @@ decision_support_only: true
 
 ## Footer
 
-Saved from `/cockpit-research`. Promote to entity claims or risks only via explicit propose/ACCEPT.  
+Saved from `/cockpit-research`. Promote to entity claims or risks only via GO (`commit_on_go`) or CONFIRMED glass ACCEPT.  
 Agent will compile this ticker after save so the note can appear under **Sources / Provenance**.
 ```
 

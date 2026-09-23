@@ -24,7 +24,7 @@ import {
   researchRunFile,
 } from './thinResearchRuns.js';
 import { liveUsEquity } from './quotes.js';
-import { stanceLine } from './houseStance.js';
+import { stanceLine, houseMarkdownStatus } from './houseStance.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
 import { buildHouseAssistContext } from './assistContext.js';
 import {
@@ -35,7 +35,20 @@ import {
   acceptHouseProposal,
   rejectHouseProposal,
 } from './houseProposals.js';
-import { goCommitHouse, goCommitRegister } from './goCommit.js';
+import { goCommitHouse, goCommitRegister, goCommitDrivers } from './goCommit.js';
+import {
+  parseDriversMarkdown,
+  readDriversSource,
+  driversSourceRel as defaultDriversRel,
+  listHouseDriverCandidates,
+  listDriverProposals,
+  proposeKeepDriver,
+  proposeSkipDriver,
+  proposeDriverLog,
+  acceptDriverProposal,
+} from './driverProposals.js';
+
+import { parseMetricKind, breakLabel } from './metricKind.js';
 import {
   proposeRiskStatus,
   proposeAddRisk,
@@ -101,6 +114,7 @@ function slimRisk(r) {
     updated: r.updated || null,
     order: Number.isFinite(r.order) ? r.order : 99,
     tripwire_count: Array.isArray(r.tripwires) ? r.tripwires.length : 0,
+    kind: r.kind || 'risk',
   };
 }
 
@@ -136,7 +150,7 @@ export function createThinModel(profile) {
       desk: deskId,
       ticker: TICKER,
       parity_group: 'thin_ontology_v1',
-      rooms: ['overview', 'risks', 'house', 'sources', 'street', 'model', 'reports', 'filings', 'background', 'update'],
+      rooms: ['overview', 'risks', 'house', 'drivers', 'sources', 'street', 'model', 'reports', 'filings', 'background', 'update'],
       capabilities: {
         compile_book: true,
         refresh_book: true,
@@ -391,16 +405,20 @@ export function createThinModel(profile) {
         const disp = resolveDisplayStatus(s.status, s.name, sorMap);
         let tripwire_count = s.tripwire_count;
         let summary = s.summary || '';
+        let kind = 'risk';
         try {
           const snap = getSorRiskSnapshot(risksSourceRel, { riskId: s.id, riskName: s.name });
           if (!tripwire_count && snap.tripwire_count > 0) tripwire_count = snap.tripwire_count;
           const sorSum = String(snap.summary || '').trim();
           if (sorSum && (summary.length < 180 || sorSum.length > summary.length)) summary = sorSum;
+          kind = snap.kind || parseMetricKind(snap.section_preview || '') || 'risk';
         } catch { /* ignore */ }
         return {
           ...s,
           summary,
+          kind: kind || 'risk',
           status: disp.status,
+          break_label: breakLabel(kind || 'risk', disp.status),
           status_source: disp.status_source,
           pack_status: disp.pack_status || s.status,
           tripwire_count,
@@ -455,12 +473,14 @@ export function createThinModel(profile) {
     let tripwire_source = 'pack';
     let summary = r.summary || '';
     let summary_source = 'pack';
+    let kind = 'risk';
     // Prefer SoR tripwires/summary when pack empty, count lags, or compile truncated (~160 chars).
     try {
       const snap = getSorRiskSnapshot(risksSourceRel, {
         riskId: r.id,
         riskName: r.name,
       });
+      kind = snap.kind || parseMetricKind(snap.section_preview || '') || 'risk';
       const sorTw = Array.isArray(snap.tripwires) ? snap.tripwires : [];
       if (sorTw.length > 0 && (packTw.length === 0 || sorTw.length !== packTw.length)) {
         tripwires = sorTw.map((t) => ({
@@ -486,6 +506,8 @@ export function createThinModel(profile) {
       pack_path: packPath,
       id: r.id,
       name: r.name,
+      kind,
+      break_label: breakLabel(kind, disp.status),
       status: disp.status,
       status_source: disp.status_source,
       pack_status: disp.pack_status || r.status || null,
@@ -730,10 +752,107 @@ export function createThinModel(profile) {
     }
   }
 
+  function driversRel() {
+    return profile.driversSource || defaultDriversRel(slug);
+  }
+
+  function drivers() {
+    const rel = driversRel();
+    const { text, exists } = readDriversSource(rel);
+    const fromFile = exists ? parseDriversMarkdown(text) : [];
+    let fromPack = [];
+    try {
+      const { available, pack } = loadPack(TICKER, { force: true });
+      if (available && Array.isArray(pack.drivers)) fromPack = pack.drivers;
+    } catch { /* ignore */ }
+    // A present 09 is the list, even when every heading was dropped.
+    // Do not fall back to a stale pack.drivers[] that still has old status rows.
+    const list = exists ? fromFile : fromPack;
+    return {
+      available: true,
+      desk: deskId,
+      ticker: TICKER,
+      drivers: list,
+      drivers_summary: {
+        count: list.length,
+        with_log: list.filter((d) => (d.log || []).length).length,
+      },
+      source: exists ? rel : null,
+    };
+  }
+
+  function driverDetail(id) {
+    const all = drivers().drivers || [];
+    const hit = all.find((d) => d.id === id || d.rid === id || d.name === id);
+    if (!hit) return { available: false, error: 'driver not found' };
+    return { available: true, desk: deskId, driver: hit };
+  }
+
+  function driverCandidates() {
+    const hv = readHouseMarkdown(houseFile);
+    const confirmed = houseMarkdownStatus(hv.markdown) === 'CONFIRMED';
+    const candidates = confirmed ? listHouseDriverCandidates(hv.markdown) : [];
+    return {
+      available: true,
+      desk: deskId,
+      house_confirmed: confirmed,
+      candidates,
+      note: confirmed
+        ? 'Name engines in Grok (Add driver). Not a house TOC. house_cite required.'
+        : 'House is not CONFIRMED. No Drivers until house GO.',
+    };
+  }
+
+  function driverProposalsList(q = {}) {
+    return listDriverProposals(slug, q);
+  }
+
+  function driverKeep(body = {}) {
+    const hv = readHouseMarkdown(houseFile);
+    return proposeKeepDriver({ slug, ...body, houseMarkdown: hv.markdown });
+  }
+
+  function driverLog(body = {}) {
+    return proposeDriverLog({ slug, ...body });
+  }
+
+  function driverSkip(body = {}) {
+    return proposeSkipDriver({ slug, ...body });
+  }
+
+  function driverProposalAccept(id) {
+    const hv = readHouseMarkdown(houseFile);
+    return acceptDriverProposal({
+      slug,
+      id,
+      driversSourceRel: driversRel(),
+      houseMarkdown: hv.markdown,
+    });
+  }
+
   /** GO in Grok — same write path as glass ACCEPT. Not agent_accept. */
   function goCommit(body = {}) {
     try {
       const kind = String(body.kind || 'house').toLowerCase();
+      if (kind === 'metrics') {
+        return { ok: false, error: 'kind=metrics is not wired. Use kind=drivers.' };
+      }
+      if (kind === 'drivers') {
+        return {
+          ...goCommitDrivers({
+            slug,
+            houseFile,
+            driversSourceRel: profile.driversSource || defaultDriversRel(slug),
+            utterance: body.utterance || body.go,
+            proposalIds: body.proposal_ids || body.proposalIds,
+            markdown: body.markdown,
+            ticker: TICKER,
+            compile: body.compile === true,
+          }),
+          desk: deskId,
+          ticker: TICKER,
+        };
+      }
       if (kind === 'register' || kind === 'risks') {
         return {
           ...goCommitRegister({
@@ -1102,6 +1221,14 @@ export function createThinModel(profile) {
     overview,
     risks,
     riskDetail,
+    drivers,
+    driverDetail,
+    driverCandidates,
+    driverProposalsList,
+    driverKeep,
+    driverLog,
+    driverSkip,
+    driverProposalAccept,
     house,
     saveHouse,
     houseAssistContext,

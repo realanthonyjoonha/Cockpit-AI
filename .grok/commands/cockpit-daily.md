@@ -87,6 +87,7 @@ Save is **ops archive only** — not pack input, not house SoR.
    - For day items that **clearly** touch a pack WATCH or house lever: tag with **exact** WATCH title/id from pack (never invent titles)  
    - If nothing touches: **No material book touch today.**  
    - Do **not** list the full risk register, tripwire table, flip triggers, or ≤5 claims.
+   - Optional `get_driver_sor`: name a Dn if the day hit it. No full 09 dump.
 
 ### D — Compose + optional save
 

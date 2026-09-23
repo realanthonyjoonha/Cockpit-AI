@@ -42,12 +42,13 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-research-compile [desk]` | Deep compile archive (glass Research) — not thesis-lane |
 | `/cockpit-street [desk]` | Street agent |
 | `/cockpit-risk-check` | Risk DD: direction vs tripwires (no status write) |
-| `/cockpit-risk-add` | Research + propose NEW risk (GO / glass ACCEPT) |
+| `/cockpit-risk-add` | Research + propose NEW risk (GO writes) |
 | `/cockpit-risk-tripwires` | Tripwire research + user cull → propose |
 | `/cockpit-steelman` | Steelman house vs pack WATCH |
 | `/cockpit-match` | Verify house labels vs pack WATCH |
 | `/cockpit-propose` | **House in this terminal** — dump full markdown; **GO** writes · **SAVE DRAFT** Grok-only · **EDIT** revises (no write, no FORMING chip) |
 | `/cockpit-register` | **Register in this terminal** — dump full 08; **GO** writes · **SAVE DRAFT** Grok-only · **EDIT** revises |
+| `/cockpit-drivers` | **Drivers** — user pins business engines from the house (AWS, neoclouds, ads mix); **GO** writes 09; empty valid; never auto-keep |
 | `/cockpit-pending` | List pending house proposals |
 | `/cockpit` | **Menu only.** Print pin (`list_desks`) + this table. Wait. Do **not** steelman unless they named a desk **and** asked steelman/daily/report/… |
 
@@ -67,7 +68,11 @@ If they named a desk only, ask which command — do not default to steelman.
 | `get_house_assist_context` | Full grounded pack |
 | **`propose_house_from_current`** | **Preferred propose** — exact find→replace on current house |
 | `propose_house_view` | Full markdown or `markdown_path` (large files) |
-| **`commit_on_go`** | After user **GO** — write pending CONFIRMED house or register (not SAVE DRAFT) |
+| **`commit_on_go`** | After user **GO** — write house, register, or **drivers** (not SAVE DRAFT) |
+| `list_house_driver_candidates` | Hint only — you name engines + house_cite; never dump headings |
+| `propose_keep_driver` | KEEP an engine (title + house_cite + watching). GO kind=drivers writes 09. No status |
+| `propose_driver_log` | Append one log line or still-open question (pending). GO writes 09 only |
+| `get_driver_sor` | Read 09 |
 | `list_house_proposals` | Pending / accepted / rejected |
 
 ## Efficiency rules (mandatory)
@@ -92,9 +97,10 @@ If they named a desk only, ask which command — do not default to steelman.
 
 1. Research idea vs existing register (avoid duplicates).
 2. Draft title, grade, status (default WATCH), summary, mechanism, tripwires (prefer 2–5 real monitors).
-3. MCP **`propose_add_risk`** — pending only.
+3. MCP **`propose_add_risk`** after **GO** — pending only until commit_on_go.
 4. User **GO** (`commit_on_go` kind=register) or glass ACCEPT on `#/{desk}/risks` → SoR insert → COMPILE BOOK if pack lags.
 5. If tripwires empty/GAP after add → `/cockpit-risk-tripwires`.
+6. **Do not auto-propose a house dump.** After add/edit, **ask** (do not `propose_house_*`) only if: the new risk **contradicts** the live stance, it is a **flip trigger** the house does not have, or they say **“this is now on the house.”** If they yes → dump house patch, they **GO** `kind=house`. Tripwire-only / WATCH↔INTACT → do not ask.
 
 ## Tripwires (`/cockpit-risk-tripwires`)
 
@@ -108,7 +114,7 @@ If they named a desk only, ask which command — do not default to steelman.
 1. **Lead with daybook, not thesis dump.** Section **What moved** first (after header).
 2. **Book tools (MCP):** `get_pack_snapshot` + `get_house_view` (target 2). Stance, WATCH/FIRED, tripwires, flip triggers, ≤5 claims.
 3. **Day tools:** web search (≤4) for last ~24–72h on that name (filings, IR, major press, tape if sourced). Map each item → WATCH / house lever / flip trigger / `not in book`. Soft secondary → **[soft]**. Empty → explicit **GAP**.
-4. Then short **Base case** (what it is + stance) + risk register + tripwires + claims + gaps.
+4. Then short **Base case** (what it is + stance) + WATCH risks + tripwires + claims + gaps.
 5. **Default: no vault write.** Optional `--save` or “save this brief” → write only  
    `research-wiki/cockpit/briefs/daily/{desk}/YYYY-MM-DD.md` (frontmatter + body). Same day overwrites.  
    **Never** house, proposals, or `ontology/store/`. **Never** `./ont compile` after save.  
@@ -126,7 +132,7 @@ If they named a desk only, ask which command — do not default to steelman.
 
 ## Glass
 
-- Viewer after GO: `#/{desk}/house` and `#/{desk}/risks` (kernel often :4682)
+- Viewer after GO: `#/{desk}/house`, `#/{desk}/risks`, `#/{desk}/drivers` (kernel often :4682)
 - Alternate commit: glass ACCEPT of a **CONFIRMED** pending (friends / if commit_on_go did not run). Never FORMING.
 - COMPILE BOOK + REFRESH if pack lags after GO write
 

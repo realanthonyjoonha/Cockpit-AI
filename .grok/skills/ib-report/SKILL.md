@@ -2,11 +2,11 @@
 name: ib-report
 description: >
   Cockpit thesis-lane report: interactive, web-research-allowed, judgment-shaped
-  (deep-dive / earnings-update / initiation). Load house + register first;
+  (deep-dive / earnings-update / initiation). Load house + risk register first;
   checkpoints (stop default, or through); PDF via scripts/report; closeout via propose_* only.
   Triggers: /cockpit-report, IB report, thesis report, earnings update note,
   initiating coverage note, report factory. Decision-support only.
-argument-hint: "[desk] [deep-dive|earnings-update|initiation] [all|pick|skim] [R1,R2…] [stop|through]"
+argument-hint: "[desk] [deep-dive|earnings-update|initiation] [all|pick|skim] [R1,R2…] [stop|through] [drivers-all|drivers-off|drivers-pick ids]"
 user-invocable: true
 ---
 
@@ -23,9 +23,9 @@ Decision-support only: no buy/sell/hold, no price target, no sizing. **Initiatio
 
 ## Four touchpoints (do not relitigate)
 
-1. **START** — load this desk’s CONFIRMED house (+ version) **and** the risk register (pack/SoR). Protocol: **steelman house → delta vs house → red-team → flag contradictions loudly.**
+1. **START** — load this desk’s CONFIRMED house (+ version) **and** the risk register (pack/SoR `08`). Also **`get_driver_sor`** for print-vs-house (09). Protocol: **steelman house → delta vs house → red-team → flag contradictions loudly.**
 2. **REGISTER AS CO-INPUT** — depth is a **glass/arg choice** (`all` | `pick` | `skim`). House is never off. Status is **TESTED, never cited as evidence**. Propose only A/B-anchored moves — else **GAP**. Never silent-write.
-3. **REPORT STRUCTURE** — on `all`/`pick`, risk section is the **register UPDATED** (in-scope Rn → test → evidence → tripwires), never a fresh risks essay. Out-of-scope Rn: one line `not tested this note`. On **`skim` (House only): omit `register-updated` from ORDER** — no register chapter, no WATCH table, no per-Rn essay. **Delta vs house is mandatory in every mode.**
+3. **REPORT STRUCTURE** — on `all`/`pick`, register section is the **register UPDATED** (in-scope Rn → test → evidence → tripwires), never a fresh risks essay. Out-of-scope Rn: one line `not tested this note`. On **`skim` (House only): omit `register-updated` from ORDER** — no register chapter, no WATCH table, no per-Rn essay. **Delta vs house is mandatory in every mode.**
 4. **CLOSEOUT (fail-closed)** — file anchors per vault claim format → `./ont compile TICKER && ./ont verify TICKER` exit 0 → house/risk implications **only** via `propose_*` MCP → PDF in the run archive. **PDF is ops, never pack SoR.**
 
 ---
@@ -41,6 +41,7 @@ Decision-support only: no buy/sell/hold, no price target, no sizing. **Initiatio
 | `all` / `pick` / `skim` / `house-only` | Register scope (default **all**) |
 | `R1`, `R9` or `R1,R9` | Pick ids (with `pick`) |
 | `stop` / `through` | Pace (default **stop**) |
+| `drivers-all` / `drivers-off` / `drivers-pick` + ids | Pinned engines in the note (default **off** if the token is absent) |
 | page count (`12pp`, `20 pages`) | Page budget |
 | remaining text | Optional focus (print, product, one risk) |
 
@@ -58,7 +59,8 @@ Ask only what is still open:
 4. **Section ORDER** — propose the default below; get a nod or edits  
 5. **Focus** — optional (one print, one product, one Rn)  
 6. **Register scope** — `all` (default: WATCH in depth, INTACT/FIRED short) · `pick` + ids · `skim` (**House only: no register chapter**). **House is never off.** If the seed already set this, print it and continue.  
-7. **Pace** — `stop` (default: wait at Checkpoint 1 and 2) · `through` (end to end, no conversational waits). If the seed already set this, print it and continue.
+7. **Pace** — `stop` (default: wait at Checkpoint 1 and 2) · `through` (end to end, no conversational waits). If the seed already set this, print it and continue.  
+8. **Drivers** — `off` (default when the seed does not say otherwise: no engines chapter) · `all` (every pinned engine) · `pick` + ids. If the seed already set this, print it and continue. Do not invent engines. Empty 09 on `all` is one line: none pinned.
 
 Then print the scope block (include register scope + pace) and proceed only if desk+mode are set. On **through**, do not wait for an ORDER nod — print defaults and go. If the seed lists **ORDER (required)**, that list wins — do not add `register-updated` on skim.
 
@@ -79,6 +81,8 @@ If the seed / glass set **`skim` (House only)**, use **only** the skim table. Do
 **initiation:** `spine` · `delta-vs-house` · `financials` · `monitorables` · `exec`
 
 `delta-vs-house` is mandatory in every mode (`print-vs-house` counts as delta for earnings-update). `register-updated` is mandatory on **`all`** and **`pick`**. On **`skim`**, never write `register-updated` / `tripwires` into `config.py` ORDER or `sections/`. One line in setup is enough: `Register not in this note (glass: house only).` Do not add a register table or “how house reads this register” section.
+
+**Drivers.** When the seed says `all` or `pick`, insert `drivers` in ORDER immediately after `print-vs-house` or `delta-vs-house`. The section is the pinned engines only: name, house cite, what is watched, the dated log, still open. Not a second house essay. No status. Out of scope: `Name — not in this note.` When the seed says `off` (or is silent), do **not** add `drivers` and do not write `sections/drivers.md`. One setup line: `Drivers not in this note.`
 
 ### Per-Rn (in-scope only)
 
@@ -121,8 +125,9 @@ $COCKPIT_VAULT/cockpit/research/{TICKER}/runs/{YYYYMMDDTHHMMSSZ}_thesis_report_{
 2. `get_house_view` — stance, status, version/date, flip triggers.  
 3. `get_pack_snapshot` — house_prior, **SoR-aware** WATCH/INTACT/FIRED, claims, gaps. Copy WATCH **titles** from pack; never invent.  
 4. Tripwires: MCP `get_risk_sor` per **in-scope** Rn (`all` → every WATCH plus any FIRED in play; `pick` → listed ids; `skim` → skip `get_risk_sor` and skip a register section). If that fails, read vault `raw/{slug}-research/08-risks-catalysts.md` — do not invent tables.  
-5. Short “context loaded” blurb: house status + WATCH list + register scope. **No web yet** if scope is still open.  
-6. If `list_desks` does not include this desk, **stop** — MCP is pinned to the wrong tree. Re-run `./scripts/install-grok-mcp.sh` from kernel (or OPEN GROK from kernel glass). Do not silently use another vault.
+5. `get_driver_sor` when drivers scope is `all` or `pick`. Quote the log. Do not invent a print. On `off`, skip it.  
+6. Short “context loaded” blurb: house status + WATCH list + register scope + drivers scope. **No web yet** if scope is still open.  
+7. If `list_desks` does not include this desk, **stop** — MCP is pinned to the wrong tree. Re-run `./scripts/install-grok-mcp.sh` from kernel (or OPEN GROK from kernel glass). Do not silently use another vault.
 
 House protocol in every later phase: steelman → **delta** → red-team → loud contradiction.
 
@@ -223,7 +228,7 @@ POST checkpoint `qa`. On **stop**, wait for Anthony before closeout writes. On *
 
 1. **File** A/B (and agreed C) claims into vault per `research-wiki/RESEARCH-PATHS.md` — typically `wiki/sources/{slug}-*.md` and/or entity Key facts. Never `ontology/store/`. Never overwrite house or `08-risks-catalysts.md`.  
 2. From kernel: `./ont compile {TICKER} && ./ont verify {TICKER}` — **exit 0 required**.  
-3. Implications: **MCP only** — `propose_risk_status`, `propose_add_risk`, `propose_house_from_current` (or `propose_house_view`). A/B evidence only; else GAP. Print proposal **id** + glass `#/{desk}/risks` or `#/{desk}/house`. Human **ACCEPT**.  
+3. Implications: **MCP only** — `propose_risk_status`, `propose_add_risk`, `propose_house_from_current` (or `propose_house_view`). A new fact on an in-scope engine is `propose_driver_log` then the user **GO** (writes 09 only). If that fact contradicts the house, **ask** — do not rewrite the house and do not drop the driver yourself. A/B evidence only; else GAP. Print proposal **id** + glass `#/{desk}/risks`, `#/{desk}/house`, or `#/{desk}/drivers`. User **GO** (`commit_on_go`) or glass ACCEPT of CONFIRMED. Never FORMING.  
 4. PDF stays in the run `output/` folder (ops). Not pack SoR.  
 5. Do not `git push`. Do not write product `thin-desks.json`.
 

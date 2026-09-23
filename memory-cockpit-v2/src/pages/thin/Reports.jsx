@@ -17,8 +17,14 @@ const REGISTER_CHOICES = [
 ];
 const PACE_CHOICES = [
   { id: 'stop', label: 'Stop at checkpoints', hint: 'Wait at Checkpoint 1 and 2' },
-  { id: 'through', label: 'Run through', hint: 'End to end · ACCEPT still on glass' },
+  { id: 'through', label: 'Run through', hint: 'End to end · GO writes house/risks' },
 ];
+const DRIVER_CHOICES = [
+  { id: 'all', label: 'All', hint: 'Every pinned engine in the note' },
+  { id: 'pick', label: 'Pick', hint: 'Named engines only' },
+  { id: 'off', label: 'Off', hint: 'No drivers chapter' },
+];
+const DRIVER_HEADING = /load-bearing|flip trigger|advantaged|exposed|what would change the view|linked register/i;
 
 function registerOf(r) {
   return r?.register_scope || r?.thesis?.register_scope || null;
@@ -29,6 +35,18 @@ function registerIdsOf(r) {
 }
 function paceOf(r) {
   return r?.thesis_pace || r?.thesis?.thesis_pace || 'stop';
+}
+function driverOf(r) {
+  return r?.driver_scope || r?.thesis?.driver_scope || null;
+}
+function driverIdsOf(r) {
+  const ids = r?.driver_ids || r?.thesis?.driver_ids;
+  return Array.isArray(ids) ? ids : [];
+}
+function driverPhrase(scope, ids) {
+  if (scope === 'off') return 'Off';
+  if (scope === 'pick') return ids.length ? `Pick ${ids.length}` : 'Pick engines';
+  return 'All pinned engines';
 }
 function scopePhrase(scope, ids) {
   if (scope === 'skim') return 'House only (register skim)';
@@ -106,6 +124,9 @@ export default function ThinReports({ desk }) {
   const [ctx, setCtx] = useState(null);
   const [registerScope, setRegisterScope] = useState('all');
   const [pickedIds, setPickedIds] = useState([]);
+  const [driverScope, setDriverScope] = useState('off');
+  const [pickedDriverIds, setPickedDriverIds] = useState([]);
+  const [driverTouched, setDriverTouched] = useState(false);
   const [thesisPace, setThesisPace] = useState('stop');
   const pollRef = useRef(null);
 
@@ -123,17 +144,25 @@ export default function ThinReports({ desk }) {
       api(`${slug}/overview`).catch(() => null),
       api(`${slug}/risks/proposals?status=pending`).catch(() => null),
       api(`${slug}/risks`).catch(() => null),
-    ]).then(([house, overview, riskP, risksBody]) => {
+      api(`${slug}/drivers`).catch(() => null),
+    ]).then(([house, overview, riskP, risksBody, driversBody]) => {
       const riskPend = Array.isArray(riskP?.proposals) ? riskP.proposals : [];
       const watch = overview?.risk_summary?.watch;
       const watchN = Array.isArray(watch) ? watch.length : (overview?.n_watch || 0);
       const risks = Array.isArray(risksBody?.risks) ? risksBody.risks : [];
+      const drivers = (Array.isArray(driversBody?.drivers) ? driversBody.drivers : [])
+        .filter((d) => d && d.id && !DRIVER_HEADING.test(d.name || ''));
       setCtx({
         houseStatus: house?.hero?.status || house?.status || '—',
         houseDate: house?.hero?.date || null,
         watchN,
         pending: riskPend,
         risks,
+        drivers,
+      });
+      setDriverTouched((touched) => {
+        if (!touched) setDriverScope(drivers.length ? 'all' : 'off');
+        return touched;
       });
     });
   }, [slug]);
@@ -182,6 +211,9 @@ export default function ThinReports({ desk }) {
     setFlash(null);
     setRegisterScope('all');
     setPickedIds([]);
+    setDriverScope('off');
+    setPickedDriverIds([]);
+    setDriverTouched(false);
     setThesisPace('stop');
   }, [slug, stopPoll]);
 
@@ -226,6 +258,8 @@ export default function ThinReports({ desk }) {
         register_scope: registerOf(detail) || 'all',
         register_ids: registerIdsOf(detail),
         thesis_pace: retryPace,
+        driver_scope: driverOf(detail) || 'off',
+        driver_ids: driverIdsOf(detail),
       });
       setFlash(grok?.ok ? 'Retry · OPEN GROK' : (grok?.error || 'queued but OPEN GROK failed'));
       setRunId(rid);
@@ -246,11 +280,21 @@ export default function ThinReports({ desk }) {
       setFlash('Pick at least one risk, or switch to All / House only.');
       return;
     }
+    const dScope = driverScope === 'pick' || driverScope === 'all' ? driverScope : 'off';
+    const dIds = dScope === 'pick' ? pickedDriverIds : [];
+    if (dScope === 'pick' && !dIds.length) {
+      setFlash('Pick at least one engine, or switch Drivers to All / Off.');
+      return;
+    }
+    if (dScope === 'all' && !(ctx?.drivers || []).length) {
+      setFlash('No engines pinned. Pin one on Drivers, or switch to Off.');
+      return;
+    }
     const scope = registerScope;
     const ids = scope === 'pick' ? pickedIds : [];
     const pace = thesisPace === 'through' ? 'through' : 'stop';
     if (!extra.skipConfirm && !window.confirm(
-      `Start ${thesisMode} for this desk?\n\nHouse: on\nRegister: ${scopePhrase(scope, ids)}\nPace: ${pace === 'through' ? 'run through (no checkpoint waits)' : 'stop at checkpoints'}\n\n${pace === 'through' ? 'Grok runs /cockpit-report end to end. House/risks still need your ACCEPT.' : 'Grok runs /cockpit-report and STOPS at Checkpoint 1.'}`,
+      `Start ${thesisMode} for this desk?\n\nHouse: on\nRegister: ${scopePhrase(scope, ids)}\nDrivers: ${driverPhrase(dScope, dIds)}\nPace: ${pace === 'through' ? 'run through (no checkpoint waits)' : 'stop at checkpoints'}\n\n${pace === 'through' ? 'Grok runs /cockpit-report end to end. House, risks, and driver logs still need your GO.' : 'Grok runs /cockpit-report and STOPS at Checkpoint 1.'}`,
     )) return;
     setBusy(true);
     setFlash(null);
@@ -258,6 +302,7 @@ export default function ThinReports({ desk }) {
       const started = await apiPost(`${slug}/research/runs`, {
         job: 'thesis_report', thesis_mode: thesisMode, launch: false,
         register_scope: scope, register_ids: ids, thesis_pace: pace,
+        driver_scope: dScope, driver_ids: dIds,
       });
       if (!started?.ok || !started.run_id) {
         setFlash(started?.error || 'failed to start');
@@ -273,8 +318,9 @@ export default function ThinReports({ desk }) {
         action: 'thesis-report', desk: slug, run_id: newId, job: 'thesis_report',
         thesis_mode: thesisMode, mode: 'pipeline',
         register_scope: scope, register_ids: ids, thesis_pace: pace,
+        driver_scope: dScope, driver_ids: dIds,
       });
-      setFlash(grok?.ok ? `Started · ${thesisMode} · ${scopePhrase(scope, ids)} · ${pace}` : (grok?.error || 'created but OPEN GROK failed'));
+      setFlash(grok?.ok ? `Started · ${thesisMode} · ${scopePhrase(scope, ids)} · ${driverPhrase(dScope, dIds)} · ${pace}` : (grok?.error || 'created but OPEN GROK failed'));
       startPoll(newId);
       loadList();
     } catch (e) {
@@ -295,6 +341,8 @@ export default function ThinReports({ desk }) {
         register_scope: registerOf(useDetail || row) || registerScope,
         register_ids: registerIdsOf(useDetail || row).length ? registerIdsOf(useDetail || row) : pickedIds,
         thesis_pace: paceOf(useDetail || row) || thesisPace,
+        driver_scope: driverOf(useDetail || row) || driverScope,
+        driver_ids: driverIdsOf(useDetail || row).length ? driverIdsOf(useDetail || row) : pickedDriverIds,
       });
       setFlash(out?.ok ? `OPEN GROK · ${rid}` : (out?.error || 'open Grok failed'));
     } catch (e) { setFlash(e.message || String(e)); } finally { setBusy(false); }
@@ -348,7 +396,7 @@ export default function ThinReports({ desk }) {
       const okConfirm = window.confirm(
         `Propose from this report?\n\n`
         + `${dry.counts.house || 0} house · ${dry.counts.risk_status || 0} risk status · ${dry.counts.add_risk || 0} add-risk\n\n`
-        + 'Creates pending proposals only. You still ACCEPT on House / Risks.',
+        + 'Creates pending proposals only. You still GO / ACCEPT on House / Risks.',
       );
       if (!okConfirm) {
         setFlash('Propose cancelled');
@@ -363,7 +411,7 @@ export default function ThinReports({ desk }) {
         return out;
       }
       const created = Array.isArray(out.created) ? out.created.length : 0;
-      setFlash(created ? `PROPOSED ${created} · ACCEPT on House / Risks` : (out.note || 'Nothing created'));
+      setFlash(created ? `PROPOSED ${created} · GO / ACCEPT on House / Risks` : (out.note || 'Nothing created'));
       await loadCtx();
       await loadList();
       if (runId === rid) await loadDetail(rid);
@@ -532,7 +580,7 @@ export default function ThinReports({ desk }) {
               <div className="eyebrow">REPORTS</div>
               <h1>No note yet</h1>
               <p className="lede">
-                House stays on. Choose register depth and whether Grok waits at checkpoints, then a type.
+                House stays on. Choose register depth, which pinned engines to follow, and whether Grok waits, then a type.
               </p>
             </>
           )}
@@ -564,6 +612,23 @@ export default function ThinReports({ desk }) {
               </div>
             </div>
             <div>
+              <span className="scope-k">DRIVERS</span>
+              <div className="scope-group">
+                {DRIVER_CHOICES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`scope-chip${driverScope === c.id ? ' on' : ''}`}
+                    disabled={busy || !!inflight}
+                    title={c.hint}
+                    onClick={() => { setDriverTouched(true); setDriverScope(c.id); }}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
               <span className="scope-k">PACE</span>
               <div className="scope-group">
                 {PACE_CHOICES.map((c) => (
@@ -587,8 +652,13 @@ export default function ThinReports({ desk }) {
               : registerScope === 'pick'
                 ? 'Deep only the risks you tick. Others get one line: not tested this note.'
                 : 'WATCH in depth · INTACT short. Hunt outside the register as add-risk candidates.'}
+            {driverScope === 'off'
+              ? ' Drivers off — no engines chapter.'
+              : driverScope === 'pick'
+                ? ' Only the engines you tick. Others: not in this note.'
+                : ' Every pinned engine: cite, what you watch, the log. Not a second house.'}
             {thesisPace === 'through'
-              ? ' Run through does not wait at Checkpoint 1 or 2. House/risks still only via propose — you ACCEPT on glass.'
+              ? ' Run through does not wait at Checkpoint 1 or 2. House, risks, and driver logs still only via GO.'
               : ' Stop waits at Checkpoint 1 and 2.'}
           </div>
           {registerScope === 'pick' && (
@@ -616,6 +686,29 @@ export default function ThinReports({ desk }) {
                   );
                 })
                 : <span className="dim" style={{ fontSize: 11 }}>No register rows on pack yet.</span>}
+            </div>
+          )}
+          {driverScope === 'pick' && (
+            <div className="rn-row">
+              {(ctx?.drivers || []).length
+                ? ctx.drivers.map((d) => {
+                  const on = pickedDriverIds.includes(d.id);
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={`rn-chip${on ? ' on' : ''}`}
+                      disabled={busy || !!inflight}
+                      title={d.watching || d.house || d.id}
+                      onClick={() => setPickedDriverIds((cur) => (
+                        cur.includes(d.id) ? cur.filter((x) => x !== d.id) : [...cur, d.id]
+                      ))}
+                    >
+                      <b>{d.rid || 'D'}</b> {d.name}
+                    </button>
+                  );
+                })
+                : <span className="dim" style={{ fontSize: 11 }}>No engines pinned yet.</span>}
             </div>
           )}
           <div className="mode-grid">
@@ -707,6 +800,9 @@ export default function ThinReports({ desk }) {
                   {String(modeOf(r)).replace(/-/g, ' ')}
                   {registerOf(r) && registerOf(r) !== 'all' ? (
                     <span className="dimmer"> · {scopePhrase(registerOf(r), registerIdsOf(r))}</span>
+                  ) : null}
+                  {driverOf(r) && driverOf(r) !== 'off' ? (
+                    <span className="dimmer"> · {driverPhrase(driverOf(r), driverIdsOf(r))}</span>
                   ) : null}
                   {paceOf(r) === 'through' ? <span className="dimmer"> · through</span> : null}
                 </span>

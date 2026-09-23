@@ -23,10 +23,11 @@ grep -q 'House first, then register' "$CMD" || grep -q 'register-closeout' "$CMD
 grep -q 'same Grok terminal' "$CMD"
 grep -q 'Never require a second OPEN GROK' "$CMD"
 grep -q 'same terminal, register' "$PROP"
+grep -q 'same terminal, drivers' "$PROP"
 grep -q 'Align register' "$PROP"
 grep -q 'GO' "$PROP"
 grep -q 'SAVE DRAFT' "$PROP"
-grep -q 'Align to that house' "$REG"
+grep -q 'Align register' "$REG"
 grep -q 'GO' "$REG"
 (cd "$MC" && node scripts/register-closeout-test.mjs)
 test -f "$MC/scripts/new-desk-closeout.mjs"
@@ -49,5 +50,19 @@ grep -q 'refuses FORMING' "$MC/server/houseStance.js"
 test -f "$MC/server/houseUtterance.js"
 test -f "$MC/scripts/house-utterance-test.mjs"
 (cd "$MC" && node scripts/house-utterance-test.mjs)
+test -f "$MC/scripts/memory-sweep-test.mjs"
+(cd "$MC" && node scripts/memory-sweep-test.mjs)
+grep -q 'RISK REGISTER' "$MC/src/pages/thin/Risks.jsx"
+grep -q '>DRIVERS</h2>' "$MC/src/pages/thin/Drivers.jsx"
+(cd "$MC" && node scripts/risks-restore-test.mjs)
+(cd "$MC" && node scripts/metrics-proto-test.mjs)
+(cd "$MC" && node scripts/drivers-room-test.mjs)
+(cd "$MC" && node scripts/drivers-compile-test.mjs)
+(cd "$MC" && node scripts/mcp-metrics-failclosed-test.mjs)
+(cd "$MC" && node scripts/drivers-go-commit-test.mjs)
+(cd "$MC" && node scripts/drivers-log-test.mjs)
+(cd "$MC" && node scripts/drivers-closeout-test.mjs)
+(cd "$MC" && node scripts/desk-engine-order-test.mjs)
+(cd "$MC" && node scripts/mcp-risks-restore-test.mjs)
 (cd "$MC" && node scripts/go-commit-test.mjs)
 echo "    house-closeout OK"

@@ -326,21 +326,8 @@ if [ "$NO_MCP" -eq 0 ]; then
       console.log(JSON.stringify(r, null, 2));
       if (!r.ok) process.exit(1);
     "
-    if [ -x ./scripts/install-grok-mcp.sh ]; then
-      ./scripts/install-grok-mcp.sh || true
-      node --input-type=module -e "
-        import { ensureProjectCockpitMcp } from 'file://${ABS}/memory-cockpit-v2/server/cockpitMcpProject.js';
-        process.env.COCKPIT_EXPECT_ROOT = '${ABS}';
-        process.env.COCKPIT_SCENARIO_NAME = '${NAME}';
-        process.env.COCKPIT_ALLOWED_SLUGS = '${SLUGS}';
-        process.env.COCKPIT_AGENT_ACCEPT = '${AGENT_ACCEPT_JSON}' === 'true' ? '1' : '0';
-        process.env.COCKPIT_VAULT = '${ABS}/research-wiki';
-        process.env.ONTOLOGY_STORE = '${ABS}/ontology/store/by_ticker';
-        process.env.ONTOLOGY_ROOT = '${ABS}/ontology';
-        const r = ensureProjectCockpitMcp('${ABS}');
-        console.log('pin re-apply', r.ok, r.expect_root, r.allowed_slugs, r.agent_accept);
-      "
-    fi
+    # Project pin only. Never `install-grok-mcp.sh` from a scenario — that
+    # `grok mcp add`s user-scope cockpit-research over the operate vault pin.
   )
 fi
 

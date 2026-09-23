@@ -278,6 +278,28 @@ try {
 }
 
 try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'avgo', thesis_mode: 'earnings-update',
+    driver_scope: 'all',
+  });
+  if (p !== '/cockpit-report avgo earnings-update all stop drivers-all') throw new Error(p);
+  ok('thesis-report drivers-all in prompt');
+} catch (e) {
+  fail('thesis-report drivers prompt', e);
+}
+
+try {
+  const p = buildInitialPrompt({
+    action: 'thesis-report', desk: 'avgo', thesis_mode: 'deep-dive',
+    driver_scope: 'pick', driver_ids: ['d1-custom-ai', 'd2-vmware'],
+  });
+  if (p !== '/cockpit-report avgo deep-dive all stop drivers-pick d1-custom-ai,d2-vmware') throw new Error(p);
+  ok('thesis-report drivers-pick ids in prompt');
+} catch (e) {
+  fail('thesis-report drivers-pick prompt', e);
+}
+
+try {
   const desk = listGrokAgents({ variant: 'desk' });
   if (desk.agents.some((a) => a.action === 'research-compile')) {
     throw new Error('research-compile still in desk catalog');
@@ -495,9 +517,52 @@ try {
 try {
   const reg = listGrokAgents({ variant: 'register' });
   if (reg.default_action !== 'register-session') throw new Error(`register default ${reg.default_action}`);
+  const def = (reg.agents || []).find((a) => a.action === reg.default_action);
+  if (!/Edit register in Grok/i.test(def?.label || '')) throw new Error(`register default label ${def?.label}`);
   ok('register default is Edit register in Grok');
+
+try {
+  const add = buildInitialPrompt({ action: 'risk-add', desk: 'tsla' });
+  if (!/\/cockpit-risk-add tsla/.test(add) || /\/cockpit-metric-add/.test(add)) {
+    throw new Error(`add prompt ${add}`);
+  }
+  const chk = buildInitialPrompt({ action: 'risk-check', desk: 'tsla', risk_id: 'tsla-r1' });
+  if (!/\/cockpit-risk-check/.test(chk) || /\/cockpit-metric-check/.test(chk)) {
+    throw new Error(`check prompt ${chk}`);
+  }
+  const tw = buildInitialPrompt({ action: 'risk-tripwires', desk: 'tsla', risk_name: 'R1' });
+  if (!/\/cockpit-risk-tripwires/.test(tw) || /\/cockpit-metric-tripwires/.test(tw)) {
+    throw new Error(`tripwires prompt ${tw}`);
+  }
+  ok('Add/check/tripwires seed risk-* slash ids');
+} catch (e) {
+  fail('risk OPEN GROK seeds', e);
+}
 } catch (e) {
   fail('register default', e);
+}
+
+try {
+  const p = buildInitialPrompt({ action: 'drivers-session', desk: 'meta' });
+  if (p !== '/cockpit-drivers meta --session') throw new Error(p);
+  const add = buildInitialPrompt({ action: 'driver-add', desk: 'meta' });
+  if (add !== '/cockpit-driver-add meta') throw new Error(add);
+  const drv = listGrokAgents({ variant: 'drivers' });
+  if (drv.default_action !== 'drivers-session') throw new Error(`drivers default ${drv.default_action}`);
+  const research = buildInitialPrompt({
+    action: 'driver-research-news',
+    desk: 'nvda',
+    risk_name: 'Neoclouds NVDA is backing',
+  });
+  if (!/\/cockpit-driver-research nvda/.test(research) || !/--news/.test(research)) {
+    throw new Error(research);
+  }
+  if (drv.agents.some((a) => a.action === 'risk-add')) throw new Error('risk-add leaked into drivers');
+  const reg = listGrokAgents({ variant: 'register' });
+  if (reg.agents.some((a) => a.action === 'driver-add')) throw new Error('driver-add leaked into register');
+  ok('drivers OPEN GROK isolated from register');
+} catch (e) {
+  fail('drivers OPEN GROK', e);
 }
 
 console.log(failed ? `\nFAIL ${failed} check(s)\n` : '\nPASS all open-grok-prompt checks\n');

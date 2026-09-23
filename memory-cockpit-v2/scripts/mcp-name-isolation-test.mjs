@@ -93,6 +93,22 @@ assert.ok(!hasServerHeader(fs.readFileSync(aPin.path, 'utf8'), 'cockpit-research
 assert.ok(hasServerHeader(fs.readFileSync(bPin.path, 'utf8'), 'cockpit-research-lab-b'));
 ok('OPEN GROK-style pin honors scenario mcp_name; two scenarios do not share a server');
 
+const scBare = path.join(tmp, 'sc-bare');
+fs.mkdirSync(path.join(scBare, 'memory-cockpit-v2', 'scripts'), { recursive: true });
+fs.writeFileSync(path.join(scBare, 'memory-cockpit-v2', 'scripts', 'mcp-cockpit-research.mjs'), '// stub\n');
+fs.writeFileSync(path.join(scBare, '.cockpit-scenario.json'), JSON.stringify({
+  name: 'agentaccept',
+  expect_root: scBare,
+  allowed_slugs: ['tstk'],
+}));
+delete process.env.COCKPIT_MCP_NAME;
+const barePin = ensureProjectCockpitMcp(scBare);
+assert.ok(barePin.ok);
+assert.strictEqual(barePin.mcp_name, 'cockpit-research-agentaccept');
+assert.ok(!hasServerHeader(fs.readFileSync(barePin.path, 'utf8'), 'cockpit-research'));
+assert.ok(hasServerHeader(fs.readFileSync(barePin.path, 'utf8'), 'cockpit-research-agentaccept'));
+ok('scenario without mcp_name still does not steal cockpit-research');
+
 const seal = path.join(tmp, 'seal');
 fs.mkdirSync(path.join(seal, 'memory-cockpit-v2', 'scripts'), { recursive: true });
 fs.mkdirSync(path.join(seal, 'research-wiki'), { recursive: true });

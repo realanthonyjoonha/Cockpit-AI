@@ -1,4 +1,4 @@
-// riskProposals.js — Structured risk register proposals (thin desks).
+// riskProposals.js — Structured key-metrics proposals (thin desks). Tool ids still add_risk.
 // Propose stores pending only. ACCEPT writes allowlisted risks_source SoR.
 // Never writes ontology/store or house. Decision-support only.
 // Factory: one module for all slugs; paths from profile risksSourceRel.
@@ -112,12 +112,14 @@ export function getSorRiskSnapshot(risksSourceRel, selectors = {}) {
   const sm = section.full.match(/\*\*Status:\*\*\s*(.+?)(?:\s*·\s*\*\*Grade|\n)/is);
   const status = sm ? parseStatusClause(sm[1]) : null;
   const summary = parseSorRiskSummary(section.full);
+  const kindM = section.full.match(/\*\*Kind:\*\*\s*(print|condition|risk|catalyst)\b/i);
   return {
     path: risksSourceRel,
     abs,
     heading: section.heading,
     r_num: section.rNum,
     status,
+    kind: kindM ? kindM[1].toLowerCase() : 'risk',
     summary: summary || null,
     tripwires,
     tripwire_count: tripwires.length,
@@ -407,7 +409,7 @@ export function nextRiskNumber(text) {
 /**
  * Build dossier section markdown for a new risk (compile-compatible).
  */
-export function buildAddRiskSection({ rNum, title, status, grade, summary, mechanism, tripwires }) {
+export function buildAddRiskSection({ rNum, title, status, grade, summary, mechanism, tripwires, kind }) {
   const rn = String(rNum).replace(/\D/g, '') || '99';
   const name = String(title || '').trim();
   if (!name) throw new Error('title required');
@@ -570,6 +572,10 @@ export function proposeAddRisk(opts) {
     throw new Error(`R${rNum} already exists — omit r_num to auto-assign`);
   }
 
+  const metricKindRaw = String(body.kind || body.metric_kind || 'risk').toLowerCase();
+  const metricKind = ['print', 'condition', 'risk', 'catalyst'].includes(metricKindRaw)
+    ? metricKindRaw
+    : 'risk';
   const section_markdown = buildAddRiskSection({
     rNum,
     title: cleanTitle,
@@ -578,6 +584,7 @@ export function proposeAddRisk(opts) {
     summary: summary || mechanism.slice(0, 160),
     mechanism: mechanism || summary,
     tripwires,
+    kind: metricKind,
   });
   // dry-run insert
   const preview = insertRiskSection(text, section_markdown);
@@ -603,6 +610,7 @@ export function proposeAddRisk(opts) {
     mechanism: mechanism || summary,
     tripwires,
     section_markdown,
+    metric_kind: metricKind,
     from_status: null,
     rationale: rationale || null,
     as_of: asOf,
@@ -623,6 +631,7 @@ export function proposeAddRisk(opts) {
       id: proposal.id,
       status: proposal.status,
       kind: proposal.kind,
+      metric_kind: proposal.metric_kind,
       risk_name: proposal.risk_name,
       r_num: proposal.r_num,
       to_status: proposal.to_status,
@@ -631,7 +640,7 @@ export function proposeAddRisk(opts) {
       created_at: proposal.created_at,
     },
     note: 'add_risk pending. SoR NOT written until GO (commit_on_go kind=register) or glass ACCEPT. Then COMPILE BOOK if pack lags.',
-    glass: `http://127.0.0.1:4681/#/${slug}/risks`,
+    glass: `http://127.0.0.1:4682/#/${slug}/risks`,
     decision_support_only: true,
   };
 }

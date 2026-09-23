@@ -154,7 +154,7 @@ export default function UpdateMetaOnly({ desk, ticker, label }) {
         <div className="emptyD" style={{ padding: '12px 16px' }}>
           <b>write_path_mode: meta_only</b> (all thin desks). Edit entity / risks SoR on disk, then{' '}
           <b>COMPILE BOOK</b>. House and register writes: Grok <span className="mono">propose_*</span>
-          {' '}→ glass <b>ACCEPT</b> on House / Risks — never silent write, never hand-edit the pack store.
+          {' '}→ GO in Grok or glass <b>ACCEPT</b> on House / Risks — never silent write, never hand-edit the pack store.
         </div>
       </div>
     </div>

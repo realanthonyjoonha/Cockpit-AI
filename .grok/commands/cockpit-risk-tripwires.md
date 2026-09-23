@@ -1,5 +1,5 @@
 ---
-description: Research tripwires for a risk; iterate with user; propose set_tripwires (glass ACCEPT)
+description: Research tripwires for a named risk; iterate with user; propose set_tripwires (GO writes)
 argument-hint: "[desk] [risk id or Rn or name]"
 ---
 
@@ -22,7 +22,7 @@ If desk missing, ask once. **If risk is present, do not re-ask** — glass Due D
 3. Present candidates as a **menu** — ask which to keep, merge, or drop.  
 4. Revise until Anthony says e.g. “propose these” / “lock tripwires”.  
 5. Call **`propose_risk_tripwires`** with the **final** list only (replace mode).  
-6. Tell him glass: `#/{desk}/risks` → ACCEPT pending **set_tripwires** → COMPILE BOOK.
+6. Tell him glass: `#/{desk}/risks` → GO (`commit_on_go`) or ACCEPT pending **set_tripwires** → COMPILE BOOK if pack lags.
 
 ## Tripwire quality bar
 
@@ -36,7 +36,7 @@ If desk missing, ask once. **If risk is present, do not re-ask** — glass Due D
 1. Current SoR tripwires  
 2. Candidate set (numbered)  
 3. Question: keep / drop / edit?  
-4. When proposing: proposal id + glass ACCEPT link  
+4. When proposing: proposal id + `#/{desk}/risks` (GO / ACCEPT)  
 
 ## Hard rules
 
