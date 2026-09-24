@@ -52,15 +52,19 @@ Do **not** stop. Do **not** require a second OPEN GROK. Do **not** wait for glas
 
 SAVE DRAFT house → do **not** flow into register-closeout.
 
-## After register-closeout PASS — same terminal, drivers
+## DRIVERS — after register-closeout PASS, same terminal, drivers
 
-Do **not** stop. Do **not** dump house headings as Drivers.
+Do **not** stop. Print the heading **DRIVERS** before the list. This is not the house and not the risk register. Nothing is pinned yet.
 
-1. Live house **CONFIRMED**. Register-closeout **PASS**.
-2. Ask which **business engines** they want watched closer (AWS growth, neoclouds, ads mix). Suggest only engines **quoted from that house**. **None auto-kept.**
-3. User **KEEP / SKIP / empty**. KEEP → `propose_keep_driver` (**house_cite required**). Not in the house → house GO first, then KEEP.
-4. **GO** → **`commit_on_go` kind=drivers** (writes 09, not 08). **SAVE DRAFT** → Grok only.
-5. `node scripts/drivers-closeout.mjs --slug {desk}` — **zero Dn = PASS**.
+The user names the engines. You may suggest 2–5. You do not decide the list.
+
+1. Ask them to name the side of the business they want followed more closely, in their words. Examples: AWS growth and profitability; neoclouds NVDA is backing; client profit while the server print does the work.
+2. A suggestion is one line: the name, one quote that is already in the confirmed house, and one watching line. Not a second copy of the house. No segment essay. No status. Do **not** dump headings (Stance, load-bearing view, flip triggers).
+3. They **KEEP**, **SKIP**, **name their own**, or keep **none**. Empty is valid. **EDIT** revises the list in this chat. Nothing is auto-kept.
+4. If the name they propose is already a claim in the confirmed house: pin it. Do **not** edit the house.
+5. If it is **not** in the house: do **not** rewrite the house and do **not** pin it. Ask once — put this on the house first, or drop it. A house change is a separate house **GO**. Only after that GO do you pin.
+6. KEEP → `propose_keep_driver` (title, house_cite, watching). **GO** → **`commit_on_go` kind=drivers** (writes 09 only, not 08, not the house). **SAVE DRAFT** stays in Grok.
+7. `node scripts/drivers-closeout.mjs --slug {desk}` — **zero Dn = PASS**.
 
 SAVE DRAFT register → do **not** flow into drivers.
 

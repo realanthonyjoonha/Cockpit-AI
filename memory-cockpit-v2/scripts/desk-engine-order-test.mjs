@@ -55,6 +55,12 @@ if (process.env.ENG_ORDER_WORKER !== '1') {
   } else bad('new-desk command skips drivers');
   if (/SAVE DRAFT on the register does not start Drivers/.test(desk)) ok('save-draft register does not start drivers');
   else bad('save-draft gate missing from new-desk');
+  if (/print the heading \*\*DRIVERS\*\*/.test(desk) && /name the side of the business/.test(desk) && /do \*\*not\*\* edit the house/.test(desk)) {
+    ok('setup names the DRIVERS step and does not rewrite the house');
+  } else bad('setup drivers prompt missing heading or house rule');
+  if (/Print the heading \*\*DRIVERS\*\*/.test(prop) && /name their own/.test(prop) && /do \*\*not\*\* rewrite the house/.test(prop)) {
+    ok('propose command: user can name a driver; house is not auto-edited');
+  } else bad('propose drivers section');
   if (/same terminal, drivers/.test(prop) && /do \*\*not\*\* flow into drivers/.test(prop)) {
     ok('propose command: drivers only after register GO');
   } else bad('propose command order');

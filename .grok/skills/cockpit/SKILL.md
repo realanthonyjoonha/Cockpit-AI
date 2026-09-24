@@ -48,7 +48,7 @@ You have MCP **cockpit-research**. Prefer tools over inventing. Never write `hou
 | `/cockpit-match` | Verify house labels vs pack WATCH |
 | `/cockpit-propose` | **House in this terminal** — dump full markdown; **GO** writes · **SAVE DRAFT** Grok-only · **EDIT** revises (no write, no FORMING chip) |
 | `/cockpit-register` | **Register in this terminal** — dump full 08; **GO** writes · **SAVE DRAFT** Grok-only · **EDIT** revises |
-| `/cockpit-drivers` | **Drivers** — user pins business engines from the house (AWS, neoclouds, ads mix); **GO** writes 09; empty valid; never auto-keep |
+| `/cockpit-drivers` | **Drivers** — user names the engine (you may suggest). Already in the house → pin, do not edit the house. Not in the house → ask, do not rewrite the house. **GO** writes 09; empty valid |
 | `/cockpit-pending` | List pending house proposals |
 | `/cockpit` | **Menu only.** Print pin (`list_desks`) + this table. Wait. Do **not** steelman unless they named a desk **and** asked steelman/daily/report/… |
 

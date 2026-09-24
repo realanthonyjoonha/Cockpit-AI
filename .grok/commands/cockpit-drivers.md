@@ -9,19 +9,16 @@ Load **CONFIRMED house** (`get_house_view`). This is **personalization**, not a 
 
 **Do not** KEEP Stance, flip-triggers, “linked register,” “load-bearing view,” or other headings.
 
-Name **2–5 engines of the business** the user wants watched closer. Examples:
-- Amazon: AWS growth and profitability
-- NVDA: neoclouds they are backing
-- META: FoA ads mix; Muse attach
+Open by printing **DRIVERS**. This is not the house and not the risk register. Nothing is pinned yet.
 
-Each engine needs a **house_cite** (quote from the live house) and a **watching** line. Optional **why** (one paragraph). If it is not in the house: STOP — they GO house first, then pin.
+Ask the user to **name the engine themselves**. You may also suggest **2–5**. A suggestion is one name, one quote already in the confirmed house, and one watching line. Not a second copy of the house. Examples of names, not a template: AWS growth and profitability; neoclouds NVDA is backing; FoA ads mix.
 
-User **KEEP / SKIP / empty**. KEEP → `propose_keep_driver` (title, house_cite, watching, why). Then glass ACCEPT or **GO** `commit_on_go` kind=drivers (writes `09`, not 08, not the house). Never auto-keep.
+They **KEEP / SKIP / name their own / empty**. KEEP → `propose_keep_driver` (title, house_cite, watching). Then glass ACCEPT or **GO** `commit_on_go` kind=drivers (writes `09`, not 08, not the house). Never auto-keep.
+
+If you can quote the confirmed house for it, pin it. Do **not** edit the house. If you cannot — it is missing, or it contradicts the stance — do **not** pin it and do **not** rewrite the house. Ask once: house GO first, or drop the driver.
 
 There is **no status**. Do not say ON-PLAN, TRACK, or OFF-PLAN.
 
-Cadence is **print, news, or on-demand**. A check later appends one log line (`propose_driver_log`) after they GO. The log does not edit the house.
-
-If a proposed engine **contradicts** the house story, **ask** — house GO or drop the driver. Do not silent-rewrite house.
+Cadence is **print, news, or on-demand**. A check later appends one log line (`propose_driver_log`) after they GO. The log does not edit the house. A finding you cannot square with the house is the same ask, not a new path.
 
 `node scripts/drivers-closeout.mjs --slug {desk}` — zero Dn = PASS.
