@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "cockpit-research": {
+      "command": "bash",
+      "args": ["scripts/cursor-kernel-mcp.sh"]
+    },
     "cockpit-research-dogfood": {
       "command": "bash",
       "args": ["scripts/cursor-dogfood-mcp.sh"],
