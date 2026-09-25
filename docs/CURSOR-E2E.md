@@ -59,8 +59,12 @@ npm --prefix memory-cockpit-v2 install   # if node_modules missing
 | Seal | `$PWD/.cockpit-dogfood` (gitignored) |
 | Glass | `http://127.0.0.1:4695/#/nvda/filings` |
 | MCP | `.cursor/mcp.json` → `scripts/cursor-dogfood-mcp.sh` → **`cockpit-research-dogfood`** |
+| Operate MCP | `.cursor/mcp.json` → `scripts/cursor-kernel-mcp.sh` → **`cockpit-research`** (kernel root + sibling vault; stdout is JSON-RPC only) |
+| Preflight | `./scripts/cockpit-mcp-preflight.sh` |
 | Kernel MCP env | `COCKPIT_DOGFOOD_SLUGS=nvda,mu,lly` |
 | Product/Cockpit-AI | DOGF only — no books |
+
+This three-desk lab uses `cockpit-research-dogfood` only. `cockpit-research` is the separate kernel operate pin (`scripts/cursor-kernel-mcp.sh`). Check that pin with `./scripts/cockpit-mcp-preflight.sh`.
 
 ## Do / don’t
 

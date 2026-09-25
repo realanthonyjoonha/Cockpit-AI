@@ -135,6 +135,12 @@ if [ -f "$FROM/research-wiki/cockpit/lib/fm.js" ]; then
 elif [ -f "$ROOT/research-wiki/cockpit/lib/fm.js" ]; then
   LIBSRC="$ROOT/research-wiki/cockpit/lib"
 fi
+if [ -z "$LIBSRC" ]; then
+  vault_src="$(dogfood_resolve_vault "$ROOT" || true)"
+  if [ -n "$vault_src" ] && [ -f "$vault_src/cockpit/lib/fm.js" ]; then
+    LIBSRC="$vault_src/cockpit/lib"
+  fi
+fi
 if [ -n "$LIBSRC" ]; then
   mkdir -p "$DEST/research-wiki/cockpit/lib"
   cp "$LIBSRC"/*.js "$DEST/research-wiki/cockpit/lib/"

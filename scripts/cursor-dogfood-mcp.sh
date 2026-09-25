@@ -27,7 +27,7 @@ if [ "$need_up" -eq 1 ]; then
   echo "cursor-dogfood-mcp: bootstrapping $SEAL (--no-glass)" >&2
   UP=(--dir "$SEAL" --mcp-name "$MCP_NAME" --no-glass)
   if [ -n "${COCKPIT_DOGFOOD_SLUGS:-}" ]; then UP+=(--slugs "$COCKPIT_DOGFOOD_SLUGS"); fi
-  bash "$ROOT/scripts/dogfood-up.sh" "${UP[@]}"
+  bash "$ROOT/scripts/dogfood-up.sh" "${UP[@]}" >&2
 fi
 if [ -f "$SEAL/.cockpit-scenario.json" ]; then
   SLUGS_CSV=$(node -e "const j=require(process.argv[1]);console.log((j.allowed_slugs||['dogf']).join(','))" "$SEAL/.cockpit-scenario.json")

@@ -91,6 +91,8 @@ scripts/dogfood-down.sh
 scripts/dogfood-e2e.sh
 scripts/lib/dogfood-paths.sh
 scripts/cursor-dogfood-mcp.sh
+scripts/cursor-kernel-mcp.sh
+scripts/cockpit-mcp-preflight.sh
 docs/CURSOR-E2E.md
 .cursor/mcp.json
 .cursor/rules/cockpit-e2e.mdc
