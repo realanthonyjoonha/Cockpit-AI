@@ -1,0 +1,11 @@
+{
+  "name": "Cockpit research OS",
+  "install": "cd memory-cockpit-v2 && npm install && npm run build",
+  "terminals": [
+    {
+      "name": "glass",
+      "command": "./scripts/run-glass.sh"
+    }
+  ],
+  "ports": [4682]
+}
