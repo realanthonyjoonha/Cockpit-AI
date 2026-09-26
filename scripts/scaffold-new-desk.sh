@@ -164,6 +164,11 @@ touch "$ROOT/research-wiki/${RISKS_GEN}/.gitkeep"
 # Entity stub — key facts heading, zero invented claims
 if [ ! -f "$ROOT/research-wiki/$ENTITY" ]; then
   cat > "$ROOT/research-wiki/$ENTITY" <<EOF
+---
+name: "$NAME"
+ticker: $TICKER
+---
+
 # $NAME ($TICKER)
 
 Scaffold entity. Add graded claims under the heading below after research.

@@ -74,6 +74,8 @@ memory-cockpit-v2/server/thinCompile.js
 memory-cockpit-v2/scripts/pack-stale-test.mjs
 memory-cockpit-v2/scripts/source-catalog-test.mjs
 ontology/compile/from_sources.py
+ontology/compile/from_wiki.py
+ontology/tests/test_entity_name.py
 memory-cockpit-v2/server/secEdgar.js
 memory-cockpit-v2/server/filingMapInbox.js
 memory-cockpit-v2/server/filingMapSchema.js
@@ -144,6 +146,8 @@ memory-cockpit-v2/server/index.js
 memory-cockpit-v2/src/pages/thin/GrokAgents.jsx
 memory-cockpit-v2/src/pages/thin/Street.jsx
 memory-cockpit-v2/src/pages/thin/Overview.jsx
+memory-cockpit-v2/src/deskTitle.js
+memory-cockpit-v2/scripts/desk-title-test.mjs
 memory-cockpit-v2/src/pages/thin/House.jsx
 memory-cockpit-v2/server/houseProposals.js
 memory-cockpit-v2/scripts/house-proposal-review-test.mjs

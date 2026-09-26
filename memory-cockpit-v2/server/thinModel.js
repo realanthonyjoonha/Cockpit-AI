@@ -25,6 +25,7 @@ import {
 } from './thinResearchRuns.js';
 import { liveUsEquity } from './quotes.js';
 import { stanceLine, houseMarkdownStatus } from './houseStance.js';
+import { shownCompanyName } from '../src/deskTitle.js';
 import { readHouseMarkdown, saveHouseMarkdown } from './thinHouseSave.js';
 import { buildHouseAssistContext } from './assistContext.js';
 import {
@@ -126,6 +127,14 @@ export function createThinModel(profile) {
   const deskId = profile.deskId;
   const slug = profile.slug;
   const displayName = profile.displayName || TICKER;
+
+  function shownName(packName) {
+    return shownCompanyName(packName, {
+      slug: slug || deskId,
+      ticker: TICKER,
+      displayName,
+    });
+  }
   const houseFile = profile.houseFile;
   const entitySlug = profile.entitySlug;
   const rawDirRel = profile.rawDir;
@@ -230,7 +239,7 @@ export function createThinModel(profile) {
       available: true,
       desk: deskId,
       ticker: obj.ticker || TICKER,
-      name: obj.name || displayName,
+      name: shownName(obj.name),
       pack_exists: true,
       pack_path: packPath,
       pack_mtime_ms: mtimeMs || null,
@@ -274,7 +283,7 @@ export function createThinModel(profile) {
       available: true,
       desk: deskId,
       ticker: (pack.object || {}).ticker || TICKER,
-      name: (pack.object || {}).name || displayName,
+      name: shownName((pack.object || {}).name),
       pack_exists: true,
       pack_path: packPath,
       pack_mtime_ms: mtimeMs || null,
@@ -354,7 +363,7 @@ export function createThinModel(profile) {
       available: true,
       desk: deskId,
       ticker: obj.ticker || TICKER,
-      name: obj.name || displayName,
+      name: shownName(obj.name),
       aliases: obj.aliases || [],
       compiled_at: pack.compiled_at || null,
       pack_path: packPath,

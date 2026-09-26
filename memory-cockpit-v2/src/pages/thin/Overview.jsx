@@ -1,6 +1,7 @@
 // Shared thin Overview — pack stance, on-watch, claim spine.
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
+import { shownCompanyName } from '../../deskTitle.js';
 import BookStrip from './BookStrip.jsx';
 import { filingDocLabel, inBookChip } from './filingLink.js';
 import { filingsStripMode, filingsLedgerExtras } from './filingMapPaint.js';
@@ -16,9 +17,10 @@ function fmtCompiled(iso) {
   }
 }
 
-/** @param {{ desk: { slug: string, ticker: string, label: string } }} props */
+/** @param {{ desk: { slug: string, ticker: string, label: string, displayName?: string } }} props */
 export default function ThinOverview({ desk }) {
   const { slug, ticker, label } = desk;
+  const company = desk.displayName || label;
   const [d, setD] = useState(null);
   const [qx, setQx] = useState(null);
   const [pipe, setPipe] = useState(null);
@@ -40,7 +42,7 @@ export default function ThinOverview({ desk }) {
           <div className="phd">
             <div>
               <div className="eyebrow">SPINE · EMPTY</div>
-              <h1>{label} overview</h1>
+              <h1>{company} overview</h1>
             </div>
             <span className="pill warn">NO PACK</span>
           </div>
@@ -69,7 +71,7 @@ export default function ThinOverview({ desk }) {
 
       <div className="sect">
         <div className="rdhead">
-          <h1 style={{ fontSize: 20 }}>{(d.name || label).toUpperCase()}</h1>
+          <h1 style={{ fontSize: 20 }}>{shownCompanyName(d.name, { slug, ticker, label, displayName: company })}</h1>
           <div className="chips">
             {d.house?.status && (
               <span className={`chipC ${st}`}>

@@ -49,6 +49,25 @@ if (s3 && /Constructive on NVIDIA/.test(s3) && !/load-bearing/.test(s3)) {
 if (isScaffoldStance('edit after research — do not invent')) ok('scaffold detector');
 else bad('scaffold detector');
 
+const para = 'Northwind is a parts company. The book watches renewal of that concentrated data book through the latest filing.';
+const led = stanceLine({
+  view_excerpt: `**Stance:** ${para}\n\n## What this picture rests on\n\nMore house body that must not leak.`,
+});
+if (led === para) ok('stance paragraph is kept whole, including the last word');
+else bad(`stance clipped or leaked: ${led}`);
+
+const head = 'A'.repeat(470);
+const overOldCap = `${head} concentrated data book survives the old cut.`;
+const kept = stanceLine({ view_excerpt: `**Stance:** ${overOldCap}\n\n## Next` });
+if (kept === overOldCap && kept.includes('data book survives')) ok('stance longer than 480 characters is not cut mid-word');
+else bad(`480-cap still applied: ${(kept || '').slice(460, 500)}`);
+
+const huge = `${'alpha '.repeat(400)}omega`;
+const clipped = stanceLine({ view_excerpt: `**Stance:** ${huge}` });
+if (clipped && clipped.endsWith('…') && !clipped.endsWith('alp…') && !/omega$/.test(clipped)) {
+  ok('over-long stance clips on a word and marks the cut');
+} else bad(`clip ${clipped && clipped.slice(-20)}`);
+
 if (fail) {
   console.log(`\nhouse-stance FAIL ${fail}  pass ${pass}`);
   process.exit(1);

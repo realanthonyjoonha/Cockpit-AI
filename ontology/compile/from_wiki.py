@@ -99,10 +99,18 @@ def parse_entity(path: Path) -> dict[str, Any]:
             if re.search(r"\[([ABC])\]", line):
                 unparsed += 1
 
+    h1_name = ""
+    h1 = re.search(r"^#\s+(.+)$", body, re.M)
+    if h1:
+        raw_h = re.sub(r"\*+", "", h1.group(1)).strip()
+        raw_h = re.sub(r"\s*\([A-Z0-9.-]{1,12}\)\s*$", "", raw_h).strip()
+        if raw_h and raw_h.lower() not in {slug.lower(), str(meta.get("ticker") or "").lower()}:
+            h1_name = raw_h
+
     company = {
         "id": slug,
         "type": "Company",
-        "name": meta.get("name") or slug,
+        "name": meta.get("name") or h1_name or slug,
         "ticker": (meta.get("ticker") or "").upper() or None,
         "aliases": meta.get("aliases") or [],
         "summary": what or role[:400],

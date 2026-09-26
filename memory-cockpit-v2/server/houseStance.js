@@ -9,6 +9,21 @@ const SCAFFOLD_RE = /edit after research|scaffold created|replace this body with
 /** Markdown / pack-flattened stops — ## not only ### (Acceptance log is ##). */
 const STANCE_STOP = String.raw`(?=\s*(?:Not a rating|#{2,}\s|Acceptance log|\n\n|\n\s*\||$))`;
 
+/**
+ * A stance paragraph is the overview lede and is shown whole.
+ * Only an unbounded excerpt is clipped, and only on a word, with an ellipsis.
+ */
+const STANCE_CAP = 1600;
+
+export function clipStance(s) {
+  const t = String(s || '').trim();
+  if (t.length <= STANCE_CAP) return t;
+  const window = t.slice(0, STANCE_CAP);
+  const sp = window.lastIndexOf(' ');
+  const cut = (sp > 80 ? window.slice(0, sp) : window).replace(/[.,;:]+$/, '');
+  return `${cut}…`;
+}
+
 export function isScaffoldStance(s) {
   return SCAFFOLD_RE.test(String(s || ''));
 }
@@ -96,7 +111,7 @@ export function stanceLine(housePrior, extended) {
     m = ex.match(/I am \*\*very bullish\*\*[^.]*\./i)
       || ex.match(/very bullish on[^.]{0,200}/i);
     if (m) {
-      const line = clean(m[0]).slice(0, 480);
+      const line = clipStance(clean(m[0]));
       return isScaffoldStance(line) ? null : line;
     }
   }
@@ -104,13 +119,13 @@ export function stanceLine(housePrior, extended) {
   if (m) {
     const body = clean(m[1] != null ? m[1] : m[0]);
     if (!body || isScaffoldStance(body)) return null;
-    return body.slice(0, 480);
+    return clipStance(body);
   }
   const idx = ex.search(/Stance/i);
   if (idx >= 0) {
     const tail = ex.slice(idx).replace(/^Stance:?\*?\*?\s*/i, '');
     const line = clean(tail.split(/\n/)[0] || '');
-    if (line.length > 40 && !isScaffoldStance(line)) return line.slice(0, 480);
+    if (line.length > 40 && !isScaffoldStance(line)) return clipStance(line);
   }
   const play = housePrior.play ? clean(housePrior.play) : '';
   if (play && !isScaffoldStance(play)) return play;
