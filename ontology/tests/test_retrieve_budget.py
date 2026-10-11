@@ -224,6 +224,23 @@ class TestRetrieveBudget(unittest.TestCase):
             self.assertIn("END CONTEXT", text)
             self.assertLessEqual(len(text), 28_000)
 
+    def test_tagged_slots_survive_the_cap(self):
+        from api.xbrl_facts import mapped_facts, parse_xbrl_facts, tagged_slots
+
+        fixture = json.loads((REPO / "harness-stress" / "fixtures" / "sectors.json").read_text())
+        for issuer in fixture["issuers"]:
+            doc = (REPO / "harness-stress" / "fixtures" / issuer["xbrl"]).read_text(encoding="utf-8")
+            facts = mapped_facts(parse_xbrl_facts(doc, source_id=f"raw/{issuer['id']}-research/filings/10k.htm")["facts"])
+            want = {s["id"] for s in tagged_slots(facts).values()}
+            ticker = "".join(ch for ch in issuer["id"].upper() if ch.isalnum())[:12]
+            store = _store([dict(c) for c in issuer["claims"]], ticker=ticker, focus_id=issuer["id"], gaps=[])
+            store["facts"] = facts
+            self._write(ticker, store)
+            for pack in (retrieve(ticker, "overview"), assemble_agent_pack(store)):
+                self._assert_under(pack)
+                got = {c.get("id") for c in pack.get("claims") or [] if c.get("origin") == "xbrl"}
+                self.assertEqual(got, want, issuer["id"])
+
     def test_stub_still_meets_the_post_condition(self):
         pack = {
             "focus": {"ticker": "DEMO", "id": "demo"},
