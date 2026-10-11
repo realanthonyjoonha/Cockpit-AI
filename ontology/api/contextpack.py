@@ -20,15 +20,22 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from api.xbrl_facts import concept_index, load_taxonomy, sentence_fill_allowed, tagged_slots  # noqa: E402
+from api.companyfacts import (  # noqa: E402
+    STRUCTURED_GAP,
+    concept_index,
+    load_taxonomy,
+    sentence_fill_allowed,
+    structured_metric,
+    tagged_slots,
+)
 
 RULES_PATH = ROOT / "schema" / "contextpack_metrics.json"
 XBRL_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
 
 GRADE_W = {"A": 3, "B": 2, "C": 1}
 FISCAL_GAP = "as_of is a fiscal label without a period-end date"
-SENTENCE_GAP = "no tagged XBRL fact; live value is sentence-derived (low confidence): "
-HEADLINE_GAP = "{mid}: no tagged fact; {n} candidate sentences in context"
+SENTENCE_GAP = "no companyfacts value; live value is sentence-derived (low confidence): "
+HEADLINE_GAP = STRUCTURED_GAP
 CONTEXT_CAP = 8
 _COUNT = re.compile(r"\b(?!(?:19|20)\d{2}\b)\d[\d,]*(?:\.\d+)?\b")
 
@@ -548,9 +555,9 @@ def live_claims(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """One live row per metric_id. Residual numbered claims capped.
 
-    Tagged facts own their metric. A sentence fills only an untagged metric, only
-    with an amount, and is marked low confidence. A fiscal label does not beat a
-    real period-end date. Boilerplate does not drop a figure.
+    Companyfacts slots own structured metrics. A sentence never fills those
+    slots. Phrase-only metrics may still hold a live row. A fiscal label does
+    not beat a real period-end date.
     """
     rules = rules or load_rules()
     tax = load_taxonomy()
@@ -581,17 +588,14 @@ def live_claims(
         if mid:
             mid = str(mid)
             if mid in slots:
-                context.append((i, _context_row(c, mid, "tagged_slot")))
+                context.append((i, _context_row(c, mid, "structured_slot")))
                 slot_key = parse_as_of(slots[mid]["as_of"]).get("sort_key") or ""
                 own_key = parse_as_of(c.get("as_of")).get("sort_key") or ""
                 if own_key > slot_key:
                     newer[mid] = newer.get(mid, 0) + 1
-            elif not sentence_fill_allowed(mid, tax):
-                if sentence_has_amount(mid, text, tax):
-                    context.append((i, _context_row(c, mid, "no_tagged_fact")))
-                    blocked[mid] = blocked.get(mid, 0) + 1
-                else:
-                    context.append((i, _context_row(c, mid, "no_amount")))
+            elif structured_metric(mid, tax) or not sentence_fill_allowed(mid, tax):
+                context.append((i, _context_row(c, mid, "no_structured_fact")))
+                blocked[mid] = blocked.get(mid, 0) + 1
             elif not sentence_has_amount(mid, text, tax):
                 context.append((i, _context_row(c, mid, "no_amount")))
             else:
@@ -602,9 +606,9 @@ def live_claims(
     indexed: list[tuple[int, dict[str, Any]]] = []
     superseded: list[dict[str, Any]] = []
     for mid, n in newer.items():
-        add_gap(f"{mid}: {n} newer sentence(s) not used; live value is the tagged {slots[mid]['as_of']} fact")
-    for mid, n in blocked.items():
-        add_gap(HEADLINE_GAP.format(mid=mid, n=n))
+        add_gap(f"{mid}: {n} newer sentence(s) not used; live value is the companyfacts {slots[mid]['as_of']} fact")
+    for mid in blocked:
+        add_gap(HEADLINE_GAP.format(mid=mid))
     for k, row in enumerate(slots.values()):
         indexed.append((k, dict(row)))
     if buckets:
@@ -691,7 +695,7 @@ def stale_tripwires(
         if not mid or mid not in by_metric:
             continue
         claim = by_metric[mid]
-        if claim.get("origin") == "xbrl":
+        if claim.get("origin") in ("companyfacts", "xbrl"):
             unit = str(claim.get("unit") or "")
             claim_by = {unit: [float(claim["value"])]} if re.fullmatch(r"[A-Z]{3}", unit) else {}
         else:
@@ -756,7 +760,7 @@ def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
     if c.get("origin"):
         row["origin"] = c.get("origin")
         row["confidence"] = c.get("confidence")
-    if c.get("origin") == "xbrl":
+    if c.get("origin") in ("companyfacts", "xbrl"):
         for key in ("concept", "value", "unit"):
             row[key] = c.get(key)
     return row
@@ -891,7 +895,7 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
         lines.append("## Live claims (one per metric)")
         for c in claims:
             tag = ""
-            if c.get("origin") == "xbrl":
+            if c.get("origin") in ("companyfacts", "xbrl"):
                 tag = " · tagged"
             elif c.get("confidence") == "low":
                 tag = " · sentence, low confidence"

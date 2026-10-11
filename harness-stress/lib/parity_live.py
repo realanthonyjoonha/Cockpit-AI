@@ -22,7 +22,7 @@ from api.contextpack import (  # noqa: E402
     parse_amounts,
     parse_as_of,
 )
-from api.xbrl_facts import parse_xbrl_facts, tagged_slots  # noqa: E402
+from api.companyfacts import parse_companyfacts, tagged_slots  # noqa: E402
 
 
 def _num(n: float):
@@ -64,15 +64,19 @@ def snapshot(claims: list, rules: dict) -> dict:
 
 
 def tagged_snapshot(claims: list, rules: dict, rel: str) -> dict:
-    path = FIXTURES / rel
-    parsed = parse_xbrl_facts(path.read_text(encoding="utf-8"), source_id=path.name)
+    path = FIXTURES / "companyfacts" / rel / "companyfacts.json"
+    if not path.is_file():
+        path = FIXTURES / rel
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    parsed = parse_companyfacts(doc, source_id=path.name)
     facts = parsed["facts"]
     slots = tagged_slots(facts)
     gaps: list[str] = []
     context: list[dict] = []
     live, _ = live_claims(claims, rules, gaps_out=gaps, facts=facts, context_out=context)
+    compact = [[f.get("concept"), f.get("value_text"), (f.get("period") or {}).get("end"), f.get("filed"), f.get("form"), f.get("unit")] for f in facts]
     return {
-        "facts": facts,
+        "facts": compact,
         "notes": parsed["notes"],
         "tagged": {
             "slots": {
