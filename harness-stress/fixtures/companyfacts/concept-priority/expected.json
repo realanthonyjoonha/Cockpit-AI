@@ -1,0 +1,15 @@
+{
+  "id": "concept-priority",
+  "comment": "Same end: concept list order beats a later-filed lower-priority concept.",
+  "slots": {
+    "company_revenue": {
+      "value_text": "1000000000",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "us-gaap:Revenues",
+      "form": "10-K",
+      "filed": "2026-01-15",
+      "unit": "USD"
+    }
+  }
+}

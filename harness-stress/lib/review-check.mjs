@@ -200,6 +200,23 @@ export function checkReviewerCases(api) {
     errors.push(`synthetic 10-Q ${synSlot?.value_text} ytd ${synSlot?.ytd?.value_text}`);
   }
 
+  const oldP = api.taggedSlots(factsFor(api, 'old-primary').facts).company_revenue;
+  if (oldP?.value_text !== '250000000' || oldP?.concept !== 'us-gaap:PremiumsEarnedNet') {
+    errors.push(`old-primary hid current fallback ${oldP?.concept}=${oldP?.value_text}`);
+  }
+  const q111 = api.taggedSlots(factsFor(api, 'q111').facts).company_revenue;
+  const q111r = api.taggedSlots(factsFor(api, 'q111-rev').facts).company_revenue;
+  if (q111?.value_text !== '111000000' || q111?.ytd?.value_text !== '333000000') {
+    errors.push(`q111 ${q111?.value_text} ytd ${q111?.ytd?.value_text}`);
+  }
+  if (q111r?.value_text !== q111?.value_text || q111r?.ytd?.value_text !== q111?.ytd?.value_text) {
+    errors.push('q111 array order changed the slot');
+  }
+  const pref = api.taggedSlots(factsFor(api, 'concept-priority').facts).company_revenue;
+  if (pref?.value_text !== '1000000000' || pref?.concept !== 'us-gaap:Revenues') {
+    errors.push(`concept-priority ${pref?.concept}=${pref?.value_text}`);
+  }
+
   return errors;
 }
 
@@ -207,6 +224,9 @@ export function checkCompanyfactsExact(api) {
   const errors = [];
   const index = JSON.parse(readFileSync(path.join(CF_DIR, 'index.json'), 'utf8'));
   if ((index.issuers || []).length < 12) errors.push(`companyfacts issuers ${index.issuers?.length}`);
+  for (const need of ['old-primary', 'q111', 'q111-rev', 'concept-priority']) {
+    if (!(index.issuers || []).some((row) => row.id === need)) errors.push(`missing reviewer fixture ${need}`);
+  }
   for (const row of index.issuers || []) {
     const parsed = factsFor(api, row.id);
     const slots = api.taggedSlots(parsed.facts);

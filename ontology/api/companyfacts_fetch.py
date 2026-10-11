@@ -24,15 +24,42 @@ GetFn = Callable[[str, dict[str, str], float], tuple[int, bytes]]
 SleepFn = Callable[[float], None]
 
 
-def pad_cik(cik: str | int | None) -> str:
-    digits = re.sub(r"\D", "", str(cik or ""))
+def pad_cik(cik: str | int | float | None) -> str:
+    if isinstance(cik, bool):
+        raise ValueError("cik is empty")
+    if isinstance(cik, float):
+        if not cik.is_integer():
+            raise ValueError("cik is empty")
+        cik = int(cik)
+    s = str(cik or "").strip()
+    if re.fullmatch(r"-?\d+\.0+", s):
+        s = s.split(".", 1)[0]
+    digits = re.sub(r"\D", "", s)
     if not digits:
         raise ValueError("cik is empty")
     return digits.zfill(10)
 
 
-def user_agent(explicit: str | None = None) -> str:
+def pack_user_agent(ticker: str, ont_root: Path | None = None) -> str | None:
+    root = Path(ont_root) if ont_root else Path(__file__).resolve().parents[1]
+    ident = re.sub(r"[^A-Z0-9.-]", "", str(ticker or "").upper())
+    if not ident:
+        return None
+    path = root / "packs" / f"{ident}.json"
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    ua = str((data or {}).get("sec_user_agent") or "").strip()
+    return ua or None
+
+
+def user_agent(explicit: str | None = None, ticker: str | None = None, ont_root: Path | None = None) -> str:
     ua = (explicit or os.environ.get("SEC_USER_AGENT") or os.environ.get("COCKPIT_SEC_UA") or "").strip()
+    if not ua:
+        ua = (pack_user_agent(ticker or "", ont_root) or "").strip()
     if not ua or not re.search(r"@|https?://", ua):
         raise RuntimeError("SEC_USER_AGENT (or sec_user_agent) must include contact info")
     return ua
@@ -215,7 +242,7 @@ def refresh_desk_companyfacts(
         "gap": None,
     }
     try:
-        ua = user_agent(user_agent_value)
+        ua = user_agent(user_agent_value, ticker=ident)
     except RuntimeError as exc:
         result["gap"] = f"companyfacts fetch failed: {exc}"
         write_status(dest, result)

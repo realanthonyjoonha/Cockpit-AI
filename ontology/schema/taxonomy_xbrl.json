@@ -1,6 +1,6 @@
 {
   "version": "3",
-  "comment": "Companyfacts concept to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). Primary concepts are aliases (latest period end wins; same end uses list order). fallback is used only when no primary concept is present. sentence_fill is always false for structured metrics. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "comment": "Companyfacts concept to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). Primary and fallback are one ordered list for selection: latest period end wins first across both; same end uses this list order (primary, then fallback), then later filed/accn. sentence_fill is always false for structured metrics. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
   "namespaces": {
     "us-gaap": ["http://fasb.org/us-gaap/"],
     "ifrs-full": ["http://xbrl.ifrs.org/taxonomy/", "https://xbrl.ifrs.org/taxonomy/"],

@@ -15,8 +15,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 TAXONOMY_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
 
-ALLOWED_FORMS = {"10-K", "10-Q", "20-F", "40-F", "6-K"}
-ANNUAL_FORMS = {"10-K", "20-F", "40-F"}
+ALLOWED_FORMS = {"10-K", "10-Q", "20-F", "40-F", "6-K", "10-KT"}
+ANNUAL_FORMS = {"10-K", "20-F", "40-F", "10-KT"}
+QUARTER_FP = {"Q1", "Q2", "Q3"}
 ISO4217 = re.compile(r"^[A-Z]{3}$")
 TAXONOMIES = ("us-gaap", "ifrs-full")
 
@@ -34,9 +35,7 @@ def load_taxonomy() -> dict[str, Any]:
 
 
 def sentence_fill_allowed(metric_id: str, tax: dict[str, Any] | None = None) -> bool:
-    spec = ((tax or load_taxonomy()).get("metrics") or {}).get(metric_id) or {}
-    if spec.get("alias_of"):
-        return sentence_fill_allowed(str(spec["alias_of"]), tax)
+    spec = ((tax or load_taxonomy()).get("metrics") or {}).get(canonical_metric(metric_id, tax)) or {}
     if spec.get("concepts") or spec.get("fallback"):
         return False
     return spec.get("sentence_fill") is not False
@@ -112,14 +111,44 @@ def _days(start: str | None, end: str | None) -> int:
         return 0
 
 
-def duration_kind(days: int) -> str:
+def duration_kind(
+    days: int,
+    fp: str | None = None,
+    form: str | None = None,
+    peer_days: list[int] | None = None,
+) -> str:
+    """Classify a duration by fp / form / relative span. Never uses array order."""
+    family = form_family(form)
+    fp_u = (fp or "").upper()
+    peers = [int(p) for p in (peer_days or [])]
+    longer = any(p > days + 14 for p in peers)
+    shorter = any(p < days - 14 for p in peers)
+    if longer and days <= 200:
+        return "quarter"
+    if shorter and days <= 340:
+        return "ytd"
+    if family in ANNUAL_FORMS or fp_u == "FY":
+        if days >= 300 or fp_u == "FY":
+            return "annual"
+    if fp_u in QUARTER_FP:
+        if days <= 130:
+            return "quarter"
+        if days <= 340:
+            return "ytd"
+        return "annual"
     if days >= 341:
         return "annual"
-    if 70 <= days <= 110:
+    if 70 <= days <= 130:
         return "quarter"
-    if 111 <= days <= 340:
+    if 131 <= days <= 340:
         return "ytd"
     return "other"
+
+
+def canonical_metric(metric_id: str, tax: dict[str, Any] | None = None) -> str:
+    spec = ((tax or load_taxonomy()).get("metrics") or {}).get(metric_id) or {}
+    alias = spec.get("alias_of")
+    return str(alias) if alias else metric_id
 
 
 def _unit_kind(unit: str) -> str | None:
@@ -266,7 +295,8 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
         if spec.get("alias_of"):
             continue
         primary, fallback = _metric_concepts(spec)
-        if not primary and not fallback:
+        concepts = primary + [c for c in fallback if c not in primary]
+        if not concepts:
             continue
         want_period = spec.get("period")
         kind = spec.get("unit")
@@ -277,9 +307,7 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
             and (f.get("period") or {}).get("end")
             and _unit_ok(str(f.get("unit") or ""), str(kind))
         ]
-        prim_cands = [f for f in pool if f.get("concept") in primary]
-        cands = prim_cands if prim_cands else [f for f in pool if f.get("concept") in fallback]
-        concepts = primary if prim_cands else fallback
+        cands = [f for f in pool if f.get("concept") in concepts]
         if not cands:
             continue
 
@@ -302,12 +330,21 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
         latest_end = max(w["period"]["end"] for w, _ in winners)
         at_end = [(w, p) for w, p in winners if w["period"]["end"] == latest_end]
         families = {form_family(w.get("form")) for w, _ in at_end}
-        interim = bool(families & {"10-Q"}) and not (families <= ANNUAL_FORMS)
+        fps = {(w.get("fp") or "").upper() for w, _ in at_end}
+        interim = (bool(families & {"10-Q"}) or bool(families & {"6-K"} and fps & QUARTER_FP)) and not (families <= ANNUAL_FORMS)
+
+        def _kind(w: dict[str, Any]) -> str:
+            days = _days(w["period"].get("start"), w["period"]["end"])
+            peers = [
+                _days(o["period"].get("start"), o["period"]["end"])
+                for o, _ in at_end
+                if o is not w
+            ]
+            return duration_kind(days, w.get("fp"), w.get("form"), peers)
 
         def rank(pair: tuple[dict[str, Any], Any]) -> tuple:
             w = pair[0]
-            days = _days(w["period"].get("start"), w["period"]["end"])
-            kind_d = duration_kind(days)
+            kind_d = _kind(w)
             if interim:
                 dur = {"quarter": 2, "ytd": 1}.get(kind_d, 0)
             else:
@@ -316,15 +353,15 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
                 cidx = concepts.index(w["concept"])
             except ValueError:
                 cidx = 99
-            return (dur, w.get("filed") or "", w.get("accession") or "", -cidx, int(w.get("order") or 0))
+            return (dur, -cidx, w.get("filed") or "", w.get("accession") or "")
 
         win, restated_from = max(at_end, key=rank)
         ytd = None
-        if want_period == "duration" and duration_kind(_days(win["period"].get("start"), win["period"]["end"])) == "quarter":
+        if want_period == "duration" and _kind(win) == "quarter":
             ytd_rows = [
                 w for w, _ in at_end
                 if w["concept"] == win["concept"]
-                and duration_kind(_days(w["period"].get("start"), w["period"]["end"])) == "ytd"
+                and _kind(w) == "ytd"
             ]
             if ytd_rows:
                 ytd = max(ytd_rows, key=lambda w: (w.get("filed") or "", w.get("accession") or ""))

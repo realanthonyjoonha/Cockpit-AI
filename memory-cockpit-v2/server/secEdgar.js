@@ -13,10 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import { resolveVaultDir } from './monorepoPaths.js';
-import { refreshDeskCompanyfacts } from './companyfactsFetch.js';
-
-const SEC_UA = process.env.COCKPIT_SEC_UA
-  || 'memory-cockpit-v2/2.0 (personal research cockpit; set COCKPIT_SEC_UA to contact)';
+import { contactUserAgent, refreshDeskCompanyfacts } from './companyfactsFetch.js';
 const TICKERS_URL = 'https://www.sec.gov/files/company_tickers.json';
 const TICKERS_TTL_MS = 7 * 24 * 3600 * 1000; // universe map moves slowly
 const SUBMISSIONS_TTL_MS = 6 * 3600 * 1000;  // filings feed: request-time freshness
@@ -57,12 +54,16 @@ function fileAgeMs(filePath) {
   try { return Date.now() - fs.statSync(filePath).mtimeMs; } catch { return Infinity; }
 }
 
-async function fetchJson(url) {
+function secUa(opts = {}, ticker = '') {
+  return contactUserAgent(opts.secUserAgent || opts.userAgent, ticker);
+}
+
+async function fetchJson(url, ua) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': SEC_UA, 'Accept-Encoding': 'gzip, deflate' },
+      headers: { 'User-Agent': ua, 'Accept-Encoding': 'gzip, deflate' },
       signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
@@ -74,14 +75,23 @@ async function fetchJson(url) {
  * Disk+TTL cached fetch. Fail-soft: on network error serve last-good with stale flag.
  * @returns {{ data: object|null, fetched_at: string|null, stale: boolean, error?: string }}
  */
-async function cachedFetch(url, cachePath, ttlMs, force) {
+async function cachedFetch(url, cachePath, ttlMs, force, ua) {
   const fresh = !force && fileAgeMs(cachePath) < ttlMs;
   if (fresh) {
     const data = readJsonSafe(cachePath);
     if (data) return { data, fetched_at: new Date(fs.statSync(cachePath).mtimeMs).toISOString(), stale: false };
   }
+  if (!ua) {
+    const data = readJsonSafe(cachePath);
+    return {
+      data,
+      fetched_at: data ? new Date(fs.statSync(cachePath).mtimeMs).toISOString() : null,
+      stale: true,
+      error: 'SEC_USER_AGENT (or sec_user_agent) must include contact info',
+    };
+  }
   try {
-    const data = await fetchJson(url);
+    const data = await fetchJson(url, ua);
     atomicWriteJson(cachePath, data);
     return { data, fetched_at: new Date().toISOString(), stale: false };
   } catch (e) {
@@ -100,7 +110,11 @@ export async function resolveCik(ticker, opts = {}) {
   const id = tickerId(ticker);
   if (!id) return { cik: null, title: null, universe_stale: false };
   const cachePath = path.join(secSharedDir(), 'company_tickers.json');
-  const { data, stale, error } = await cachedFetch(TICKERS_URL, cachePath, TICKERS_TTL_MS, opts.force === true);
+  let ua = null;
+  try { ua = secUa(opts, ticker); } catch { ua = null; }
+  const { data, stale, error } = await cachedFetch(
+    TICKERS_URL, cachePath, TICKERS_TTL_MS, opts.force === true, ua,
+  );
   if (!data) return { cik: null, title: null, universe_stale: true, error };
   for (const row of Object.values(data)) {
     if (String(row.ticker).toUpperCase() === id) {
@@ -377,7 +391,31 @@ export async function pipelineSnapshot(ticker, opts = {}) {
     const { _filings, ...rest } = fixtureLane;
     return attachCatalog(rest, _filings, opts.compiledAt || null);
   }
-  const resolved = await resolveCik(id, { force });
+  let ua = opts.secUserAgent || opts.userAgent || null;
+  try {
+    ua = secUa(opts, id);
+  } catch (err) {
+    if (force) {
+      const factsRefresh = await refreshDeskCompanyfacts({
+        ticker: id,
+        cik: null,
+        slug: opts.slug || id.toLowerCase(),
+        wikiRoot: opts.wikiRoot || resolveVaultDir(),
+        fetchImpl: opts.fetchImpl,
+        userAgent: opts.secUserAgent,
+        sleep: opts.sleep,
+        tickerMap: opts.tickerMap,
+      });
+      return {
+        available: false,
+        ticker: id,
+        reason: String(err.message || err),
+        companyfacts: compactFactsRefresh(factsRefresh),
+      };
+    }
+    ua = null;
+  }
+  const resolved = await resolveCik(id, { force, secUserAgent: ua });
   const factsRefresh = force
     ? await refreshDeskCompanyfacts({
       ticker: id,
@@ -385,7 +423,7 @@ export async function pipelineSnapshot(ticker, opts = {}) {
       slug: opts.slug || id.toLowerCase(),
       wikiRoot: opts.wikiRoot || resolveVaultDir(),
       fetchImpl: opts.fetchImpl,
-      userAgent: opts.secUserAgent,
+      userAgent: ua,
       sleep: opts.sleep,
       tickerMap: opts.tickerMap,
     })
@@ -414,7 +452,7 @@ export async function pipelineSnapshot(ticker, opts = {}) {
   const cik10 = String(resolved.cik).padStart(10, '0');
   const subUrl = `https://data.sec.gov/submissions/CIK${cik10}.json`;
   const subPath = path.join(lane, 'submissions.json');
-  const { data: sub, fetched_at, stale, error } = await cachedFetch(subUrl, subPath, SUBMISSIONS_TTL_MS, force);
+  const { data: sub, fetched_at, stale, error } = await cachedFetch(subUrl, subPath, SUBMISSIONS_TTL_MS, force, ua);
   if (!sub) {
     const missing = { available: false, ticker: id, cik: resolved.cik, reason: `submissions unavailable: ${error}` };
     if (factsRefresh) missing.companyfacts = compactFactsRefresh(factsRefresh);

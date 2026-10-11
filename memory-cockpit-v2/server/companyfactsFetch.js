@@ -2,7 +2,7 @@
 // Never imported by companyfacts.js, contextpack.js, retrieve, or ask.
 import fs from 'fs';
 import path from 'path';
-import { resolveVaultDir } from './monorepoPaths.js';
+import { resolveOntRoot, resolveVaultDir } from './monorepoPaths.js';
 
 export const TICKERS_URL = 'https://www.sec.gov/files/company_tickers.json';
 export const COMPANYFACTS_URL = 'https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json';
@@ -10,13 +10,39 @@ const MIN_INTERVAL_MS = 200;
 let lastFetch = 0;
 
 export function padCik(cik) {
-  const digits = String(cik || '').replace(/\D/g, '');
+  if (typeof cik === 'boolean') throw new Error('cik is empty');
+  let s = cik;
+  if (typeof cik === 'number' && Number.isFinite(cik)) {
+    if (!Number.isInteger(cik)) throw new Error('cik is empty');
+    s = String(Math.trunc(cik));
+  }
+  s = String(s ?? '').trim();
+  if (/^-?\d+\.0+$/.test(s)) s = s.split('.')[0];
+  const digits = s.replace(/\D/g, '');
   if (!digits) throw new Error('cik is empty');
   return digits.padStart(10, '0');
 }
 
-export function contactUserAgent(explicit) {
-  const ua = String(explicit || process.env.SEC_USER_AGENT || process.env.COCKPIT_SEC_UA || '').trim();
+export function readPackUserAgent(ticker, ontRoot) {
+  const ident = String(ticker || '').toUpperCase().replace(/[^A-Z0-9.-]/g, '');
+  if (!ident) return null;
+  const file = path.join(ontRoot || resolveOntRoot(), 'packs', `${ident}.json`);
+  try {
+    const ua = String(JSON.parse(fs.readFileSync(file, 'utf8')).sec_user_agent || '').trim();
+    return ua || null;
+  } catch {
+    return null;
+  }
+}
+
+export function contactUserAgent(explicit, ticker, ontRoot) {
+  const ua = String(
+    explicit
+    || process.env.SEC_USER_AGENT
+    || process.env.COCKPIT_SEC_UA
+    || (ticker ? readPackUserAgent(ticker, ontRoot) : '')
+    || '',
+  ).trim();
   if (!ua || !(/@|https?:\/\//.test(ua))) {
     throw new Error('SEC_USER_AGENT (or sec_user_agent) must include contact info');
   }
@@ -131,7 +157,7 @@ export async function refreshDeskCompanyfacts(opts = {}) {
   };
   let ua;
   try {
-    ua = contactUserAgent(opts.userAgent);
+    ua = contactUserAgent(opts.userAgent, ident, opts.ontRoot);
   } catch (err) {
     result.gap = `companyfacts fetch failed: ${err.message || err}`;
     writeStatus(dest, result);
