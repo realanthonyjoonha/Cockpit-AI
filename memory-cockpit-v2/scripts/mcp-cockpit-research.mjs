@@ -260,7 +260,9 @@ server.tool(
       const mod = await import(path.join(ROOT, 'server', 'contextpack.js'));
       try {
         const rules = mod.loadContextpackRules(process.env.ONTOLOGY_ROOT);
-        ranked = mod.liveClaims(claims, rules);
+        ranked = mod.liveClaims(claims, rules, 8, null, {
+          facts: Array.isArray(pack.facts) ? pack.facts : [],
+        });
       } catch {
         ranked = claims
           .map((c, i) => ({ c, i }))
@@ -321,6 +323,7 @@ server.tool(
         as_of: c.as_of,
         source_id: c.source_id,
         metric_id: c.metric_id || null,
+        confidence: c.confidence || null,
       })),
       contextpack: 'v2',
       gaps: (pack.gaps || []).slice(0, 15),
