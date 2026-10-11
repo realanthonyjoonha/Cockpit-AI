@@ -266,6 +266,15 @@ reg_path.write_text(json.dumps(reg, indent=2) + "\n")
 print(f"  + thin-desks.json row slug={slug}")
 PY
 
+# SEC companyfacts cache (fail-soft — never blocks scaffold, never sentence-fills numbers)
+if [ -x "$ROOT/ontology/ont" ]; then
+  echo "  · fetching companyfacts cache (fail-soft)"
+  (
+    cd "$ROOT/ontology"
+    ./ont facts-fetch "$TICKER" --slug "$SLUG" --wiki "$ROOT/research-wiki" || true
+  )
+fi
+
 # log
 LOG="$ROOT/research-wiki/wiki/log.md"
 if [ -f "$LOG" ]; then

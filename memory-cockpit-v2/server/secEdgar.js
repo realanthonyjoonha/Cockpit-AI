@@ -13,6 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import { resolveVaultDir } from './monorepoPaths.js';
+import { refreshDeskCompanyfacts } from './companyfactsFetch.js';
 
 const SEC_UA = process.env.COCKPIT_SEC_UA
   || 'memory-cockpit-v2/2.0 (personal research cockpit; set COCKPIT_SEC_UA to contact)';
@@ -377,12 +378,26 @@ export async function pipelineSnapshot(ticker, opts = {}) {
     return attachCatalog(rest, _filings, opts.compiledAt || null);
   }
   const resolved = await resolveCik(id, { force });
+  const factsRefresh = force
+    ? await refreshDeskCompanyfacts({
+      ticker: id,
+      cik: resolved.cik,
+      slug: opts.slug || id.toLowerCase(),
+      wikiRoot: opts.wikiRoot || resolveVaultDir(),
+      fetchImpl: opts.fetchImpl,
+      userAgent: opts.secUserAgent,
+      sleep: opts.sleep,
+      tickerMap: opts.tickerMap,
+    })
+    : null;
   if (!resolved.cik) {
     const cached = fixtureLane || snapshotFromCompileLane(id);
     if (cached) {
       memCache.set(memKey, { at: Date.now(), data: cached });
       const { _filings, ...rest } = cached;
-      return attachCatalog(rest, _filings, opts.compiledAt || null);
+      const out = attachCatalog(rest, _filings, opts.compiledAt || null);
+      if (factsRefresh) out.companyfacts = compactFactsRefresh(factsRefresh);
+      return out;
     }
     const out = {
       available: false,
@@ -392,6 +407,7 @@ export async function pipelineSnapshot(ticker, opts = {}) {
         : `ticker ${id} not found in SEC universe map (tier D — pipeline declines; desk stays vault-only)`,
       tier: { tier: 'D', label: 'no SEC entity', reasons: [resolved.error || 'not in company_tickers.json'] },
     };
+    if (factsRefresh) out.companyfacts = compactFactsRefresh(factsRefresh);
     return out;
   }
 
@@ -400,7 +416,9 @@ export async function pipelineSnapshot(ticker, opts = {}) {
   const subPath = path.join(lane, 'submissions.json');
   const { data: sub, fetched_at, stale, error } = await cachedFetch(subUrl, subPath, SUBMISSIONS_TTL_MS, force);
   if (!sub) {
-    return { available: false, ticker: id, cik: resolved.cik, reason: `submissions unavailable: ${error}` };
+    const missing = { available: false, ticker: id, cik: resolved.cik, reason: `submissions unavailable: ${error}` };
+    if (factsRefresh) missing.companyfacts = compactFactsRefresh(factsRefresh);
+    return missing;
   }
 
   const filings = normalizeFilings(sub);
@@ -445,9 +463,20 @@ export async function pipelineSnapshot(ticker, opts = {}) {
     decision_support_only: true,
     note: 'Stage 0+1 of deep-compile pipeline (SEC EDGAR, keyless). Not pack/house SoR. last_print scans the full recent list.',
   };
+  if (factsRefresh) snap.companyfacts = compactFactsRefresh(factsRefresh);
   memCache.set(memKey, { at: Date.now(), data: snap });
   const { _filings, ...rest } = snap;
   return attachCatalog(rest, _filings, opts.compiledAt || null);
+}
+
+function compactFactsRefresh(row) {
+  if (!row) return null;
+  return {
+    ok: !!row.ok,
+    cik: row.cik || null,
+    path: row.path || null,
+    gap: row.gap || null,
+  };
 }
 
 /** Tests only. */

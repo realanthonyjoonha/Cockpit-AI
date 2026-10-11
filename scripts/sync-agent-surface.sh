@@ -148,6 +148,7 @@ FILES=(
   "ontology/compile/from_wiki.py"
   "ontology/tests/test_entity_name.py"
   "memory-cockpit-v2/server/secEdgar.js"
+  "memory-cockpit-v2/server/companyfactsFetch.js"
   "memory-cockpit-v2/server/filingMapInbox.js"
   "memory-cockpit-v2/server/filingMapSchema.js"
   "memory-cockpit-v2/server/filingMapCloseout.js"

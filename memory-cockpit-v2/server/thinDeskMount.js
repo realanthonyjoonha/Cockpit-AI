@@ -364,6 +364,7 @@ export function mountThinDesks(app, { j, ja }) {
   }))));
   app.post('/api/:slug/pipeline/refresh', ja(withDesk(async (rt) => pipelineSnapshot(rt.desk.ticker, {
     force: true,
+    slug: rt.desk.slug,
     compiledAt: rt.model.book().compiled_at || null,
   }))));
   app.get('/api/:slug/quote', ja(withDesk((rt) => rt.model.quote())));
