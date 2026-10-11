@@ -69,6 +69,29 @@ def cmd_agent(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_facts_fetch(args: argparse.Namespace) -> int:
+    """Desk add/refresh: resolve CIK and write the local companyfacts cache. Fail-soft."""
+    from api.companyfacts_fetch import refresh_desk_companyfacts
+    import paths
+
+    ticker = (args.focus or "").upper()
+    wiki = Path(args.wiki).expanduser() if args.wiki else paths.WIKI
+    slug = args.slug or ticker.lower()
+    result = refresh_desk_companyfacts(
+        ticker,
+        wiki,
+        slug=slug,
+        user_agent_value=args.user_agent,
+    )
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    elif result.get("ok"):
+        print(f"OK {result.get('path')} cik={result.get('cik')}")
+    else:
+        print(result.get("gap") or "companyfacts fetch failed")
+    return 0
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     """Part 1 structural (+ optional human) gates. Fail-closed. No writes."""
     from verify.part1_gate import verify_part1
@@ -227,6 +250,17 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--format", choices=["md", "json"], default="md")
     s.add_argument("--refresh", action="store_true")
     s.set_defaults(func=cmd_source)
+
+    f = sub.add_parser(
+        "facts-fetch",
+        help="Fetch SEC companyfacts into the desk raw cache (desk add / refresh only)",
+    )
+    f.add_argument("focus", help="Ticker")
+    f.add_argument("--slug", default=None, help="Desk slug (default: lowercased ticker)")
+    f.add_argument("--wiki", default=None, help="Vault root (default: research-wiki)")
+    f.add_argument("--user-agent", default=None, help="SEC User-Agent with contact info")
+    f.add_argument("--json", action="store_true")
+    f.set_defaults(func=cmd_facts_fetch)
 
     v = sub.add_parser(
         "verify",
