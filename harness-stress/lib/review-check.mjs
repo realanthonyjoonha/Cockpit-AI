@@ -106,12 +106,14 @@ export function checkReview(api) {
   for (const pair of review.pairs || []) {
     const tax = pair.taxonomy || 'us-gaap';
     const claims = [claim('older', pair.older.text, pair.older.as_of), claim('newer', pair.newer.text, pair.newer.as_of)];
-    const want = (loadExpected(issuerFor[tax]).slots || {})[pair.metric_id];
+    const factsId = pair.companyfacts || issuerFor[tax];
+    const want = (loadExpected(factsId).slots || {})[pair.metric_id];
     if (!want) {
-      errors.push(`pair ${pair.id} has no tagged ${pair.metric_id} in ${issuerFor[tax]}`);
+      errors.push(`pair ${pair.id} has no tagged ${pair.metric_id} in ${factsId}`);
       continue;
     }
-    const tagged = runLive(api, claims, factSets[tax]).live.find((c) => c.metric_id === pair.metric_id);
+    const pairFacts = pair.companyfacts ? factsFor(api, pair.companyfacts).facts : factSets[tax];
+    const tagged = runLive(api, claims, pairFacts).live.find((c) => c.metric_id === pair.metric_id);
     if (!tagged || (tagged.origin !== 'companyfacts' && tagged.origin !== 'xbrl') || tagged.value_text !== want.value_text || tagged.concept !== want.concept) {
       errors.push(`pair ${pair.id} tagged ${pair.metric_id} is ${tagged ? `${tagged.id}=${tagged.value_text}` : 'missing'}`);
     }
