@@ -12,13 +12,17 @@ npm install --ignore-scripts --no-audit --no-fund --prefix harness-stress
 node harness-stress/run.mjs
 ```
 
-Outputs:
+Outputs (local, gitignored — not part of the product tree):
 
 - `REPORT.md` — flaws, severity, repro, evidence
 - `results/context.json` — context-pack and retrieve cases
 - `results/tools.json` — all 24 tools, schemas, malformed calls, sandbox bash append
 - `results/flow.json` — new-desk token trajectory and host-budget tail-keep
-- `prompts/` — exact model-arm prompts
+- `results/models.json` — scored model arm, when replies exist
+- `results/model-raw/` — raw model replies (`<prompt>__<model>__<rep>.txt`)
+- `results/run-meta.json`, `results/prompt-meta.json`
+
+`prompts/` stays in git so the model arm can be replayed. `node harness-stress/run.mjs` rewrites the gitignored report and `results/` on each run. `--assert` does not read those files.
 
 The recorded model arm used Cursor subagents `gpt-5.6-sol-high` and `gemini-3.8-flash-low`. No `XAI_API_KEY`.
 

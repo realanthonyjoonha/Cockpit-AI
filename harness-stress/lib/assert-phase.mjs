@@ -16,6 +16,7 @@ import {
   loadContextpackRules,
   parseAmounts,
   parseAsOf,
+  riskMetric,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { sectorBudgetErrors } from './assert-p1.mjs';
 import {
@@ -75,7 +76,7 @@ export function assertSectors() {
   const errors = [];
   const ont = path.join(REPO, 'ontology');
   const rules = loadContextpackRules(ont);
-  const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps };
+  const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric };
   errors.push(...checkSectors(loadSectors(), api));
   const rulesText = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
   const xbrlText = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
@@ -113,7 +114,7 @@ export function assertP0() {
   const errors = assertSectors();
   const ont = path.join(REPO, 'ontology');
   const rules = loadContextpackRules(ont);
-  const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps };
+  const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric };
   errors.push(...checkDemo(api));
 
   const claim = (id, text, asOf, grade = 'A') => ({ id, text, as_of: asOf, grade, source_id: 'fixture' });
