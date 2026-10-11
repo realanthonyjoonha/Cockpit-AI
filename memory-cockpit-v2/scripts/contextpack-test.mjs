@@ -11,6 +11,7 @@ import {
   loadContextpackRules,
   parseAmounts,
   parseAsOf,
+  riskMetric,
 } from '../server/contextpack.js';
 import {
   bannedNeedles,
@@ -61,11 +62,11 @@ const acme = liveClaims([
 const acmeRev = acme.filter((c) => c.metric_id === 'company_revenue');
 if (acmeRev.length === 1 && /12\.4/.test(acmeRev[0].text)) ok('JS retailer net sales latest wins');
 else bad(`JS acme ${JSON.stringify(acmeRev)}`);
-if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) == null) {
-  ok('JS does not special-case data-center revenue');
-} else bad('JS still has dc_revenue');
+if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) === 'company_revenue') {
+  ok('JS files a revenue line as company_revenue');
+} else bad('JS still special-cases data-center revenue');
 
-const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps };
+const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric };
 const demoErrors = checkDemo(api);
 if (!demoErrors.length) ok('JS DEMO repros (dates, cash, guidance, goodwill, drops, grade)');
 else demoErrors.forEach((e) => bad(e));

@@ -12,6 +12,7 @@ REPO = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
 from api.contextpack import (  # noqa: E402
+    _risk_metric,
     claim_gaps,
     classify_claim,
     classify_metric,
@@ -174,13 +175,92 @@ class TestClassify(unittest.TestCase):
         self.assertEqual(classify_metric("Number of employees was $4242 thousand", r), "headcount")
         self.assertEqual(classify_metric("The company has 3 operating segments.", r), "operating_segments")
         self.assertIsNone(classify_metric("CANARY-SEGMENTS the fixture reports exactly 3 segments", r))
-        self.assertIsNone(classify_metric("FY2026 Data Center revenue was $193.7 billion", r))
+        self.assertEqual(classify_metric("FY2026 Data Center revenue was $193.7 billion", r), "company_revenue")
         self.assertIsNone(classify_metric("The inventor was paid $1 million", r))
         self.assertEqual(classify_metric("42.4 thousand employees", r), "headcount")
         self.assertIsNone(classify_metric("Free cash flow was $10 million", r))
         self.assertIsNone(classify_metric("Deferred revenue was $4,050 million.", r))
         self.assertIsNone(classify_metric("Total deposits were $88,000 million.", r))
         self.assertEqual(classify_metric("Net sales were $12.4 billion", r), "company_revenue")
+
+    def test_review_sentences(self):
+        """Every adversarial and proved-safe sentence from the PR #5 review."""
+        r = self.rules
+        pairs = [
+            ("Impairment of intangible assets other than goodwill was $4 million.", "impairment"),
+            ("Goodwill impairment was $4 million.", "goodwill_impairment"),
+            ("Excluding goodwill, impairment of intangibles was $4 million.", "impairment"),
+            ("Revenue was $10 billion.", "company_revenue"),
+            ("Revenues were $10 billion.", "company_revenue"),
+            ("Total net revenue was $10 billion.", "company_revenue"),
+            ("Total revenue was $10 billion.", "company_revenue"),
+            ("Net sales were $10 million. See guidance in Note 2.", "company_revenue"),
+            ("The board sanctions the capital plan of $5 billion.", None),
+            ("The company does indemnify customers for $5 million.", "guarantees"),
+            ("The inventor was paid $1 million", None),
+            ("The guid is stored in the filing.", None),
+            ("The guidelines were updated.", None),
+            ("Cash was $222 million. See guidance.", "cash"),
+            ("Total deposits were $88,000 million.", None),
+            ("Deferred revenue was $4,050 million.", None),
+            ("Production was 12 million barrels of oil equivalent per day.", None),
+            ("Funds from operations were $620 million.", None),
+            ("Outlook for next quarter revenue is $100 million", "revenue_guide"),
+            ("Operating activities may be affected by weather.", None),
+            ("Net cash provided by operating activities may be affected by weather.", None),
+            ("Net cash provided by operating activities was $500 million.", "operating_cash_flow"),
+        ]
+        for text, mid in pairs:
+            self.assertEqual(classify_metric(text, r), mid, text)
+        ni = parse_amounts("Net income was $12, or $0.12 per share, in millions except per share.")
+        self.assertTrue(any(a["value"] == 12_000_000 and a["scale"] == "million" for a in ni), ni)
+        self.assertTrue(any(a["unit"] == "currency" and a["value"] == 0.12 and a["scale"] is None for a in ni), ni)
+        bps = parse_amounts("$12 bps")
+        self.assertEqual(len(bps), 1)
+        self.assertEqual(bps[0]["unit"], "bps")
+        self.assertEqual(bps[0]["value"], 12)
+        self.assertIsNone(bps[0]["currency"])
+        self.assertEqual(parse_amounts("$12")[0]["unit"], "currency")
+        self.assertEqual(parse_as_of("2026-9-30")["sort_key"], "2026-09-30")
+        self.assertEqual(parse_as_of("2026-10-01")["sort_key"], "2026-10-01")
+        self.assertEqual(parse_as_of("53 weeks ended January 28, 2026")["sort_key"], "2026-01-28")
+        self.assertEqual(parse_as_of("fiscal year ended 31 March 2026")["sort_key"], "2026-03-31")
+        self.assertIsNone(parse_as_of("FY2026")["sort_key"])
+        self.assertEqual(parse_as_of("FY2026")["precision"], "fiscal_label")
+        self.assertEqual(parse_as_of("2026-10-01T23:30:00-10:00")["sort_key"], "2026-10-01")
+        live, _ = live_claims([
+            _claim("gw-real", "Goodwill impairment was $4 million.", "2024-06-01"),
+            _claim("gw-other", "Impairment of intangible assets other than goodwill was $4 million.", "2026-06-01"),
+        ], r)
+        self.assertEqual({c["id"]: c["metric_id"] for c in live}, {
+            "gw-real": "goodwill_impairment",
+            "gw-other": "impairment",
+        })
+        ocf, _ = live_claims([
+            _claim("ocf-2024", "Net cash provided by operating activities was $500 million.", "2024-12-31"),
+            _claim("ocf-weather", "Operating activities may be affected by weather.", "2026-06-01"),
+        ], r)
+        self.assertEqual([c["id"] for c in ocf], ["ocf-2024"])
+        blank, _ = live_claims([
+            _claim("bare", "Gross margin was 40 percent.", "2026-08-01", ""),
+            _claim("cee", "Gross margin was 41 percent.", "2026-08-01", "C"),
+        ], r)
+        self.assertEqual(blank[0]["id"], "bare")
+        self.assertEqual(grade_weight(""), 1)
+        self.assertEqual(grade_weight("C"), 1)
+        risks = [
+            ("Operating margin pressure", None),
+            ("Customer lawsuit", None),
+            ("The board sanctions the capital plan", None),
+            ("Gross margin", "gross_margin"),
+            ("Gross margins", "gross_margin"),
+            ("Customer concentration", "concentration"),
+            ("Largest customer", "concentration"),
+            ("Trade sanctions", "export_controls"),
+            ("Indemnify", "guarantees"),
+        ]
+        for name, mid in risks:
+            self.assertEqual(_risk_metric(name, r), mid, name)
 
     def test_concept_beats_text(self):
         hit = classify_claim({
@@ -229,6 +309,8 @@ class TestSectors(unittest.TestCase):
             for cid in issuer.get("absent") or []:
                 self.assertNotIn(cid, got)
             self.assertEqual(claim_gaps(issuer["claims"], rules), issuer.get("gaps") or [], issuer["id"])
+        for row in data.get("risk_metric") or []:
+            self.assertEqual(_risk_metric(row["name"], rules), row["metric_id"], row["name"])
             for claim in issuer["claims"]:
                 classified = classify_claim(claim, rules)
                 self.assertEqual(classified["metric_id"], claim["classify"], f"{issuer['id']}/{claim['id']}")

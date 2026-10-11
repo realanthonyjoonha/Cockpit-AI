@@ -64,7 +64,17 @@ _SYM_PREFIX = re.compile(rf"(?P<cur>{_SYM})\s*(?P<num>{_NUM})(?:\s*(?P<scale>{_S
 _CODE_PREFIX = re.compile(rf"\b(?P<cur>{_CODE})\b\s*(?P<num>{_NUM})(?:\s*(?P<scale>{_SCALE}))?\b")
 _CODE_SUFFIX = re.compile(rf"(?P<num>{_NUM})\s*\b(?P<cur>{_CODE})\b(?:\s*(?P<scale>{_SCALE}))?\b")
 _PCT = re.compile(rf"(?P<num>{_NUM})\s*(?:%|[Pp]ercent\b|[Pp][Cc][Tt]\b)")
-_BPS = re.compile(rf"(?P<num>{_NUM})\s*(?:[Bb]asis\s+[Pp]oints|[Bb][Pp][Ss])\b")
+_BPS = re.compile(
+    rf"(?:(?:(?P<cur>{_SYM})|(?:\b(?P<code>{_CODE})\b))\s*)?(?P<num>{_NUM})\s*(?:[Bb]asis\s+[Pp]oints|[Bb][Pp][Ss])\b"
+)
+_PER_SHARE_AFTER = re.compile(
+    r"^\s*,?\s*(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|a\s+share)\b",
+    re.I,
+)
+_PER_SHARE_BEFORE = re.compile(
+    r"\b(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|earnings\s+per\s+share|eps)\b\s*(?:of|was|were|:)?\s*$",
+    re.I,
+)
 _SENTENCE_SCALE = re.compile(r"\bin\s+([Tt]housands|[Mm]illions|[Bb]illions|[Tt]rillions)\b")
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
 
@@ -223,6 +233,8 @@ def _rule_matches(rule: dict[str, Any], text: str) -> bool:
         return False
     if rule.get("requires_count") and not re.search(r"\d", text):
         return False
+    if rule.get("requires_figure") and not _has_figure(text):
+        return False
     return True
 
 
@@ -350,9 +362,23 @@ def _amounts_in(fragment: str, base: int) -> list[dict[str, Any]]:
     for rx in (_SYM_PREFIX, _CODE_PREFIX, _CODE_SUFFIX):
         for m in rx.finditer(fragment):
             row = _currency_row(m, base)
-            if row:
-                rows.append(row)
+            if not row:
+                continue
+            if any(not (row["end"] <= s or row["start"] >= e) for s, e in bps_spans):
+                continue
+            rows.append(row)
     return _keep_spans(rows)
+
+
+def _per_share_amount(frag: str, start: int, end: int, base: int) -> bool:
+    """A per-share amount stays unscaled when the sentence says 'in millions, except per share'."""
+    local_start = start - base
+    local_end = end - base
+    after = frag[local_end:local_end + 48]
+    before = frag[max(0, local_start - 64):local_start]
+    if _PER_SHARE_AFTER.match(after):
+        return True
+    return _PER_SHARE_BEFORE.search(before) is not None
 
 
 def _sentence_spans(text: str) -> list[tuple[int, int]]:
@@ -377,7 +403,8 @@ def parse_amounts(text: str) -> list[dict[str, Any]]:
         sent = _SENTENCE_SCALE.search(frag)
         sent_scale = _SENTENCE_SCALE_VALUE.get(sent.group(1).lower()) if sent else None
         for row in _amounts_in(frag, start):
-            if row["unit"] == "currency" and row["scale"] is None and sent_scale:
+            per_share = _per_share_amount(frag, row["start"], row["end"], start)
+            if row["unit"] == "currency" and row["scale"] is None and sent_scale and not per_share:
                 row["value"] = row["display"] * sent_scale[1]
                 row["scale"] = sent_scale[0]
             row.pop("start", None)
