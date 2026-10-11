@@ -17,7 +17,7 @@ import {
   riskMetric,
   sentenceHasAmount,
 } from '../server/contextpack.js';
-import { capAssistClipboard, HOUSE_FILE_POINTER } from '../server/assistContext.js';
+import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../server/assistContext.js';
 import { factNumber, mappedFacts, parseXbrlFacts, shiftDecimal, taggedSlots } from '../server/xbrlFacts.js';
 import {
   bannedNeedles,
@@ -124,8 +124,38 @@ if (JSON.stringify(pretty, null, 2).length <= 10000 && !(pretty.house_prior && p
 } else bad('JS pretty snapshot over cap');
 
 const clip = capAssistClipboard('rules\n```markdown\n' + 'H'.repeat(20000) + '\n```\n');
-if (clip.length <= 10000 && clip.includes(HOUSE_FILE_POINTER)) ok('assist clipboard points at get_house_view');
-else bad(`assist clipboard ${clip.length}`);
+const clipTrailer = assistToolTrailer({ chars: clip.length, house_exists: true, compiled_at: '2026-01-15T00:00:00Z' });
+if (clip.length + clipTrailer.length <= 10000 && clip.includes(HOUSE_FILE_POINTER)) ok('assist clipboard + trailer stays under 10000');
+else bad(`assist clipboard ${clip.length} trailer ${clip.length + clipTrailer.length}`);
+
+const crowded = enforceCharBudget({
+  claims: [
+    ...Array.from({ length: 16 }, (_, i) => ({
+      id: `sent-${i}`,
+      metric_id: 'gross_margin',
+      text: `Gross margin was ${40 + i} percent. ${'WORD '.repeat(60)}`,
+      origin: 'sentence',
+      confidence: 'low',
+      as_of: '2026-01-01',
+      grade: 'A',
+    })),
+    {
+      id: 'xbrl:us-gaap:Revenues:2025-01-01/2025-12-31',
+      metric_id: 'company_revenue',
+      origin: 'xbrl',
+      confidence: 'tagged',
+      text: 'Revenues USD 48,000,000,000 for 2025-01-01 to 2025-12-31 (consolidated tagged fact)',
+      value_text: '48000000000',
+      as_of: '2025-12-31',
+      grade: 'A',
+    },
+  ],
+  house_prior: { status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'H'.repeat(1800) },
+  gaps: [],
+}, 2800);
+if ((crowded.claims || []).some((c) => c.origin === 'xbrl') && JSON.stringify(crowded).length <= 2800) {
+  ok('JS over-budget pack keeps the tagged row');
+} else bad(`JS tagged-first ${JSON.stringify((crowded.claims || []).map((c) => c.origin))} size=${JSON.stringify(crowded).length}`);
 
 const xbrlUnits = [
   [shiftDecimal('1234.5', 6), '1234500000'],

@@ -6,10 +6,24 @@ import { loadContextpackRules, liveClaims, compareClaimsNewestFirst, OVERVIEW_BU
 
 export const HOUSE_FILE_POINTER = 'Full file is get_house_view.';
 
+/** Status object the MCP tool appends after the clipboard. */
+export function assistToolTrailer({ chars = 0, house_exists = false, compiled_at = null } = {}) {
+  return `\n\n---\n${JSON.stringify({
+    chars: Number(chars) || 0,
+    house_exists: !!house_exists,
+    compiled_at: compiled_at == null ? null : String(compiled_at),
+  })}`;
+}
+
+/** Worst-case trailer so clipboard + MCP suffix stay inside the 10k cap. */
+export function reservedAssistTrailerLength(compiledAt = '2026-12-31T23:59:59.999Z') {
+  return assistToolTrailer({ chars: 99999, house_exists: true, compiled_at: compiledAt }).length;
+}
+
 /** Cap the assist clipboard. A shortened house names get_house_view as the full file. */
-export function capAssistClipboard(text, limit = OVERVIEW_BUDGET_CHARS) {
+export function capAssistClipboard(text, limit = OVERVIEW_BUDGET_CHARS, reserve = reservedAssistTrailerLength()) {
   const raw = String(text || '');
-  const cap = Number(limit);
+  const cap = Math.max(0, Number(limit) - Number(reserve || 0));
   if (raw.length <= cap) return raw;
   const pointer = HOUSE_FILE_POINTER;
   const fence = /```markdown\n[\s\S]*?\n```/;

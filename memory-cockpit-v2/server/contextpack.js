@@ -813,12 +813,34 @@ function dropOtherClaims(pack) {
   return true;
 }
 
+function isTaggedClaim(claim) {
+  return !!(claim && (claim.origin === 'xbrl' || claim.confidence === 'tagged'));
+}
+
 function dropTailClaim(pack) {
   const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
   if (!claims.length) return false;
-  const dropped = claims[claims.length - 1];
-  pack.claims = claims.slice(0, -1);
+  let idx = -1;
+  for (let i = claims.length - 1; i >= 0; i--) {
+    if (!isTaggedClaim(claims[i])) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) idx = claims.length - 1;
+  const dropped = claims[idx];
+  pack.claims = claims.filter((_, i) => i !== idx);
   addGap(pack, `dropped claim ${dropped.id || dropped.metric_id || 'claim'}`);
+  return true;
+}
+
+function dropUntaggedClaims(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  const kept = claims.filter(isTaggedClaim);
+  const dropped = claims.length - kept.length;
+  if (!dropped) return false;
+  pack.claims = kept;
+  addGap(pack, `${dropped} untagged claims omitted`);
   return true;
 }
 
@@ -878,6 +900,9 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => takeList(pack, 'risks', 2),
     () => dropTailClaim(pack),
     () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropUntaggedClaims(pack),
     () => dropTailClaim(pack),
     () => dropTailClaim(pack),
     () => clearList(pack, 'claims'),

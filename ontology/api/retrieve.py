@@ -269,14 +269,32 @@ def _drop_other_claims(pack: dict[str, Any]) -> bool:
     return True
 
 
+def _is_tagged_claim(claim: dict[str, Any]) -> bool:
+    return claim.get("origin") == "xbrl" or claim.get("confidence") == "tagged"
+
+
 def _drop_tail_claim(pack: dict[str, Any]) -> bool:
     claims = [c for c in (pack.get("claims") or []) if isinstance(c, dict)]
     if not claims:
         return False
-    dropped = claims[-1]
-    pack["claims"] = claims[:-1]
+    idx = next((i for i in range(len(claims) - 1, -1, -1) if not _is_tagged_claim(claims[i])), None)
+    if idx is None:
+        idx = len(claims) - 1
+    dropped = claims[idx]
+    pack["claims"] = [c for i, c in enumerate(claims) if i != idx]
     ident = dropped.get("id") or dropped.get("metric_id") or "claim"
     _add_gap(pack, f"dropped claim {ident}")
+    return True
+
+
+def _drop_untagged_claims(pack: dict[str, Any]) -> bool:
+    claims = [c for c in (pack.get("claims") or []) if isinstance(c, dict)]
+    kept = [c for c in claims if _is_tagged_claim(c)]
+    dropped = len(claims) - len(kept)
+    if not dropped:
+        return False
+    pack["claims"] = kept
+    _add_gap(pack, f"{dropped} untagged claims omitted")
     return True
 
 
@@ -356,6 +374,9 @@ def enforce_char_budget(
         lambda: _take_list(pack, "risks", 2),
         lambda: _drop_tail_claim(pack),
         lambda: _drop_tail_claim(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_untagged_claims(pack),
         lambda: _drop_tail_claim(pack),
         lambda: _drop_tail_claim(pack),
         lambda: _clear_list(pack, "claims"),
