@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 /** Mocked HTTP for companyfacts desk add/refresh. No real network. */
-import { mkdtempSync, readFileSync, existsSync, rmSync } from 'fs';
+import fs, { mkdtempSync, readFileSync, existsSync, rmSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   COMPANYFACTS_URL,
   TICKERS_URL,
+  contactUserAgent,
+  padCik,
+  readPackUserAgent,
   refreshDeskCompanyfacts,
 } from '../server/companyfactsFetch.js';
+import { loadCompanyfactsFile, valueText } from '../server/companyfacts.js';
 import { readFileSync as read } from 'fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -150,6 +154,57 @@ function wiki() {
     && scaffold.includes('facts-fetch')) {
     ok('desk add and pipeline refresh call the fetch step');
   } else bad('hooks missing');
+}
+
+{
+  if (padCik(320193.0) === '0000320193' && padCik('320193.0') === '0000320193') ok('JS padCik float strings');
+  else bad(`padCik ${padCik('320193.0')}`);
+}
+
+{
+  const sci = valueText(1e-7);
+  if (sci && !/[eE]/.test(sci) && sci.startsWith('0.0000001')) ok('JS valueText is not scientific');
+  else bad(`valueText sci ${sci}`);
+}
+
+{
+  const dir = wiki();
+  const dest = path.join(dir, 'raw', 'aapl-research', 'sec', 'companyfacts.json');
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.writeFileSync(dest, JSON.stringify(FACTS_DOC));
+  fs.writeFileSync(path.join(path.dirname(dest), 'companyfacts.status.json'), JSON.stringify({
+    ok: false,
+    gap: 'companyfacts fetch failed: HTTP 429',
+  }));
+  const parsed = loadCompanyfactsFile(dest);
+  if (parsed.notes.includes('companyfacts fetch failed: HTTP 429') && parsed.facts) {
+    ok('JS status gap surfaces when old cache exists');
+  } else bad(`JS cache+gap ${JSON.stringify(parsed.notes)}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const dir = wiki();
+  fs.mkdirSync(path.join(dir, 'packs'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'packs', 'AAPL.json'), JSON.stringify({ sec_user_agent: 'Cockpit-AI pack@example.com' }));
+  const ua = readPackUserAgent('AAPL', dir);
+  if (ua === 'Cockpit-AI pack@example.com' && contactUserAgent(null, 'AAPL', dir).includes('@')) {
+    ok('JS reads pack sec_user_agent');
+  } else bad(`pack UA ${ua}`);
+  rmSync(dir, { recursive: true, force: true });
+}
+
+{
+  const gi = read(path.join(ROOT, '../.gitignore'), 'utf8');
+  if (gi.includes('cockpit/compile/_sec') && gi.includes('company_tickers.json')) ok('gitignore covers _sec ticker map');
+  else bad('gitignore missing _sec');
+}
+
+{
+  const edgar = read(path.join(ROOT, 'server/secEdgar.js'), 'utf8');
+  if (!/personal research cockpit; set COCKPIT_SEC_UA/.test(edgar) && edgar.includes('contactUserAgent')) {
+    ok('secEdgar default UA fail-closed');
+  } else bad('secEdgar still ships a no-contact default UA');
 }
 
 console.log(fail ? `\n${fail} failed` : '\ncompanyfacts-fetch JS OK');
