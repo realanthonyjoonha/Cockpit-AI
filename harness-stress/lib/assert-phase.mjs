@@ -27,6 +27,7 @@ import {
   checkSectors,
   loadSectors,
 } from './sector-check.mjs';
+import { checkParaphrases, expandParaphrases, loadParaphraseSpec } from './paraphrase.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -235,5 +236,24 @@ export function assertP0() {
 
   const ask = readFileSync(path.join(ont, 'api/ask.py'), 'utf8').toLowerCase();
   if (ask.includes('what is micron')) errors.push('ask.py still matches what is micron');
+
+  const spec = loadParaphraseSpec();
+  const cases = expandParaphrases(spec);
+  const para = checkParaphrases(cases, api, spec);
+  if (para.errors.length) {
+    errors.push(...para.errors.slice(0, 25));
+    errors.push(`paraphrase ${para.passed}/${para.total} passed, ${para.errors.length} problem(s)`);
+  } else {
+    console.log(`paraphrase cases=${para.total} passed=${para.passed} rate=100%`);
+  }
+  const pyPara = spawnSync('python3', ['-m', 'unittest', 'tests.test_paraphrase'], {
+    cwd: ont,
+    encoding: 'utf8',
+  });
+  const pyLine = `${pyPara.stdout || ''}${pyPara.stderr || ''}`.split('\n').find((line) => line.startsWith('paraphrase '));
+  if (pyLine) console.log(`python ${pyLine}`);
+  if (pyPara.status !== 0) {
+    errors.push((pyPara.stderr || pyPara.stdout || 'python paraphrase property failed').slice(0, 4000));
+  }
   return errors;
 }

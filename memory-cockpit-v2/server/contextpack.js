@@ -36,9 +36,11 @@ const CODE_PREFIX = new RegExp(`\\b(?<cur>${CODE})\\b\\s*(?<num>${NUM})(?:\\s*(?
 const CODE_SUFFIX = new RegExp(`(?<num>${NUM})\\s*\\b(?<cur>${CODE})\\b(?:\\s*(?<scale>${SCALE}))?\\b`, 'g');
 const PCT = new RegExp(`(?<num>${NUM})\\s*(?:%|[Pp]ercent\\b|[Pp][Cc][Tt]\\b)`, 'g');
 const BPS = new RegExp(`(?:(?:(?<cur>${SYM})|(?:\\b(?<code>${CODE})\\b))\\s*)?(?<num>${NUM})\\s*(?:[Bb]asis\\s+[Pp]oints|[Bb][Pp][Ss])\\b`, 'g');
-const PER_SHARE_AFTER = /^\s*,?\s*(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|a\s+share)\b/i;
-const PER_SHARE_BEFORE = /\b(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|earnings\s+per\s+share|eps)\b\s*(?:of|was|were|:)?\s*$/i;
-const SENTENCE_SCALE = /\bin\s+([Tt]housands|[Mm]illions|[Bb]illions|[Tt]rillions)\b/;
+const PER_SHARE_AFTER = /^(?:\s*\/\s*shares?\b|\s*,?\s*(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|a\s+share)\b)/i;
+const PER_SHARE_CUE = /\b(?:diluted\s+earnings\s+per\s+shares?|basic\s+earnings\s+per\s+shares?|earnings\s+per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|eps)\b/i;
+const PER_SHARE_LEGEND = /\bexcept\s+per[-\s]+shares?\b/i;
+const EXCLUSION_BEFORE = /(?:other than|excluding|except|exclusive of)\b(?:\s+\w+){0,6}\s+$/i;
+const SENTENCE_SCALE = /\bin\s+(thousands|millions|billions|trillions)\b/i;
 const SENTENCE_SPLIT = /(?<=[.!?])\s+|\n+/g;
 
 const SCALE_VALUE = {
@@ -182,21 +184,83 @@ function resolveConcept(concept, rules, xbrl) {
   return null;
 }
 
-function ruleMatches(rule, text) {
-  if ((rule.none || []).some((n) => phraseIn(text, n))) return false;
-  let positive = false;
-  if (rule.regex) {
-    try {
-      if (new RegExp(rule.regex, 'i').test(text)) positive = true;
-    } catch { /* skip bad regex */ }
+function spanExcluded(text, absIndex) {
+  const before = text.slice(Math.max(0, absIndex - 60), absIndex);
+  if (/non[-\s]+$/i.test(before)) return true;
+  return EXCLUSION_BEFORE.test(before);
+}
+
+function headHits(text, head, start, end) {
+  const re = new RegExp(`\\b${escapeReg(head)}\\b`, 'gi');
+  const hits = [];
+  let m;
+  while ((m = re.exec(text.slice(start, end)))) {
+    hits.push(start + m.index);
+    if (m.index === re.lastIndex) re.lastIndex += 1;
   }
-  const groups = rule.all_any || [];
-  if (groups.length && groups.every((group) => group.some((p) => phraseIn(text, p)))) positive = true;
-  const alls = rule.all || [];
-  if (alls.length && alls.every((a) => phraseIn(text, a))) positive = true;
-  const anys = rule.any || [];
-  if (anys.length && anys.some((a) => phraseIn(text, a))) positive = true;
-  if (!positive) return false;
+  return hits;
+}
+
+function matchExcluded(text, head, start, end) {
+  const hits = headHits(text, head, start, end);
+  if (!hits.length) return false;
+  return hits.every((i) => spanExcluded(text, i));
+}
+
+function hasCleanHead(text, head) {
+  return headHits(text, head, 0, text.length).some((i) => !spanExcluded(text, i));
+}
+
+function headQualified(text, head, start, end, qualifiers) {
+  const hits = headHits(text, head, start, end);
+  if (!hits.length) return false;
+  return hits.every((absIndex) => {
+    const before = text.slice(Math.max(0, absIndex - 40), absIndex);
+    const m = /([a-z0-9-]+)\s+$/i.exec(before);
+    return !!(m && qualifiers.has(m[1].toLowerCase()));
+  });
+}
+
+function patternsMatch(rule, text) {
+  const head = String(rule.head || '').toLowerCase();
+  const qualifiers = new Set((rule.qualifier_block || []).map((q) => String(q).toLowerCase()));
+  for (const pat of rule.patterns || []) {
+    let rx;
+    try { rx = new RegExp(pat, 'gi'); } catch { continue; }
+    let m;
+    while ((m = rx.exec(text))) {
+      const start = m.index;
+      const end = m.index + m[0].length;
+      const excluded = head && matchExcluded(text, head, start, end);
+      const qualified = head && qualifiers.size && headQualified(text, head, start, end, qualifiers);
+      if (!excluded && !qualified) return true;
+      if (m.index === rx.lastIndex) rx.lastIndex += 1;
+    }
+  }
+  return false;
+}
+
+function ruleMatches(rule, text) {
+  if (rule.patterns) {
+    if (!patternsMatch(rule, text)) return false;
+  } else {
+    if ((rule.none || []).some((n) => phraseIn(text, n))) return false;
+    let positive = false;
+    if (rule.regex) {
+      try {
+        if (new RegExp(rule.regex, 'i').test(text)) positive = true;
+      } catch { /* skip bad regex */ }
+    }
+    const groups = rule.all_any || [];
+    if (groups.length && groups.every((group) => group.some((p) => phraseIn(text, p)))) positive = true;
+    const alls = rule.all || [];
+    if (alls.length && alls.every((a) => phraseIn(text, a))) positive = true;
+    const anys = rule.any || [];
+    if (anys.length && anys.some((a) => phraseIn(text, a))) positive = true;
+    if (!positive) return false;
+    const head = String(rule.head || '').toLowerCase();
+    if (head && !hasCleanHead(text, head)) return false;
+  }
   if (rule.requires_count && !/\d/.test(text)) return false;
   if (rule.requires_figure && !hasFigure(text)) return false;
   return true;
@@ -330,13 +394,30 @@ function amountsIn(fragment, base) {
   return keepSpans(rows);
 }
 
+function currencySpans(fragment) {
+  const found = [];
+  SYM_PREFIX.lastIndex = 0;
+  let m;
+  while ((m = SYM_PREFIX.exec(fragment))) {
+    found.push({ start: m.index, end: m.index + m[0].length });
+    if (m.index === SYM_PREFIX.lastIndex) SYM_PREFIX.lastIndex += 1;
+  }
+  SYM_PREFIX.lastIndex = 0;
+  return found;
+}
+
 function perShareAmount(frag, start, end, base) {
-  const localStart = start - base;
-  const localEnd = end - base;
-  const after = frag.slice(localEnd, localEnd + 48);
-  const before = frag.slice(Math.max(0, localStart - 64), localStart);
-  if (PER_SHARE_AFTER.test(after)) return true;
-  return PER_SHARE_BEFORE.test(before);
+  const localS = start - base;
+  const localE = end - base;
+  if (PER_SHARE_AFTER.test(frag.slice(localE, localE + 32))) return true;
+  let gapStart = 0;
+  for (const span of currencySpans(frag)) {
+    if (span.start < localS && span.end <= localS) gapStart = span.end;
+  }
+  const gap = frag.slice(gapStart, localS).replace(PER_SHARE_LEGEND, ' ');
+  if (PER_SHARE_CUE.test(gap)) return true;
+  const dollars = currencySpans(frag);
+  return dollars.length === 1 && PER_SHARE_LEGEND.test(frag);
 }
 
 function sentenceSpans(text) {
