@@ -1,28 +1,32 @@
 {
-  "rules_bytes": 4079,
+  "rules_bytes": 7688,
   "metric_ids": [
+    "goodwill_impairment",
+    "impairment",
+    "goodwill",
+    "inventory",
+    "operating_cash_flow",
+    "cash",
     "revenue_guide",
-    "company_revenue",
+    "concentration",
     "net_interest_income",
+    "credit_loss_provision",
     "gross_margin",
     "operating_income",
     "net_income",
-    "operating_cash_flow",
-    "cash",
-    "inventory",
+    "rnd_expense",
+    "rpo_backlog",
+    "purchase_commitments",
+    "capex",
     "long_term_debt",
     "diluted_shares",
-    "concentration",
-    "purchase_commitments",
-    "rpo_backlog",
-    "capex",
     "guarantees",
     "share_repurchase",
     "dividends",
-    "goodwill_impairment",
-    "credit_loss_provision",
-    "rnd_expense",
-    "export_controls"
+    "export_controls",
+    "company_revenue",
+    "headcount",
+    "operating_segments"
   ],
   "boilerplate": [
     "central index key",
@@ -33,7 +37,6 @@
     "trading symbol",
     "nasdaq global",
     "new york stock exchange",
-    "number of employees",
     "principal executive offices",
     "irs employer",
     "registrant's telephone",
@@ -45,14 +48,14 @@
       "id": "C-date-unpadded",
       "live": [
         {
-          "id": "sep",
+          "id": "oct",
           "metric_id": "company_revenue",
-          "as_of": "2026-9-30",
+          "as_of": "2026-10-01",
           "grade": "A",
-          "text": "Net sales were $111 million"
+          "text": "Net sales were $222 million"
         }
       ],
-      "winner": "sep",
+      "winner": "oct",
       "newer_id": "oct",
       "older_id": "sep"
     },
@@ -74,17 +77,17 @@
       "live": [
         {
           "id": "cash-guid",
-          "metric_id": "revenue_guide",
+          "metric_id": "cash",
           "as_of": "2026-06-02",
           "grade": "A",
           "text": "Cash and cash equivalents were $90 million. See guidance."
         },
         {
-          "id": "cash-clean",
-          "metric_id": "cash",
+          "id": "outlook",
+          "metric_id": "revenue_guide",
           "as_of": "2026-06-01",
           "grade": "A",
-          "text": "Cash and cash equivalents were $90 million"
+          "text": "Outlook for next quarter revenue is $100 million"
         }
       ]
     },
@@ -93,17 +96,10 @@
       "live": [
         {
           "id": "new-cash",
-          "metric_id": "other",
+          "metric_id": "cash",
           "as_of": "2026-06-01",
           "grade": "A",
           "text": "Cash was $222 million"
-        },
-        {
-          "id": "old-cash",
-          "metric_id": "cash",
-          "as_of": "2024-01-01",
-          "grade": "A",
-          "text": "Cash and cash equivalents were $111 million"
         }
       ]
     },
@@ -112,14 +108,14 @@
       "live": [
         {
           "id": "inv-imp",
-          "metric_id": "inventory",
+          "metric_id": "impairment",
           "as_of": "2026-05-01",
           "grade": "A",
           "text": "Inventory impairment of $9 million"
         },
         {
           "id": "gw-bal",
-          "metric_id": "goodwill_impairment",
+          "metric_id": "goodwill",
           "as_of": "2026-05-01",
           "grade": "A",
           "text": "A goodwill balance of $5 billion"
@@ -145,11 +141,32 @@
           "text": "segment mix was 45%"
         },
         {
+          "id": "space",
+          "metric_id": "other",
+          "as_of": "2026-01-01",
+          "grade": "A",
+          "text": "Unmatched spend was $ 12 million"
+        },
+        {
           "id": "tight",
           "metric_id": "other",
           "as_of": "2026-01-01",
           "grade": "A",
           "text": "Unmatched spend was $12 million"
+        },
+        {
+          "id": "emp",
+          "metric_id": "headcount",
+          "as_of": "2026-01-01",
+          "grade": "A",
+          "text": "Number of employees was $4242 thousand"
+        },
+        {
+          "id": "pct",
+          "metric_id": "other",
+          "as_of": "2026-01-01",
+          "grade": "A",
+          "text": "segment mix was 45 percent"
         }
       ]
     },
@@ -173,11 +190,11 @@
       "id": "C-missing-grade",
       "js": [
         {
-          "id": "cee",
+          "id": "bare",
           "metric_id": "company_revenue",
           "as_of": "2026-08-01",
-          "grade": "C",
-          "text": "Net sales were $11 million"
+          "grade": "",
+          "text": "Net sales were $10 million"
         }
       ]
     },
@@ -188,16 +205,16 @@
     },
     {
       "id": "C-js-assemble-shape",
-      "chars": 774,
-      "tokens": 225,
+      "chars": 778,
+      "tokens": 227,
       "schema": "contextpack.v2",
       "has_budget": false,
       "has_superseded": false,
       "has_stale_tripwires": false,
       "claim_ids": [
-        "company_revenue:sep",
-        "revenue_guide:cash-guid",
-        "cash:cash-clean"
+        "company_revenue:oct",
+        "cash:cash-guid",
+        "revenue_guide:outlook"
       ],
       "store_claims": 6
     },
@@ -215,15 +232,15 @@
         "id": "C-date-unpadded",
         "live": [
           {
-            "id": "sep",
+            "id": "oct",
             "metric_id": "company_revenue",
-            "as_of": "2026-9-30",
+            "as_of": "2026-10-01",
             "grade": "A",
-            "text": "Net sales were $111 million"
+            "text": "Net sales were $222 million"
           }
         ],
         "superseded_ids": [
-          "oct"
+          "sep"
         ]
       },
       {
@@ -246,21 +263,21 @@
         "live": [
           {
             "id": "cash-guid",
-            "metric_id": "revenue_guide",
+            "metric_id": "cash",
             "as_of": "2026-06-02",
             "grade": "A",
             "text": "Cash and cash equivalents were $90 million. See guidance."
           },
           {
-            "id": "cash-clean",
-            "metric_id": "cash",
+            "id": "outlook",
+            "metric_id": "revenue_guide",
             "as_of": "2026-06-01",
             "grade": "A",
-            "text": "Cash and cash equivalents were $90 million"
+            "text": "Outlook for next quarter revenue is $100 million"
           }
         ],
         "superseded_ids": [
-          "outlook"
+          "cash-clean"
         ]
       },
       {
@@ -390,15 +407,15 @@
     ]
   },
   "grade_divergence": {
-    "js_winner": "cee",
+    "js_winner": "bare",
     "py_winner": "bare",
     "js_grades": [
       {
-        "id": "cee",
+        "id": "bare",
         "metric_id": "company_revenue",
         "as_of": "2026-08-01",
-        "grade": "C",
-        "text": "Net sales were $11 million"
+        "grade": "",
+        "text": "Net sales were $10 million"
       }
     ],
     "py_live": [

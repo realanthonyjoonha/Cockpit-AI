@@ -489,7 +489,11 @@ export function writeReport(dir, outPath) {
     lines.push(`- Unpadded and padded dates keep the newer claim (C-date-unpadded winner=${date?.winner}, C-date-iso winner=${isoWinner}). A bare FY label still has no invented month.`);
   }
   lines.push(`- Same-day ties keep the earlier array element (C-same-day-tie winner=${jsCase(ctx, 'C-same-day-tie')?.winner}). That matches a stable sort. It is an arbitrary pick when two filings share a date, and it is visible in the case.`);
-  lines.push('- The audit\'s "okay" rating is fair for a short pack that already uses padded dates and the exact rule phrases. It understates what happens when dates are unpadded, when "guidance" appears in an unrelated sentence, or when the host trajectory is the new-desk command plus eight slice notes.');
+  if (date?.winner === 'oct' && stolen?.metric_id === 'cash') {
+    lines.push('- Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. The host trajectory of the new-desk command plus eight slice notes is still a tail-keep, which is F11.');
+  } else {
+    lines.push('- The audit\'s "okay" rating is fair for a short pack that already uses padded dates and the exact rule phrases. It understates what happens when dates are unpadded, when "guidance" appears in an unrelated sentence, or when the host trajectory is the new-desk command plus eight slice notes.');
+  }
   if (!models) {
     lines.push('- The model arm is not in this file yet. Prompts are under harness-stress/prompts/. After replies are scored, re-run `node harness-stress/run.mjs --report`.');
   } else {
