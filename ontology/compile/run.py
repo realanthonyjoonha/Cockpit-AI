@@ -17,7 +17,7 @@ from compile.from_cockpit import load_catalysts, load_risks, series_snapshot
 from compile.from_house_view import parse_house_view
 from compile.from_sources import build_source_catalog
 from compile.from_wiki import parse_entity
-from compile.from_xbrl import load_filing_facts
+from compile.from_companyfacts import load_companyfacts
 
 def load_pack_config(ticker: str) -> dict[str, Any]:
     path = paths.PACKS / f"{ticker.upper()}.json"
@@ -82,7 +82,7 @@ def compile_focus(ticker: str) -> dict[str, Any]:
     cat_slugs = [s for s in cat_slugs if s]
     catalysts = load_catalysts(paths.CATALYSTS, entity_slugs=cat_slugs)
     sources = build_source_catalog(cfg, paths.WIKI)
-    xbrl = load_filing_facts(cfg, paths.WIKI, slug)
+    xbrl = load_companyfacts(cfg, paths.WIKI, slug)
 
     gaps: list[str] = []
     gaps.extend(xbrl["notes"])
@@ -145,7 +145,7 @@ def compile_focus(ticker: str) -> dict[str, Any]:
         "house_prior": house_prior,
         "object": company,
         "claims": wiki["claims"],
-        # Consolidated tagged facts own live numeric slots; claims fill only untagged metrics.
+        # Companyfacts slots own live numeric values. Sentences never fill those slots.
         "facts": xbrl["facts"],
         "risks": risks,
         "drivers": drivers,

@@ -60,6 +60,9 @@ class TestPart1GateLivePacks(unittest.TestCase):
         self.assertTrue(any(c.id == "pack_config" and not c.ok for c in r.checks))
 
     def test_json_report_shape(self):
+        cfg = ROOT / "packs" / "MSFT.json"
+        if not cfg.exists():
+            self.skipTest("MSFT pack config not on disk")
         r = verify_part1("MSFT")
         d = r.to_dict()
         self.assertIn("checks", d)

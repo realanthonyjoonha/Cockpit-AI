@@ -18,7 +18,8 @@ import {
   sentenceHasAmount,
 } from '../server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../server/assistContext.js';
-import { factNumber, mappedFacts, parseXbrlFacts, shiftDecimal, taggedSlots } from '../server/xbrlFacts.js';
+import { mappedFacts, parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
+import { checkCompanyfactsExact } from '../../harness-stress/lib/review-check.mjs';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -142,7 +143,7 @@ const crowded = enforceCharBudget({
     {
       id: 'xbrl:us-gaap:Revenues:2025-01-01/2025-12-31',
       metric_id: 'company_revenue',
-      origin: 'xbrl',
+      origin: 'companyfacts',
       confidence: 'tagged',
       text: 'Revenues USD 48,000,000,000 for 2025-01-01 to 2025-12-31 (consolidated tagged fact)',
       value_text: '48000000000',
@@ -153,41 +154,34 @@ const crowded = enforceCharBudget({
   house_prior: { status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'H'.repeat(1800) },
   gaps: [],
 }, 2800);
-if ((crowded.claims || []).some((c) => c.origin === 'xbrl') && JSON.stringify(crowded).length <= 2800) {
+if ((crowded.claims || []).some((c) => c.origin === 'companyfacts' || c.origin === 'xbrl') && JSON.stringify(crowded).length <= 2800) {
   ok('JS over-budget pack keeps the tagged row');
 } else bad(`JS tagged-first ${JSON.stringify((crowded.claims || []).map((c) => c.origin))} size=${JSON.stringify(crowded).length}`);
 
-const xbrlUnits = [
-  [shiftDecimal('1234.5', 6), '1234500000'],
-  [shiftDecimal('12', -2), '0.12'],
-  [shiftDecimal('-3', 3), '-3000'],
-  [factNumber('1.234,5', 'ixt:num-comma-decimal'), '1234.5'],
-  [factNumber('No', 'ixt-sec:numwordsen'), '0'],
-  [factNumber('\u2014', 'ixt:fixed-zero'), '0'],
-  [factNumber('about nine', 'ixt:num-dot-decimal'), null],
-];
-if (xbrlUnits.every(([got, want]) => got === want)) ok('JS XBRL scale and formats are string-exact');
-else bad(`JS XBRL units ${JSON.stringify(xbrlUnits)}`);
-const xApi = { ...api, sentenceHasAmount, parseXbrlFacts, taggedSlots };
+const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots };
+const exactErrors = checkCompanyfactsExact(xApi);
+if (!exactErrors.length) ok('JS companyfacts fixtures match expected.json');
+else exactErrors.forEach((e) => bad(e));
 const taggedErrors = checkTaggedSectors(loadSectors(), xApi);
-if (!taggedErrors.length) ok('JS tagged XBRL slots own the ten-sector live values');
+if (!taggedErrors.length) ok('JS companyfacts slots own the ten-sector live values');
 else taggedErrors.forEach((e) => bad(e));
 const taggedBudget = loadSectors().issuers.flatMap((issuer) => {
-  const doc = readFileSync(path.join(REPO, 'harness-stress/fixtures', issuer.xbrl), 'utf8');
-  const facts = mappedFacts(parseXbrlFacts(doc, { sourceId: `raw/${issuer.id}-research/filings/10k.htm` }).facts);
+  const id = issuer.companyfacts || issuer.id;
+  const doc = JSON.parse(readFileSync(path.join(REPO, 'harness-stress/fixtures/companyfacts', id, 'companyfacts.json'), 'utf8'));
+  const facts = mappedFacts(parseCompanyfacts(doc, { sourceId: `companyfacts/${id}` }).facts);
   const want = Object.values(taggedSlots(facts)).map((s) => s.id).sort();
   const pack = assembleAgentPack({ compiled_at: '2026-01-15T00:00:00Z', claims: issuer.claims, facts, gaps: [] }, rules);
-  const got = pack.claims.filter((c) => c.origin === 'xbrl').map((c) => c.id).sort();
+  const got = pack.claims.filter((c) => c.origin === 'companyfacts' || c.origin === 'xbrl').map((c) => c.id).sort();
   const size = JSON.stringify(pack).length;
   return size <= OVERVIEW_BUDGET_CHARS && got.join('|') === want.join('|') ? [] : [`${issuer.id} ${size} chars, tagged ${got.length}/${want.length}`];
 });
 if (!taggedBudget.length) ok('JS every tagged slot survives the 10000 cap');
 else taggedBudget.forEach((e) => bad(e));
 const reviewRun = checkReview(xApi);
-if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave tagged slots alone`);
+if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave structured slots alone`);
 else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
 const reviewerErrors = checkReviewerCases(xApi);
-if (!reviewerErrors.length) ok('JS reviewer restatement/headline/dimension cases');
+if (!reviewerErrors.length) ok('JS reviewer restatement and 10-Q YTD cases');
 else reviewerErrors.forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');

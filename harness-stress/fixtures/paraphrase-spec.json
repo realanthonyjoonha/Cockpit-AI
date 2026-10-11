@@ -459,6 +459,41 @@
       ]
     },
     {
+      "id": "total_debt",
+      "metric": "total_debt",
+      "positive": [
+        "Total debt was $8 million."
+      ],
+      "negative": [
+        {
+          "text": "Bad debt on the card book was $4 million.",
+          "metric": null
+        },
+        {
+          "text": "Operating leverage in the software model was described.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "diluted_eps",
+      "metric": "diluted_eps",
+      "positive": [
+        "Diluted earnings per share were $1.25.",
+        "Diluted EPS was $1.25."
+      ],
+      "negative": [
+        {
+          "text": "Basic earnings per share were $1.25.",
+          "metric": null
+        },
+        {
+          "text": "Diluted shares were 100 million.",
+          "metric": "diluted_shares"
+        }
+      ]
+    },
+    {
       "id": "diluted_shares",
       "metric": "diluted_shares",
       "positive": [
@@ -473,7 +508,7 @@
         },
         {
           "text": "Diluted earnings per share were $1.25.",
-          "metric": null
+          "metric": "diluted_eps"
         }
       ]
     },
@@ -1140,7 +1175,7 @@
       "id": "r2-eps-word",
       "kind": "amounts",
       "text": "Diluted EPS was $1.25, in millions.",
-      "metric": null,
+      "metric": "diluted_eps",
       "amounts": [
         {
           "unit": "currency",
@@ -1214,9 +1249,7 @@
           "grade": "A"
         }
       ],
-      "live": {
-        "b": "impairment"
-      }
+      "live": {}
     },
     {
       "id": "r2-live-rev",
@@ -1243,8 +1276,7 @@
         }
       ],
       "live": {
-        "unearned": "other",
-        "interest": "interest_revenue"
+        "unearned": "other"
       }
     },
     {

@@ -1,0 +1,201 @@
+{
+  "id": "qtd",
+  "cik": "0000027419",
+  "entity": "Target Corporation",
+  "sector": "retail",
+  "form": "10-Q",
+  "reporting": "us-gaap",
+  "currency": "USD",
+  "slots": {
+    "company_revenue": {
+      "value_text": "26539000000",
+      "end": "2026-08-01",
+      "start": "2026-05-03",
+      "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "51982000000",
+        "start": "2026-02-01",
+        "end": "2026-08-01"
+      }
+    },
+    "operating_income": {
+      "value_text": "2560000000",
+      "end": "2026-08-01",
+      "start": "2026-05-03",
+      "concept": "us-gaap:OperatingIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "3695000000",
+        "start": "2026-02-01",
+        "end": "2026-08-01"
+      }
+    },
+    "net_income": {
+      "value_text": "1877000000",
+      "end": "2026-08-01",
+      "start": "2026-05-03",
+      "concept": "us-gaap:NetIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "2658000000",
+        "start": "2026-02-01",
+        "end": "2026-08-01"
+      }
+    },
+    "diluted_eps": {
+      "value_text": "4.11",
+      "end": "2026-08-01",
+      "start": "2026-05-03",
+      "concept": "us-gaap:EarningsPerShareDiluted",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD/shares",
+      "ytd": {
+        "value_text": "5.83",
+        "start": "2026-02-01",
+        "end": "2026-08-01"
+      }
+    },
+    "cash": {
+      "value_text": "5411000000",
+      "end": "2026-08-01",
+      "start": null,
+      "concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD"
+    },
+    "operating_cash_flow": {
+      "value_text": "4519000000",
+      "end": "2026-08-01",
+      "start": "2026-02-01",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD"
+    },
+    "total_debt": {
+      "value_text": "14221000000",
+      "end": "2026-08-01",
+      "start": null,
+      "concept": "us-gaap:LongTermDebtAndCapitalLeaseObligations",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD"
+    },
+    "goodwill_impairment": {
+      "value_text": "0",
+      "end": "2026-01-31",
+      "start": "2025-02-02",
+      "concept": "us-gaap:GoodwillImpairmentLoss",
+      "form": "10-K",
+      "filed": "2026-03-11",
+      "unit": "USD"
+    },
+    "impairment": {
+      "value_text": "0",
+      "end": "2016-10-29",
+      "start": "2016-07-31",
+      "concept": "us-gaap:AssetImpairmentCharges",
+      "form": "10-Q",
+      "filed": "2016-11-23",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "0",
+        "start": "2016-01-31",
+        "end": "2016-10-29"
+      }
+    },
+    "goodwill": {
+      "value_text": "631000000",
+      "end": "2026-01-31",
+      "start": null,
+      "concept": "us-gaap:Goodwill",
+      "form": "10-K",
+      "filed": "2026-03-11",
+      "unit": "USD"
+    },
+    "inventory": {
+      "value_text": "13249000000",
+      "end": "2026-08-01",
+      "start": null,
+      "concept": "us-gaap:InventoryNet",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD"
+    },
+    "credit_loss_provision": {
+      "value_text": "41000000",
+      "end": "2013-08-03",
+      "start": "2013-02-03",
+      "concept": "us-gaap:ProvisionForLoanAndLeaseLosses",
+      "form": "10-Q",
+      "filed": "2013-08-28",
+      "unit": "USD"
+    },
+    "purchase_commitments": {
+      "value_text": "1472000000",
+      "end": "2013-02-02",
+      "start": null,
+      "concept": "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount",
+      "form": "10-K",
+      "filed": "2013-03-20",
+      "unit": "USD"
+    },
+    "capex": {
+      "value_text": "2404000000",
+      "end": "2026-08-01",
+      "start": "2026-02-01",
+      "concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD"
+    },
+    "diluted_shares": {
+      "value_text": "456600000",
+      "end": "2026-08-01",
+      "start": "2026-05-03",
+      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "shares",
+      "ytd": {
+        "value_text": "456200000",
+        "start": "2026-02-01",
+        "end": "2026-08-01"
+      }
+    },
+    "share_repurchase": {
+      "value_text": "3000000",
+      "end": "2026-08-01",
+      "start": "2026-02-01",
+      "concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+      "form": "10-Q",
+      "filed": "2026-08-28",
+      "unit": "USD"
+    }
+  },
+  "empty": [
+    "net_interest_income",
+    "interest_revenue",
+    "rnd_expense",
+    "rpo_backlog",
+    "guarantees",
+    "dividends"
+  ],
+  "gaps_contain": [
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "rnd_expense: not reported in structured data",
+    "rpo_backlog: not reported in structured data",
+    "guarantees: not reported in structured data",
+    "dividends: not reported in structured data"
+  ]
+}

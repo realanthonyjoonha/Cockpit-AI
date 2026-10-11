@@ -1,0 +1,157 @@
+{
+  "id": "utility",
+  "cik": "0000753308",
+  "entity": "NEXTERA ENERGY INC",
+  "sector": "utility",
+  "form": "10-K",
+  "reporting": "us-gaap",
+  "currency": "USD",
+  "slots": {
+    "company_revenue": {
+      "value_text": "6701000000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:RegulatedAndUnregulatedOperatingRevenue",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "operating_income": {
+      "value_text": "2208000000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:OperatingIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "net_income": {
+      "value_text": "2182000000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:NetIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "diluted_eps": {
+      "value_text": "1.04",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:EarningsPerShareDiluted",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD/shares"
+    },
+    "cash": {
+      "value_text": "1998000000",
+      "end": "2026-03-31",
+      "start": null,
+      "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "operating_cash_flow": {
+      "value_text": "2614000000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "total_debt": {
+      "value_text": "93948000000",
+      "end": "2026-03-31",
+      "start": null,
+      "concept": "us-gaap:LongTermDebtNoncurrent",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "impairment": {
+      "value_text": "72000000",
+      "end": "2019-12-31",
+      "start": "2019-01-01",
+      "concept": "us-gaap:ImpairmentOfLongLivedAssetsHeldForUse",
+      "form": "10-K",
+      "filed": "2022-02-18",
+      "unit": "USD"
+    },
+    "goodwill": {
+      "value_text": "5150000000",
+      "end": "2026-03-31",
+      "start": null,
+      "concept": "us-gaap:Goodwill",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "inventory": {
+      "value_text": "2577000000",
+      "end": "2026-03-31",
+      "start": null,
+      "concept": "us-gaap:InventoryNet",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    },
+    "diluted_shares": {
+      "value_text": "2092400000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "shares"
+    },
+    "guarantees": {
+      "value_text": "34000000",
+      "end": "2011-03-31",
+      "start": null,
+      "concept": "us-gaap:GuaranteeObligationsMaximumExposure",
+      "form": "10-Q",
+      "filed": "2011-05-04",
+      "unit": "USD"
+    },
+    "share_repurchase": {
+      "value_text": "0",
+      "end": "2014-12-31",
+      "start": "2014-01-01",
+      "concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+      "form": "10-K",
+      "filed": "2015-02-20",
+      "unit": "USD"
+    },
+    "dividends": {
+      "value_text": "1300000000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:PaymentsOfDividends",
+      "form": "10-Q",
+      "filed": "2026-04-23",
+      "unit": "USD"
+    }
+  },
+  "empty": [
+    "goodwill_impairment",
+    "net_interest_income",
+    "interest_revenue",
+    "credit_loss_provision",
+    "rnd_expense",
+    "rpo_backlog",
+    "purchase_commitments",
+    "capex"
+  ],
+  "gaps_contain": [
+    "goodwill_impairment: not reported in structured data",
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "credit_loss_provision: not reported in structured data",
+    "rnd_expense: not reported in structured data",
+    "rpo_backlog: not reported in structured data",
+    "purchase_commitments: not reported in structured data",
+    "capex: not reported in structured data"
+  ]
+}

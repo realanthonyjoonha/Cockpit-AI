@@ -290,15 +290,17 @@ export function assertP1() {
     gaps: [],
   };
   enforceCharBudget(crowded, 2800);
-  if (!(crowded.claims || []).some((c) => c.origin === 'xbrl')) errors.push('over-budget pack dropped the tagged row');
+  if (!(crowded.claims || []).some((c) => c.origin === 'companyfacts' || c.origin === 'xbrl')) {
+    errors.push('over-budget pack dropped the tagged row');
+  }
   if (JSON.stringify(crowded).length > 2800) errors.push(`over-budget tagged-first ${JSON.stringify(crowded).length}`);
 
   const crowd = [];
   for (let i = 0; i < 10; i++) {
     crowd.push(claim(`rev${i}`, `Net sales were $${200 + i} million`, `2026-12-${String(i + 1).padStart(2, '0')}`));
   }
-  crowd.push(claim('inv-old', 'Inventory was $5 million', '2020-01-01'));
-  crowd.push(claim('debt-old', 'Long-term debt was $7 million', '2020-01-01'));
+  crowd.push(claim('conc-old', 'Customer concentration was 40 percent', '2020-01-01'));
+  crowd.push(claim('guide-old', 'Outlook for next quarter revenue is $100 million', '2020-01-01'));
   crowd.push(claim('gm-old', 'Gross margin was 40%', '2020-01-01'));
 
   const longClaim = claim(
@@ -376,7 +378,7 @@ export function assertP1() {
   const crowdRow = byId['C-retrieve-crowd'];
   if (!crowdRow || crowdRow.error) errors.push(`C-retrieve-crowd ${crowdRow?.error || 'missing'}`);
   else {
-    for (const id of ['inv-old', 'debt-old', 'gm-old']) {
+    for (const id of ['conc-old', 'guide-old', 'gm-old']) {
       if (!(crowdRow.claim_ids || []).includes(id)) errors.push(`C-retrieve-crowd dropped ${id}`);
     }
   }
