@@ -99,15 +99,6 @@
       "filed": "2026-08-05",
       "unit": "USD"
     },
-    "impairment": {
-      "value_text": "18000000",
-      "end": "2014-12-31",
-      "start": "2014-01-01",
-      "concept": "us-gaap:ImpairmentOfIntangibleAssetsIndefinitelivedExcludingGoodwill",
-      "form": "10-K",
-      "filed": "2016-02-16",
-      "unit": "USD"
-    },
     "goodwill": {
       "value_text": "5859000000",
       "end": "2026-06-30",
@@ -124,15 +115,6 @@
       "concept": "us-gaap:InventoryNet",
       "form": "10-Q",
       "filed": "2026-08-05",
-      "unit": "USD"
-    },
-    "credit_loss_provision": {
-      "value_text": "88000000",
-      "end": "2015-09-30",
-      "start": "2015-01-01",
-      "concept": "us-gaap:ProvisionForLoanLeaseAndOtherLosses",
-      "form": "10-Q",
-      "filed": "2015-10-30",
       "unit": "USD"
     },
     "rnd_expense": {
@@ -198,25 +180,22 @@
       "form": "10-Q",
       "filed": "2026-08-05",
       "unit": "USD"
-    },
-    "dividends": {
-      "value_text": "1029000000",
-      "end": "2009-12-31",
-      "start": "2009-01-01",
-      "concept": "us-gaap:PaymentsOfDividends",
-      "form": "10-K",
-      "filed": "2010-02-19",
-      "unit": "USD"
     }
   },
   "empty": [
     "net_interest_income",
     "interest_revenue",
-    "purchase_commitments"
+    "purchase_commitments",
+    "impairment",
+    "credit_loss_provision",
+    "dividends"
   ],
   "gaps_contain": [
     "net_interest_income: not reported in structured data",
     "interest_revenue: not reported in structured data",
-    "purchase_commitments: not reported in structured data"
+    "purchase_commitments: not reported in structured data",
+    "impairment: stale: last reported 2014-12-31",
+    "credit_loss_provision: stale: last reported 2015-09-30",
+    "dividends: stale: last reported 2009-12-31"
   ]
 }

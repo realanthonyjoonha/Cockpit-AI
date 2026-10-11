@@ -87,15 +87,6 @@
       "form": "20-F",
       "filed": "2026-02-26",
       "unit": "EUR"
-    },
-    "dividends": {
-      "value_text": "1790000000",
-      "end": "2019-12-31",
-      "start": "2019-01-01",
-      "concept": "ifrs-full:DividendsPaidClassifiedAsFinancingActivities",
-      "form": "20-F",
-      "filed": "2020-02-27",
-      "unit": "EUR"
     }
   },
   "empty": [
@@ -110,7 +101,8 @@
     "capex",
     "diluted_shares",
     "guarantees",
-    "share_repurchase"
+    "share_repurchase",
+    "dividends"
   ],
   "gaps_contain": [
     "goodwill_impairment: not reported in structured data",
@@ -124,6 +116,7 @@
     "capex: not reported in structured data",
     "diluted_shares: not reported in structured data",
     "guarantees: not reported in structured data",
-    "share_repurchase: not reported in structured data"
+    "share_repurchase: not reported in structured data",
+    "dividends: stale: last reported 2019-12-31"
   ]
 }

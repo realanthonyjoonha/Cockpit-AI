@@ -99,20 +99,6 @@
       "filed": "2026-03-11",
       "unit": "USD"
     },
-    "impairment": {
-      "value_text": "0",
-      "end": "2016-10-29",
-      "start": "2016-07-31",
-      "concept": "us-gaap:AssetImpairmentCharges",
-      "form": "10-Q",
-      "filed": "2016-11-23",
-      "unit": "USD",
-      "ytd": {
-        "value_text": "0",
-        "start": "2016-01-31",
-        "end": "2016-10-29"
-      }
-    },
     "goodwill": {
       "value_text": "631000000",
       "end": "2026-01-31",
@@ -129,24 +115,6 @@
       "concept": "us-gaap:InventoryNet",
       "form": "10-Q",
       "filed": "2026-08-28",
-      "unit": "USD"
-    },
-    "credit_loss_provision": {
-      "value_text": "41000000",
-      "end": "2013-08-03",
-      "start": "2013-02-03",
-      "concept": "us-gaap:ProvisionForLoanAndLeaseLosses",
-      "form": "10-Q",
-      "filed": "2013-08-28",
-      "unit": "USD"
-    },
-    "purchase_commitments": {
-      "value_text": "1472000000",
-      "end": "2013-02-02",
-      "start": null,
-      "concept": "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount",
-      "form": "10-K",
-      "filed": "2013-03-20",
       "unit": "USD"
     },
     "capex": {
@@ -188,7 +156,10 @@
     "rnd_expense",
     "rpo_backlog",
     "guarantees",
-    "dividends"
+    "dividends",
+    "impairment",
+    "credit_loss_provision",
+    "purchase_commitments"
   ],
   "gaps_contain": [
     "net_interest_income: not reported in structured data",
@@ -196,6 +167,9 @@
     "rnd_expense: not reported in structured data",
     "rpo_backlog: not reported in structured data",
     "guarantees: not reported in structured data",
-    "dividends: not reported in structured data"
+    "dividends: not reported in structured data",
+    "impairment: stale: last reported 2016-10-29",
+    "credit_loss_provision: stale: last reported 2013-08-03",
+    "purchase_commitments: stale: last reported 2013-02-02"
   ]
 }

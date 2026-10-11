@@ -17,9 +17,11 @@ TAXONOMY_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
 
 ALLOWED_FORMS = {"10-K", "10-Q", "20-F", "40-F", "6-K", "10-KT"}
 ANNUAL_FORMS = {"10-K", "20-F", "40-F", "10-KT"}
+INTERIM_FORMS = {"10-Q", "6-K"}
 QUARTER_FP = {"Q1", "Q2", "Q3"}
 ISO4217 = re.compile(r"^[A-Z]{3}$")
 TAXONOMIES = ("us-gaap", "ifrs-full")
+STALE_DAYS = 730
 
 _TAXONOMY: dict[str, Any] | None = None
 
@@ -177,6 +179,7 @@ def _unit_ok(unit: str, kind: str) -> bool:
 MISSING_CACHE = "companyfacts cache missing; headline slots empty"
 UNREADABLE = "companyfacts cache unreadable"
 STRUCTURED_GAP = "{mid}: not reported in structured data"
+STALE_GAP = "{mid}: stale: last reported {end}"
 
 
 def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, Any]:
@@ -287,10 +290,32 @@ def _metric_concepts(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
     return list(spec.get("concepts") or []), list(spec.get("fallback") or [])
 
 
-def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
-    """One consolidated companyfacts slot per structured metric."""
+def _latest_periodic_end(facts: list[dict[str, Any]]) -> str | None:
+    ends = [
+        f["period"]["end"]
+        for f in facts or []
+        if form_family(f.get("form")) in ALLOWED_FORMS
+        and (f.get("period") or {}).get("end")
+    ]
+    return max(ends) if ends else None
+
+
+def fact_is_stale(end: str | None, latest: str | None) -> bool:
+    return bool(end and latest and _days(end, latest) > STALE_DAYS)
+
+
+def stale_gap(mid: str, end: str) -> str:
+    return STALE_GAP.format(mid=mid, end=end)
+
+
+def select_slots(
+    facts: list[dict[str, Any]], tax: dict[str, Any] | None = None
+) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+    """One consolidated slot per structured metric. Stale winners are omitted."""
     tax = tax or load_taxonomy()
     slots: dict[str, dict[str, Any]] = {}
+    stale: dict[str, str] = {}
+    latest_periodic = _latest_periodic_end(facts or [])
     for mid, spec in (tax.get("metrics") or {}).items():
         if spec.get("alias_of"):
             continue
@@ -330,17 +355,21 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
         latest_end = max(w["period"]["end"] for w, _ in winners)
         at_end = [(w, p) for w, p in winners if w["period"]["end"] == latest_end]
         families = {form_family(w.get("form")) for w, _ in at_end}
-        fps = {(w.get("fp") or "").upper() for w, _ in at_end}
-        interim = (bool(families & {"10-Q"}) or bool(families & {"6-K"} and fps & QUARTER_FP)) and not (families <= ANNUAL_FORMS)
 
         def _kind(w: dict[str, Any]) -> str:
-            days = _days(w["period"].get("start"), w["period"]["end"])
+            n = _days(w["period"].get("start"), w["period"]["end"])
             peers = [
                 _days(o["period"].get("start"), o["period"]["end"])
                 for o, _ in at_end
                 if o is not w
             ]
-            return duration_kind(days, w.get("fp"), w.get("form"), peers)
+            return duration_kind(n, w.get("fp"), w.get("form"), peers)
+
+        annual_form_annual = any(
+            form_family(w.get("form")) in ANNUAL_FORMS and _kind(w) == "annual"
+            for w, _ in at_end
+        )
+        interim = bool(families & INTERIM_FORMS) and not (families <= ANNUAL_FORMS) and not annual_form_annual
 
         def rank(pair: tuple[dict[str, Any], Any]) -> tuple:
             w = pair[0]
@@ -353,9 +382,14 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
                 cidx = concepts.index(w["concept"])
             except ValueError:
                 cidx = 99
-            return (dur, -cidx, w.get("filed") or "", w.get("accession") or "")
+            n = _days(w["period"].get("start"), w["period"]["end"])
+            span = -n if interim else n
+            return (-cidx, dur, span, w.get("filed") or "", w.get("accession") or "")
 
         win, restated_from = max(at_end, key=rank)
+        if fact_is_stale(win["period"]["end"], latest_periodic):
+            stale[mid] = win["period"]["end"]
+            continue
         ytd = None
         if want_period == "duration" and _kind(win) == "quarter":
             ytd_rows = [
@@ -417,17 +451,33 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
                 if ytd else None
             ),
         }
-    return slots
+    return slots, stale
 
 
-def headline_gaps(slots: dict[str, dict[str, Any]], tax: dict[str, Any] | None = None) -> list[str]:
+def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
+    """One consolidated companyfacts slot per structured metric."""
+    return select_slots(facts, tax)[0]
+
+
+def headline_gaps(
+    slots: dict[str, dict[str, Any]],
+    tax: dict[str, Any] | None = None,
+    facts: list[dict[str, Any]] | None = None,
+) -> list[str]:
     tax = tax or load_taxonomy()
+    stale: dict[str, str] = {}
+    if facts is not None:
+        stale = select_slots(facts, tax)[1]
     gaps: list[str] = []
     for mid, spec in (tax.get("metrics") or {}).items():
         if spec.get("alias_of"):
             continue
         if not (spec.get("concepts") or spec.get("fallback")):
             continue
-        if mid not in slots:
+        if mid in slots:
+            continue
+        if mid in stale:
+            gaps.append(stale_gap(mid, stale[mid]))
+        else:
             gaps.append(STRUCTURED_GAP.format(mid=mid))
     return gaps

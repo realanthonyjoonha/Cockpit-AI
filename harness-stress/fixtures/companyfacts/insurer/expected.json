@@ -81,33 +81,6 @@
       "filed": "2026-08-06",
       "unit": "USD"
     },
-    "total_debt": {
-      "value_text": "18879000000",
-      "end": "2012-06-30",
-      "start": null,
-      "concept": "us-gaap:LongTermDebt",
-      "form": "10-Q",
-      "filed": "2012-08-07",
-      "unit": "USD"
-    },
-    "goodwill_impairment": {
-      "value_text": "0",
-      "end": "2018-12-31",
-      "start": "2018-01-01",
-      "concept": "us-gaap:GoodwillImpairmentLoss",
-      "form": "10-K",
-      "filed": "2019-02-22",
-      "unit": "USD"
-    },
-    "impairment": {
-      "value_text": "77000000",
-      "end": "2012-12-31",
-      "start": "2012-01-01",
-      "concept": "us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill",
-      "form": "10-K",
-      "filed": "2015-02-27",
-      "unit": "USD"
-    },
     "goodwill": {
       "value_text": "9536000000",
       "end": "2026-06-30",
@@ -115,15 +88,6 @@
       "concept": "us-gaap:Goodwill",
       "form": "10-Q",
       "filed": "2026-08-06",
-      "unit": "USD"
-    },
-    "credit_loss_provision": {
-      "value_text": "-8000000",
-      "end": "2021-06-30",
-      "start": "2021-01-01",
-      "concept": "us-gaap:ProvisionForLoanAndLeaseLosses",
-      "form": "10-Q",
-      "filed": "2021-08-06",
       "unit": "USD"
     },
     "diluted_shares": {
@@ -167,7 +131,11 @@
     "rpo_backlog",
     "purchase_commitments",
     "capex",
-    "dividends"
+    "dividends",
+    "total_debt",
+    "goodwill_impairment",
+    "impairment",
+    "credit_loss_provision"
   ],
   "gaps_contain": [
     "inventory: not reported in structured data",
@@ -177,6 +145,10 @@
     "rpo_backlog: not reported in structured data",
     "purchase_commitments: not reported in structured data",
     "capex: not reported in structured data",
-    "dividends: not reported in structured data"
+    "dividends: not reported in structured data",
+    "total_debt: stale: last reported 2012-06-30",
+    "goodwill_impairment: stale: last reported 2018-12-31",
+    "impairment: stale: last reported 2012-12-31",
+    "credit_loss_provision: stale: last reported 2021-06-30"
   ]
 }

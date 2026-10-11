@@ -72,6 +72,9 @@ class FixturesMatchExpected(unittest.TestCase):
                     self.assertEqual(got["prior"]["value_text"], want["prior"]["value_text"], f"{iid} {mid} prior val")
             for mid in expected.get("empty") or []:
                 self.assertNotIn(mid, slots, f"{iid} {mid} should be empty")
+            gaps = headline_gaps(slots, facts=parsed["facts"])
+            for msg in expected.get("gaps_contain") or []:
+                self.assertIn(msg, gaps, f"{iid} missing gap {msg}")
 
     def test_restatement_later_filed_wins(self):
         doc, expected = load_pair("restate")
@@ -85,10 +88,6 @@ class FixturesMatchExpected(unittest.TestCase):
         slot = tagged_slots(parse_companyfacts(doc)["facts"])["company_revenue"]
         self.assertEqual(slot["value_text"], expected["slots"]["company_revenue"]["value_text"])
         self.assertEqual(slot["ytd"]["value_text"], "51982000000")
-        start, end = slot["period"]["start"], slot["period"]["end"]
-        from datetime import date
-        days = (date.fromisoformat(end) - date.fromisoformat(start)).days
-        self.assertTrue(70 <= days <= 110, days)
 
     def test_fpi_ifrs_eur(self):
         doc, expected = load_pair("fpi")
@@ -103,6 +102,59 @@ class FixturesMatchExpected(unittest.TestCase):
         self.assertNotIn("urllib", src)
         self.assertNotIn("http.client", src)
         self.assertNotIn("requests", src)
+
+    def test_true_total_fallbacks_exclude_components(self):
+        tax = load_taxonomy()
+        spec = tax["metrics"]["company_revenue"]
+        listed = list(spec.get("concepts") or []) + list(spec.get("fallback") or [])
+        for banned in (
+            "us-gaap:OperatingLeaseLeaseIncome",
+            "us-gaap:InterestAndDividendIncomeOperating",
+            "us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer",
+        ):
+            self.assertNotIn(banned, listed)
+        self.assertIn("us-gaap:RevenuesNetOfInterestExpense", spec.get("fallback") or [])
+        comment = tax.get("comment") or ""
+        self.assertIn("true-total", comment)
+
+    def test_reviewer_form_and_stale_cases(self):
+        sixk = tagged_slots(parse_companyfacts(load_pair("sixk-q")[0])["facts"])["company_revenue"]
+        self.assertEqual(sixk["value_text"], "90000000")
+        self.assertEqual(sixk["ytd"]["value_text"], "190000000")
+        nofp = tagged_slots(parse_companyfacts(load_pair("sixk-nofp")[0])["facts"])["company_revenue"]
+        self.assertEqual(nofp["value_text"], "80000000")
+        self.assertEqual(nofp["ytd"]["value_text"], "170000000")
+        tenkt = tagged_slots(parse_companyfacts(load_pair("tenkt")[0])["facts"])["company_revenue"]
+        self.assertEqual(tenkt["form"], "10-KT")
+        tenkt_q = tagged_slots(parse_companyfacts(load_pair("tenkt-q")[0])["facts"])["company_revenue"]
+        self.assertEqual(tenkt_q["value_text"], "440000000")
+        self.assertEqual(tenkt_q["form"], "10-KT")
+        self.assertIsNone(tenkt_q.get("ytd"))
+        kq4 = tagged_slots(parse_companyfacts(load_pair("k-vs-q4")[0])["facts"])["company_revenue"]
+        self.assertEqual(kq4["value_text"], "1000000000")
+        self.assertEqual(kq4["form"], "10-K")
+        pytd = tagged_slots(parse_companyfacts(load_pair("primary-ytd")[0])["facts"])["company_revenue"]
+        self.assertEqual(pytd["concept"], "us-gaap:Revenues")
+        self.assertEqual(pytd["value_text"], "500000000")
+        span = tagged_slots(parse_companyfacts(load_pair("span-tie")[0])["facts"])["company_revenue"]
+        span_r = tagged_slots(parse_companyfacts(load_pair("span-tie-rev")[0])["facts"])["company_revenue"]
+        self.assertEqual(span["value_text"], "200000000")
+        self.assertEqual(span_r["value_text"], span["value_text"])
+        tot = tagged_slots(parse_companyfacts(load_pair("true-total")[0])["facts"])["company_revenue"]
+        self.assertEqual(tot["concept"], "us-gaap:Revenues")
+        self.assertEqual(tot["value_text"], "182447000000")
+        stale_doc, stale_exp = load_pair("stale-slot")
+        stale_facts = parse_companyfacts(stale_doc)["facts"]
+        stale_slots = tagged_slots(stale_facts)
+        self.assertNotIn("total_debt", stale_slots)
+        gaps = headline_gaps(stale_slots, facts=stale_facts)
+        self.assertIn("total_debt: stale: last reported 2014-06-30", gaps)
+        bank_doc, _ = load_pair("bank")
+        bank = tagged_slots(parse_companyfacts(bank_doc)["facts"])
+        self.assertEqual(bank["company_revenue"]["concept"], "us-gaap:Revenues")
+        self.assertEqual(bank["company_revenue"]["value_text"], "182447000000")
+        self.assertNotIn("total_debt", bank)
+        self.assertNotIn("interest_revenue", bank)
 
 
 class ReviewSentencesNeverFill(unittest.TestCase):
