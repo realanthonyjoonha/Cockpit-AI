@@ -747,7 +747,7 @@ def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
         row["origin"] = c.get("origin")
         row["confidence"] = c.get("confidence")
     if c.get("origin") == "xbrl":
-        for key in ("concept", "value", "unit", "decimals", "period", "prior"):
+        for key in ("concept", "value", "unit"):
             row[key] = c.get(key)
     return row
 
