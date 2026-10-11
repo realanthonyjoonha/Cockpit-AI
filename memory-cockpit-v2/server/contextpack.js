@@ -4,7 +4,7 @@
 // metric, only with an amount of that slot's kind, and is marked low confidence.
 import { readFileSync } from 'fs';
 import path from 'path';
-import { conceptIndex, loadTaxonomy, sentenceFillAllowed, structuredMetric, taggedSlots } from './companyfacts.js';
+import { canonicalMetric, conceptIndex, loadTaxonomy, sentenceFillAllowed, structuredMetric, taggedSlots } from './companyfacts.js';
 
 const GRADE_W = { A: 3, B: 2, C: 1 };
 export const FISCAL_GAP = 'as_of is a fiscal label without a period-end date';
@@ -511,7 +511,7 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
     const classified = classifyClaim(c, rules);
     for (const note of classified.notes || []) addGap(note);
     if (parseAsOf(c.as_of).precision === 'fiscal_label') addGap(FISCAL_GAP);
-    const mid = classified.metric_id;
+    const mid = classified.metric_id ? canonicalMetric(classified.metric_id, tax) : classified.metric_id;
     if (mid) {
       if (Object.prototype.hasOwnProperty.call(slots, mid)) {
         context.push({ i, row: contextRow(c, mid, 'structured_slot') });

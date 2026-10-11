@@ -271,16 +271,16 @@ Glass is not edited. `memory-cockpit-v2/src/**` is not edited. `thin-desks.json`
 
 For each structured metric:
 
-1. Candidates = facts whose `concept` is in that metric's ordered list, whose `period.type` matches the spec, whose unit kind matches, and whose `form` (strip `/A`) is one of `10-K`, `10-Q`, `20-F`, `40-F`, `6-K`.
+1. Candidates = facts whose `concept` is in that metric's ordered list (primary then fallback), whose `period.type` matches the spec, whose unit kind matches, and whose `form` (strip `/A`) is one of `10-K`, `10-Q`, `20-F`, `40-F`, `6-K`, `10-KT`.
 2. Drop frame-only points that lack `accn` or `form` when a filing-backed point exists for the same concept+period+unit.
 3. **Same period** (`end` + `start` or instant `end`): pick the latest `filed`. Tie → latest `accn` (string compare is the accession order the SEC issues). The displaced value, if `value_text` differs, is `prior` with `restated: true`.
 4. **Current slot** among remaining period winners:
    - Latest `end` wins (most recent reported period).
    - Same `end`, duration metric:
-     - If the winning form family is `10-Q` (or a 6-K with `fp` in Q1–Q3): prefer quarter duration (70–110 days) over YTD (111–340) over annual (≥ 341). Attach the YTD point as `ytd`.
-     - If the winning form family is `10-K` / `20-F` / `40-F` (or 6-K with `fp=FY`): prefer annual duration. No `ytd`.
-   - Then concept list order (earlier concept wins).
-   - Then later `filed` / `accn`.
+    - If the winning form family is `10-Q` (or a 6-K with `fp` in Q1–Q3): prefer quarter over YTD over annual. Classify duration by `fp` and relative span at the same end (the shorter intra-year point is the quarter). Day buckets are a fallback only (quarter ≤ 130 days, including a 16-week / 111-day quarter). Never use JSON array order.
+    - If the winning form family is `10-K` / `10-KT` / `20-F` / `40-F` (or 6-K with `fp=FY`): prefer annual duration. No `ytd`.
+    - Then concept list order (earlier concept wins).
+    - Then later `filed` / `accn`.
 5. Instant metrics (cash, debt, goodwill): `end` only. No duration contest. Latest `end`, then latest `filed`.
 6. Units:
    - `currency`: unit is a 3-letter ISO code (`USD`, `EUR`, …). Store it on the slot. Do not convert.

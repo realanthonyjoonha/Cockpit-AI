@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
 
 from api.companyfacts import (  # noqa: E402
     STRUCTURED_GAP,
+    canonical_metric,
     concept_index,
     load_taxonomy,
     sentence_fill_allowed,
@@ -586,7 +587,7 @@ def live_claims(
             add_gap(FISCAL_GAP)
         mid = classified.get("metric_id")
         if mid:
-            mid = str(mid)
+            mid = canonical_metric(str(mid), tax)
             if mid in slots:
                 context.append((i, _context_row(c, mid, "structured_slot")))
                 slot_key = parse_as_of(slots[mid]["as_of"]).get("sort_key") or ""
