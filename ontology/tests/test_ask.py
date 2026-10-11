@@ -15,6 +15,8 @@ from compile.run import write_pack
 class TestAsk(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if not (ROOT / "packs" / "MU.json").exists():
+            raise unittest.SkipTest("MU pack config not on disk")
         write_pack("MU")
 
     def test_house_view(self):

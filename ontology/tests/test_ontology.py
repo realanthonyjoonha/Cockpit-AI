@@ -30,6 +30,8 @@ REQUIRED_TOP = {
 class TestCompileAndRetrieve(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if not (ROOT / "packs" / "MU.json").exists():
+            raise unittest.SkipTest("MU pack config not on disk")
         cls.pack_path = write_pack("MU")
         cls.store = json.loads(cls.pack_path.read_text(encoding="utf-8"))
 

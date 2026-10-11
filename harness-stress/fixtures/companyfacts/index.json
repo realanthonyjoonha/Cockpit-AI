@@ -1,0 +1,109 @@
+{
+  "comment": "Trimmed public SEC companyfacts. Not a desk. Not a house view.",
+  "issuers": [
+    {
+      "id": "bank",
+      "src": "jpm",
+      "sector": "bank",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "insurer",
+      "src": "met",
+      "sector": "insurer",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "reit",
+      "src": "pld",
+      "sector": "REIT",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "utility",
+      "src": "nee",
+      "sector": "utility",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "biotech",
+      "src": "gild",
+      "sector": "biotech",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "retail",
+      "src": "wmt",
+      "sector": "retail",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "energy",
+      "src": "xom",
+      "sector": "energy",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "industrial",
+      "src": "cat",
+      "sector": "industrial",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "software",
+      "src": "crm",
+      "sector": "software",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "fpi",
+      "src": "sap",
+      "sector": "foreign private issuer",
+      "form": "20-F",
+      "reporting": "ifrs-full",
+      "currency": "EUR"
+    },
+    {
+      "id": "asml",
+      "src": "asml",
+      "sector": "foreign private issuer",
+      "form": "20-F",
+      "reporting": "us-gaap",
+      "currency": "EUR"
+    },
+    {
+      "id": "qtd",
+      "src": "tgt",
+      "sector": "retail",
+      "form": "10-Q",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "restate",
+      "src": "sap-2022-revenue",
+      "sector": "restatement",
+      "form": "20-F",
+      "reporting": "ifrs-full",
+      "currency": "EUR"
+    }
+  ]
+}

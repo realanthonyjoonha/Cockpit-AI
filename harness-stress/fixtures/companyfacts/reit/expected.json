@@ -1,0 +1,143 @@
+{
+  "id": "reit",
+  "cik": "0001045609",
+  "entity": "Prologis, Inc.",
+  "sector": "REIT",
+  "form": "10-K",
+  "reporting": "us-gaap",
+  "currency": "USD",
+  "slots": {
+    "company_revenue": {
+      "value_text": "2297723000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:Revenues",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    },
+    "operating_income": {
+      "value_text": "1211055000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:OperatingIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    },
+    "net_income": {
+      "value_text": "981976000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:NetIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    },
+    "diluted_eps": {
+      "value_text": "1.05",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:EarningsPerShareDiluted",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD/shares"
+    },
+    "cash": {
+      "value_text": "861144000",
+      "end": "2026-03-31",
+      "start": null,
+      "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    },
+    "operating_cash_flow": {
+      "value_text": "1288136000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    },
+    "total_debt": {
+      "value_text": "34669592000",
+      "end": "2026-03-31",
+      "start": null,
+      "concept": "us-gaap:LongTermDebt",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    },
+    "goodwill_impairment": {
+      "value_text": "368451000",
+      "end": "2010-12-31",
+      "start": "2010-01-01",
+      "concept": "us-gaap:GoodwillImpairmentLoss",
+      "form": "10-K",
+      "filed": "2013-02-28",
+      "unit": "USD"
+    },
+    "impairment": {
+      "value_text": "252914000",
+      "end": "2012-12-31",
+      "start": "2012-01-01",
+      "concept": "us-gaap:ImpairmentOfRealEstate",
+      "form": "10-K",
+      "filed": "2015-02-25",
+      "unit": "USD"
+    },
+    "goodwill": {
+      "value_text": "25280000",
+      "end": "2011-09-30",
+      "start": null,
+      "concept": "us-gaap:Goodwill",
+      "form": "10-Q",
+      "filed": "2011-11-08",
+      "unit": "USD"
+    },
+    "diluted_shares": {
+      "value_text": "957561000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "shares"
+    },
+    "dividends": {
+      "value_text": "1000577000",
+      "end": "2026-03-31",
+      "start": "2026-01-01",
+      "concept": "us-gaap:PaymentsOfDividends",
+      "form": "10-Q",
+      "filed": "2026-04-30",
+      "unit": "USD"
+    }
+  },
+  "empty": [
+    "inventory",
+    "net_interest_income",
+    "interest_revenue",
+    "credit_loss_provision",
+    "rnd_expense",
+    "rpo_backlog",
+    "purchase_commitments",
+    "capex",
+    "guarantees",
+    "share_repurchase"
+  ],
+  "gaps_contain": [
+    "inventory: not reported in structured data",
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "credit_loss_provision: not reported in structured data",
+    "rnd_expense: not reported in structured data",
+    "rpo_backlog: not reported in structured data",
+    "purchase_commitments: not reported in structured data",
+    "capex: not reported in structured data",
+    "guarantees: not reported in structured data",
+    "share_repurchase: not reported in structured data"
+  ]
+}

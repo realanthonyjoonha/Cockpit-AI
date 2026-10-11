@@ -18,7 +18,7 @@ import {
   riskMetric,
   sentenceHasAmount,
 } from '../../memory-cockpit-v2/server/contextpack.js';
-import { parseXbrlFacts, taggedSlots } from '../../memory-cockpit-v2/server/xbrlFacts.js';
+import { parseCompanyfacts, structuredMetric, taggedSlots } from '../../memory-cockpit-v2/server/companyfacts.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -28,6 +28,7 @@ import {
 } from './sector-check.mjs';
 import {
   FACT_SETS,
+  checkCompanyfactsExact,
   checkReview,
   checkReviewerCases,
   checkTaggedSectors,
@@ -74,15 +75,20 @@ function makeApi(rules) {
     claimGaps,
     riskMetric,
     sentenceHasAmount,
-    parseXbrlFacts,
+    parseCompanyfacts,
+    structuredMetric,
     taggedSlots,
   };
 }
 
-function jsTagged(api, claims, xbrl) {
-  const parsed = factsFor(api, xbrl);
+function compactFacts(facts) {
+  return (facts || []).map((f) => [f.concept, f.value_text, f.period?.end, f.filed, f.form, f.unit]);
+}
+
+function jsTagged(api, claims, companyfactsId) {
+  const parsed = factsFor(api, companyfactsId);
   return {
-    facts: parsed.facts,
+    facts: compactFacts(parsed.facts),
     notes: parsed.notes,
     tagged: taggedSnapshot(api, claims, parsed.facts),
   };
@@ -115,6 +121,7 @@ export function assertSectors() {
   const api = makeApi(rules);
   errors.push(...checkSectors(loadSectors(), api));
   errors.push(...checkTaggedSectors(loadSectors(), api));
+  errors.push(...checkCompanyfactsExact(api));
   const review = checkReview(api);
   if (review.errors.length) errors.push(...review.errors.slice(0, 40), `review ${review.errors.length} problem(s)`);
   else console.log(`review sentences=${review.sentences} pairs=${review.pairs} tagged slots held`);
@@ -131,8 +138,8 @@ export function assertSectors() {
   const reviewRows = [...(reviewSpec.sentences || []), ...(reviewSpec.held_out || [])]
     .map((s) => ({ id: s.id, text: s.text, as_of: reviewSpec.as_of, grade: 'A', source_id: 'review' }));
   const bundles = [
-    ...fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims, xbrl: issuer.xbrl })),
-    ...Object.entries(FACT_SETS).map(([tax, xbrl]) => ({ id: `review-${tax}`, claims: reviewRows, xbrl })),
+    ...fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims, xbrl: issuer.companyfacts || issuer.id })),
+    ...Object.entries(FACT_SETS).map(([tax, cfId]) => ({ id: `review-${tax}`, claims: reviewRows, xbrl: cfId })),
   ];
   const py = pySnapshot(bundles);
   if (py.error) errors.push(py.error);
@@ -222,8 +229,7 @@ export function assertP0() {
         claim('inv-imp', 'Inventory impairment of $9 million', '2026-05-01'),
         claim('gw-bal', 'A goodwill balance of $5 billion', '2026-05-01'),
       ],
-      live: { 'inv-imp': 'impairment' },
-      absent: ['gw-bal'],
+      absent: ['inv-imp', 'gw-bal'],
     },
     {
       id: 'C-missing-grade',

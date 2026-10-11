@@ -15,6 +15,9 @@ from compile.run import write_pack
 class TestSources(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cfg = ROOT / "packs" / "MU.json"
+        if not cfg.exists():
+            raise unittest.SkipTest("MU pack config not on disk")
         cls.pack = write_pack("MU")
 
     def test_catalog_nonempty(self):

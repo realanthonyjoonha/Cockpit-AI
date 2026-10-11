@@ -14,7 +14,8 @@ import {
   riskMetric,
   sentenceHasAmount,
 } from '../server/contextpack.js';
-import { factNumber, parseXbrlFacts, shiftDecimal, taggedSlots } from '../server/xbrlFacts.js';
+import { parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
+import { checkCompanyfactsExact } from '../../harness-stress/lib/review-check.mjs';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -86,26 +87,18 @@ const stems = bannedNeedles(rules);
 if (!stems.length) ok('no guid or inventor stems');
 else bad(`stems: ${stems.join(', ')}`);
 
-const xbrlUnits = [
-  [shiftDecimal('1234.5', 6), '1234500000'],
-  [shiftDecimal('12', -2), '0.12'],
-  [shiftDecimal('-3', 3), '-3000'],
-  [factNumber('1.234,5', 'ixt:num-comma-decimal'), '1234.5'],
-  [factNumber('No', 'ixt-sec:numwordsen'), '0'],
-  [factNumber('\u2014', 'ixt:fixed-zero'), '0'],
-  [factNumber('about nine', 'ixt:num-dot-decimal'), null],
-];
-if (xbrlUnits.every(([got, want]) => got === want)) ok('JS XBRL scale and formats are string-exact');
-else bad(`JS XBRL units ${JSON.stringify(xbrlUnits)}`);
-const xApi = { ...api, sentenceHasAmount, parseXbrlFacts, taggedSlots };
+const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots };
+const exactErrors = checkCompanyfactsExact(xApi);
+if (!exactErrors.length) ok('JS companyfacts fixtures match expected.json');
+else exactErrors.forEach((e) => bad(e));
 const taggedErrors = checkTaggedSectors(loadSectors(), xApi);
-if (!taggedErrors.length) ok('JS tagged XBRL slots own the ten-sector live values');
+if (!taggedErrors.length) ok('JS companyfacts slots own the ten-sector live values');
 else taggedErrors.forEach((e) => bad(e));
 const reviewRun = checkReview(xApi);
-if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave tagged slots alone`);
+if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave structured slots alone`);
 else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
 const reviewerErrors = checkReviewerCases(xApi);
-if (!reviewerErrors.length) ok('JS reviewer restatement/headline/dimension cases');
+if (!reviewerErrors.length) ok('JS reviewer restatement and 10-Q YTD cases');
 else reviewerErrors.forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
