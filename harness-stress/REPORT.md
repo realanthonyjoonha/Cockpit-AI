@@ -2,7 +2,7 @@
 
 Measured on this tree. A flaw is listed below only when this run still reproduces it.
 
-Run at: 2026-10-11T06:26:20.339Z
+Run at: 2026-10-11T06:46:21.695Z
 Tokenizer: gpt-tokenizer@2.9.0 default encode
 Product desks unchanged during the run: yes
 
@@ -30,8 +30,6 @@ The 2026-10-10 code-read audit said context handling and the 24-tool surface wer
 | F12 | P2 | tools | confirmed | Full catalog versus an 8-tool core, including two tools that always refuse |
 | F13 | P2 | tools | confirmed | Malformed args, unknown desks, and refused writes return errors with no retry hint |
 | F14 | P2 | tools | confirmed | Description overlap plus a metrics tool that is a trap |
-| F18 | P1 | tools | confirmed | Register GO returns ok while the drivers gate still says the register is open |
-| F15 | P1 | tools | confirmed | In the sandbox, a shell append changed the fixture house with no GO utterance |
 | F16 | P1 | tools+context | measured | Model arm: recall and tool choice on two models, three arms, repeated |
 
 Severity: P0 means a later step can treat a wrong figure as the live metric. P1 means seeded facts disappear, or the documented budget is not the path the agent uses. P2 means token cost, overlap, or errors without a retry hint.
@@ -118,7 +116,7 @@ cockpit-new-desk.md is 4184 tokens. AGENTS.md is 2933 tokens. With ~6000-token s
       "canaries_in_32k_tail": 8
     }
   ],
-  "schema_tokens_each_call": 3011
+  "schema_tokens_each_call": 3063
 }
 ```
 
@@ -128,7 +126,7 @@ cockpit-new-desk.md is 4184 tokens. AGENTS.md is 2933 tokens. With ~6000-token s
 
 **Hypothesis:** The 24-tool catalog costs tokens on every call, including tools that are not wired.
 
-tools/list returned 24 tools, 3011 tokens for name+description+inputSchema. The 8-tool core is 1103 tokens. Delta 1908. propose_add_metric ok_field=false error=not wired. Use propose_add_risk (register) or propose_keep_driver (drivers). Does not write 08.. get_metric_sor ok_field=false error=not wired. Use get_risk_sor (register) or get_driver_sor (drivers). Does not read 08 as metrics.. Both still occupy schema tokens (propose_add_metric:226, get_metric_sor:81).
+tools/list returned 24 tools, 3063 tokens for name+description+inputSchema. The 8-tool core is 1155 tokens. Delta 1908. propose_add_metric ok_field=false error=not wired. Use propose_add_risk (register) or propose_keep_driver (drivers). Does not write 08.. get_metric_sor ok_field=false error=not wired. Use get_risk_sor (register) or get_driver_sor (drivers). Does not read 08 as metrics.. Both still occupy schema tokens (propose_add_metric:226, get_metric_sor:81).
 
 **Repro**
 
@@ -140,8 +138,8 @@ tools/list returned 24 tools, 3011 tokens for name+description+inputSchema. The 
 ```json
 {
   "tool_count": 24,
-  "catalog_tokens": 3011,
-  "core_schema_tokens": 1103,
+  "catalog_tokens": 3063,
+  "core_schema_tokens": 1155,
   "per_tool_tokens": [
     {
       "name": "list_desks",
@@ -149,7 +147,7 @@ tools/list returned 24 tools, 3011 tokens for name+description+inputSchema. The 
     },
     {
       "name": "get_house_view",
-      "tokens": 70
+      "tokens": 96
     },
     {
       "name": "get_pack_snapshot",
@@ -169,7 +167,7 @@ tools/list returned 24 tools, 3011 tokens for name+description+inputSchema. The 
     },
     {
       "name": "commit_on_go",
-      "tokens": 165
+      "tokens": 191
     },
     {
       "name": "list_house_proposals",
@@ -288,7 +286,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": true,
       "ok_field": null,
       "retry_hint": false,
-      "ms": 2,
+      "ms": 1,
       "error": null
     },
     {
@@ -297,7 +295,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 3,
+      "ms": 1,
       "error": "propose_house refuses FORMING. Only CONFIRMED markdown after user GO."
     },
     {
@@ -306,7 +304,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 2,
+      "ms": 1,
       "error": "SAVE DRAFT / FORMING does not propose — stay in Grok. Glass never gets a FORMING house proposal."
     },
     {
@@ -315,7 +313,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 0,
+      "ms": 1,
       "error": "SAVE DRAFT does not write or propose — stay in Grok; no FORMING glass chip"
     },
     {
@@ -324,7 +322,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 1,
+      "ms": 0,
       "error": "to_status required: INTACT | WATCH | FIRED"
     },
     {
@@ -334,7 +332,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "ok_field": false,
       "retry_hint": false,
       "ms": 1,
-      "error": "08 is thin and there are not enough pending add_risk chips. Dump full 08, propose, then GO."
+      "error": "08 is thin (### Rn 1, tripwire tables 1; need ≥4). File was not stamped."
     },
     {
       "id": "accept-house-denied",
@@ -355,7 +353,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
 
 **Hypothesis:** Several tools overlap, so a model can pick the wrong one.
 
-Highest description Jaccard pairs: accept_house_proposal/accept_risk_proposal=0.625; propose_add_metric/get_metric_sor=0.375; commit_on_go/accept_house_proposal=0.37; propose_risk_status/propose_add_risk=0.35; propose_house_view/commit_on_go=0.333; list_house_proposals/list_risk_proposals=0.333; list_risk_proposals/list_driver_proposals=0.333; propose_keep_driver/propose_skip_driver=0.313. propose_add_metric's schema mirrors propose_add_risk and then returns "not wired". get_house_assist_context embeds the house markdown that get_house_view also returns (assist chars=2579, house chars=692).
+Highest description Jaccard pairs: accept_house_proposal/accept_risk_proposal=0.625; propose_add_metric/get_metric_sor=0.375; propose_risk_status/propose_add_risk=0.35; list_house_proposals/list_risk_proposals=0.333; list_risk_proposals/list_driver_proposals=0.333; commit_on_go/accept_house_proposal=0.313; propose_keep_driver/propose_skip_driver=0.313; commit_on_go/accept_risk_proposal=0.29. propose_add_metric's schema mirrors propose_add_risk and then returns "not wired". get_house_assist_context embeds the house markdown that get_house_view also returns (assist chars=2579, house chars=771).
 
 **Repro**
 
@@ -378,19 +376,9 @@ Highest description Jaccard pairs: accept_house_proposal/accept_risk_proposal=0.
       "jaccard": 0.375
     },
     {
-      "a": "commit_on_go",
-      "b": "accept_house_proposal",
-      "jaccard": 0.37
-    },
-    {
       "a": "propose_risk_status",
       "b": "propose_add_risk",
       "jaccard": 0.35
-    },
-    {
-      "a": "propose_house_view",
-      "b": "commit_on_go",
-      "jaccard": 0.333
     },
     {
       "a": "list_house_proposals",
@@ -403,59 +391,21 @@ Highest description Jaccard pairs: accept_house_proposal/accept_risk_proposal=0.
       "jaccard": 0.333
     },
     {
+      "a": "commit_on_go",
+      "b": "accept_house_proposal",
+      "jaccard": 0.313
+    },
+    {
       "a": "propose_keep_driver",
       "b": "propose_skip_driver",
       "jaccard": 0.313
+    },
+    {
+      "a": "commit_on_go",
+      "b": "accept_risk_proposal",
+      "jaccard": 0.29
     }
   ]
-}
-```
-
-## F18 — Register GO returns ok while the drivers gate still says the register is open
-
-**Severity:** P1 · **Verdict:** confirmed · **Area:** tools
-
-**Hypothesis:** commit_on_go kind=register closes the register before drivers can proceed.
-
-commit_on_go kind=register returned ok=true in 3 ms. commit_on_go kind=drivers then returned ok=false: Register is not closed. 08 missing or thin (### Rn 2, tripwire tables 2; need ≥4). Draft register, dump full 08 in Grok. Drivers start after register-closeout PASS. Three of the four add_risk chips in the same run were skipped as already in the source of record, and the success result still stamped the session. There is no retry hint on either call.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See tools.json calls register-go and drivers-go.
-
-**Evidence**
-
-```json
-{
-  "register_excerpt": "{\n  \"ok\": true,\n  \"available\": true,\n  \"kind\": \"register\",\n  \"slug\": \"demo\",\n  \"applied\": [\n    {\n      \"id\": \"rp_mv3fwmnv_1bcc5c\",\n      \"kind\": \"add_risk\",\n      \"status\": \"accepted\"\n    }\n  ],\n  \"skipped\": [\n    {\n      \"id\": \"rp_mv3fwmnt_daa1b1\",\n      \"error\": \"already in SoR\"\n    },\n    {\n      \"id\": \"rp_mv3fwmns_4d7990\",\n      \"error\": \"already in SoR\"\n    },\n    {\n      \"id\": \"rp_mv3fwmnr_3d53dc\",\n      \"error\": \"already in SoR\"\n    }\n  ],\n  \"header_accepted\": true,\n  \"snapshot\": \"cockpit/history/register-demo.2026-10-11T06-26-17-660Z.md\",\n  \"session\": {\n    \"version\": 1,\n    \"slug\": \"demo\",\n    \"phase\": \"REGISTER_COMMITTED\",\n    \"house_proposal_id\": \"hp_mv3fwmmy_ebd8ec\",\n    \"house_committed_at\": \"2026-10-11T06:26:17.646Z\",\n    \"house_snapshot\": \"cockpit/history/house-demo.2026-10-11T06-26-17-645Z.md\",\n    \"compile\": {\n      \"ran\": false,\n      \"reason\": \"COCKPIT_GO_COMMIT_NO_CO",
-  "drivers_error": "Register is not closed. 08 missing or thin (### Rn 2, tripwire tables 2; need ≥4). Draft register, dump full 08 in Grok. Drivers start after register-closeout PASS."
-}
-```
-
-## F15 — In the sandbox, a shell append changed the fixture house with no GO utterance
-
-**Severity:** P1 · **Verdict:** confirmed · **Area:** tools
-
-**Hypothesis:** Predefined tools are what make writes safe. Bash-capable hosts can ignore them.
-
-propose_house_view with FORMING was refused (error=propose_house refuses FORMING. Only CONFIRMED markdown after user GO.). propose with intent save_draft was refused (error=SAVE DRAFT / FORMING does not propose — stay in Grok. Glass never gets a FORMING house proposal.). A one-line shell append on the sandbox house file set appended=true, exit=0, bytes 254 → 274. The product tree was not the target. product_desks_unchanged=true.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- The probe builds /tmp/cockpit-tool-sandbox-<pid>, appends inside that vault, then deletes the sandbox.
-- See tools.json bash_bypass. Re-run to reproduce. Do not point this at a real vault.
-
-**Evidence**
-
-```json
-{
-  "exit": 0,
-  "bytes_before": 254,
-  "bytes_after": 274,
-  "appended": true,
-  "go_utterance_required": false
 }
 ```
 
@@ -630,6 +580,7 @@ propose_house_view with FORMING was refused (error=propose_house refuses FORMING
 
 - Phase-1 repros not reproduced on this run: F1 unpadded 2026-10-01 beats 2026-9-30; C-date-iso keeps October; F2 cash-plus-guidance stays cash and the outlook sentence stays revenue_guide; F3 “Cash was $222 million” is the live cash claim; F4 employees, “45 percent”, and spaced “$ 12” stay; the qualitative canary is elided; F9 missing grade and explicit C pick bare in both languages; F17 inventory impairment is impairment and a goodwill balance is goodwill.
 - Phase-2 repros not reproduced on this run: F5 assemble, retrieve, and get_pack_snapshot stay within 10000 characters; unknown house notes do not survive; F6 END CONTEXT is inside max_chars; F7 risks intent keeps demo-price; F8 older cash, debt, and gross margin stay beside newer revenue; F10 the residual cap of 8 names the omitted claims.
+- Phase-3 repros not reproduced on this run: F18 register ok=true and drivers is not rejected for a thin register (drivers ok=true); F15 a shell append still changes bytes (254 → 274) and is not a GO: audit mismatch, house-closeout fails.
 - Unpadded and padded dates keep the newer claim (C-date-unpadded winner=oct, C-date-iso winner=new). A bare FY label still has no invented month.
 - Same-day ties keep the earlier array element (C-same-day-tie winner=first). That matches a stable sort. It is an arbitrary pick when two filings share a date, and it is visible in the case.
 - Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. The host trajectory of the new-desk command plus eight slice notes is still a tail-keep, which is F11.
