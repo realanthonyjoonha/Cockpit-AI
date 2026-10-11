@@ -152,6 +152,70 @@
       "form": "10-KT",
       "reporting": "us-gaap",
       "currency": "USD"
+    },
+    {
+      "id": "sixk-nofp",
+      "src": "review",
+      "sector": "selection",
+      "form": "6-K",
+      "reporting": "ifrs-full",
+      "currency": "EUR"
+    },
+    {
+      "id": "tenkt-q",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-KT",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "k-vs-q4",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "primary-ytd",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-Q",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "span-tie",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "span-tie-rev",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "true-total",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "stale-slot",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
     }
   ]
 }

@@ -217,6 +217,54 @@ export function checkReviewerCases(api) {
     errors.push(`concept-priority ${pref?.concept}=${pref?.value_text}`);
   }
 
+  const sixk = api.taggedSlots(factsFor(api, 'sixk-q').facts).company_revenue;
+  if (sixk?.value_text !== '90000000' || sixk?.ytd?.value_text !== '190000000' || sixk?.form !== '6-K') {
+    errors.push(`sixk-q ${sixk?.value_text} ytd ${sixk?.ytd?.value_text} form ${sixk?.form}`);
+  }
+  const tenkt = api.taggedSlots(factsFor(api, 'tenkt').facts).company_revenue;
+  if (tenkt?.value_text !== '440000000' || tenkt?.form !== '10-KT') {
+    errors.push(`tenkt ${tenkt?.value_text} form ${tenkt?.form}`);
+  }
+  const sixkNo = api.taggedSlots(factsFor(api, 'sixk-nofp').facts).company_revenue;
+  if (sixkNo?.value_text !== '80000000' || sixkNo?.ytd?.value_text !== '170000000') {
+    errors.push(`sixk-nofp ${sixkNo?.value_text} ytd ${sixkNo?.ytd?.value_text}`);
+  }
+  const tenktQ = api.taggedSlots(factsFor(api, 'tenkt-q').facts).company_revenue;
+  if (tenktQ?.value_text !== '440000000' || tenktQ?.form !== '10-KT' || tenktQ?.ytd) {
+    errors.push(`tenkt-q ${tenktQ?.value_text} form ${tenktQ?.form} ytd ${tenktQ?.ytd?.value_text}`);
+  }
+  const kq4 = api.taggedSlots(factsFor(api, 'k-vs-q4').facts).company_revenue;
+  if (kq4?.value_text !== '1000000000' || kq4?.form !== '10-K' || kq4?.ytd) {
+    errors.push(`k-vs-q4 ${kq4?.value_text} form ${kq4?.form}`);
+  }
+  const pytd = api.taggedSlots(factsFor(api, 'primary-ytd').facts).company_revenue;
+  if (pytd?.value_text !== '500000000' || pytd?.concept !== 'us-gaap:Revenues') {
+    errors.push(`primary-ytd ${pytd?.concept}=${pytd?.value_text}`);
+  }
+  const span = api.taggedSlots(factsFor(api, 'span-tie').facts).company_revenue;
+  const spanR = api.taggedSlots(factsFor(api, 'span-tie-rev').facts).company_revenue;
+  if (span?.value_text !== '200000000' || spanR?.value_text !== span?.value_text) {
+    errors.push(`span-tie ${span?.value_text} rev ${spanR?.value_text}`);
+  }
+  const tot = api.taggedSlots(factsFor(api, 'true-total').facts).company_revenue;
+  if (tot?.value_text !== '182447000000' || tot?.concept !== 'us-gaap:Revenues') {
+    errors.push(`true-total ${tot?.concept}=${tot?.value_text}`);
+  }
+  const staleFacts = factsFor(api, 'stale-slot').facts;
+  const staleSlots = api.taggedSlots(staleFacts);
+  if (staleSlots.total_debt) errors.push(`stale-slot filled total_debt ${staleSlots.total_debt?.value_text}`);
+  const staleGaps = api.headlineGaps ? api.headlineGaps(staleSlots, null, staleFacts) : [];
+  if (!staleGaps.some((g) => g.includes('stale: last reported 2014-06-30'))) {
+    errors.push(`stale-slot gap ${JSON.stringify(staleGaps)}`);
+  }
+  const bank = api.taggedSlots(factsFor(api, 'bank').facts);
+  if (bank.company_revenue?.value_text !== '182447000000' || bank.company_revenue?.concept !== 'us-gaap:Revenues') {
+    errors.push(`bank revenue ${bank.company_revenue?.concept}=${bank.company_revenue?.value_text}`);
+  }
+  if (bank.total_debt || bank.interest_revenue) {
+    errors.push(`bank stale slots still filled debt=${bank.total_debt?.value_text} int=${bank.interest_revenue?.value_text}`);
+  }
+
   return errors;
 }
 
@@ -224,7 +272,11 @@ export function checkCompanyfactsExact(api) {
   const errors = [];
   const index = JSON.parse(readFileSync(path.join(CF_DIR, 'index.json'), 'utf8'));
   if ((index.issuers || []).length < 12) errors.push(`companyfacts issuers ${index.issuers?.length}`);
-  for (const need of ['old-primary', 'q111', 'q111-rev', 'concept-priority']) {
+  for (const need of [
+    'old-primary', 'q111', 'q111-rev', 'concept-priority',
+    'sixk-q', 'tenkt', 'sixk-nofp', 'tenkt-q', 'k-vs-q4',
+    'primary-ytd', 'span-tie', 'span-tie-rev', 'true-total', 'stale-slot',
+  ]) {
     if (!(index.issuers || []).some((row) => row.id === need)) errors.push(`missing reviewer fixture ${need}`);
   }
   for (const row of index.issuers || []) {
@@ -233,8 +285,26 @@ export function checkCompanyfactsExact(api) {
     const expected = loadExpected(row.id);
     for (const [mid, want] of Object.entries(expected.slots || {})) {
       const got = slots[mid];
-      if (!got || got.value_text !== want.value_text || got.concept !== want.concept || got.period.end !== want.end || got.unit !== want.unit) {
+      const ytd = got?.ytd ? got.ytd.value_text : null;
+      const wantYtd = want.ytd ? want.ytd.value_text : null;
+      if (!got
+        || got.value_text !== want.value_text
+        || got.concept !== want.concept
+        || got.period.end !== want.end
+        || got.unit !== want.unit
+        || got.form !== want.form
+        || got.filed !== want.filed
+        || ytd !== wantYtd) {
         errors.push(`${row.id} ${mid} ${got ? got.value_text : 'missing'} != ${want.value_text}`);
+      }
+    }
+    for (const mid of expected.empty || []) {
+      if (slots[mid]) errors.push(`${row.id} ${mid} should be empty`);
+    }
+    if (api.headlineGaps && (expected.gaps_contain || []).length) {
+      const gaps = api.headlineGaps(slots, null, parsed.facts);
+      for (const msg of expected.gaps_contain) {
+        if (!gaps.includes(msg)) errors.push(`${row.id} missing gap ${msg}`);
       }
     }
   }

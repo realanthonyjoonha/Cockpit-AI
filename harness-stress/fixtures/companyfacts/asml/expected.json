@@ -70,15 +70,6 @@
       "filed": "2026-02-25",
       "unit": "EUR"
     },
-    "goodwill_impairment": {
-      "value_text": "0",
-      "end": "2019-12-31",
-      "start": "2019-01-01",
-      "concept": "us-gaap:GoodwillImpairmentLoss",
-      "form": "20-F",
-      "filed": "2020-02-12",
-      "unit": "EUR"
-    },
     "impairment": {
       "value_text": "6500000",
       "end": "2025-12-31",
@@ -124,15 +115,6 @@
       "filed": "2026-02-25",
       "unit": "EUR"
     },
-    "purchase_commitments": {
-      "value_text": "13983000",
-      "end": "2014-12-31",
-      "start": null,
-      "concept": "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount",
-      "form": "20-F",
-      "filed": "2015-02-11",
-      "unit": "EUR"
-    },
     "capex": {
       "value_text": "1573600000",
       "end": "2025-12-31",
@@ -159,27 +141,24 @@
       "form": "20-F",
       "filed": "2026-02-25",
       "unit": "EUR"
-    },
-    "dividends": {
-      "value_text": "597100000",
-      "end": "2018-12-31",
-      "start": "2018-01-01",
-      "concept": "us-gaap:PaymentsOfDividends",
-      "form": "20-F",
-      "filed": "2019-02-06",
-      "unit": "EUR"
     }
   },
   "empty": [
     "net_interest_income",
     "interest_revenue",
     "credit_loss_provision",
-    "guarantees"
+    "guarantees",
+    "goodwill_impairment",
+    "purchase_commitments",
+    "dividends"
   ],
   "gaps_contain": [
     "net_interest_income: not reported in structured data",
     "interest_revenue: not reported in structured data",
     "credit_loss_provision: not reported in structured data",
-    "guarantees: not reported in structured data"
+    "guarantees: not reported in structured data",
+    "goodwill_impairment: stale: last reported 2019-12-31",
+    "purchase_commitments: stale: last reported 2014-12-31",
+    "dividends: stale: last reported 2018-12-31"
   ]
 }
