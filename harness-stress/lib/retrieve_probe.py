@@ -37,7 +37,7 @@ def main() -> int:
             )
             if case.get("op") == "live":
                 live, superseded = live_claims(
-                    store.get("claims") or [], rules
+                    store.get("claims") or [], rules, facts=store.get("facts") or []
                 )
                 row["live"] = [
                     {

@@ -12,7 +12,9 @@ import {
   parseAmounts,
   parseAsOf,
   riskMetric,
+  sentenceHasAmount,
 } from '../server/contextpack.js';
+import { factNumber, parseXbrlFacts, shiftDecimal, taggedSlots } from '../server/xbrlFacts.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -20,6 +22,7 @@ import {
   checkSectors,
   loadSectors,
 } from '../../harness-stress/lib/sector-check.mjs';
+import { checkReview, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(ROOT, '..');
@@ -82,6 +85,25 @@ else bad(`issuer tokens: ${bannedHits.join(', ')}`);
 const stems = bannedNeedles(rules);
 if (!stems.length) ok('no guid or inventor stems');
 else bad(`stems: ${stems.join(', ')}`);
+
+const xbrlUnits = [
+  [shiftDecimal('1234.5', 6), '1234500000'],
+  [shiftDecimal('12', -2), '0.12'],
+  [shiftDecimal('-3', 3), '-3000'],
+  [factNumber('1.234,5', 'ixt:num-comma-decimal'), '1234.5'],
+  [factNumber('No', 'ixt-sec:numwordsen'), '0'],
+  [factNumber('\u2014', 'ixt:fixed-zero'), '0'],
+  [factNumber('about nine', 'ixt:num-dot-decimal'), null],
+];
+if (xbrlUnits.every(([got, want]) => got === want)) ok('JS XBRL scale and formats are string-exact');
+else bad(`JS XBRL units ${JSON.stringify(xbrlUnits)}`);
+const xApi = { ...api, sentenceHasAmount, parseXbrlFacts, taggedSlots };
+const taggedErrors = checkTaggedSectors(loadSectors(), xApi);
+if (!taggedErrors.length) ok('JS tagged XBRL slots own the ten-sector live values');
+else taggedErrors.forEach((e) => bad(e));
+const reviewRun = checkReview(xApi);
+if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave tagged slots alone`);
+else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);
