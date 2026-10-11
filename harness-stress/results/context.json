@@ -184,7 +184,10 @@
         "r6",
         "r5"
       ],
-      "cap": 8
+      "cap": 8,
+      "gaps": [
+        "4 unclassified numbered claims omitted"
+      ]
     },
     {
       "id": "C-missing-grade",
@@ -205,10 +208,10 @@
     },
     {
       "id": "C-js-assemble-shape",
-      "chars": 778,
-      "tokens": 227,
+      "chars": 842,
+      "tokens": 244,
       "schema": "contextpack.v2",
-      "has_budget": false,
+      "has_budget": true,
       "has_superseded": false,
       "has_stale_tripwires": false,
       "claim_ids": [
@@ -220,8 +223,8 @@
     },
     {
       "id": "C-js-no-char-cap",
-      "chars": 16588,
-      "over_10000": true,
+      "chars": 1564,
+      "over_10000": false,
       "claim_count": 2
     }
   ],
@@ -241,7 +244,8 @@
         ],
         "superseded_ids": [
           "sep"
-        ]
+        ],
+        "gaps": []
       },
       {
         "id": "C-missing-grade",
@@ -256,7 +260,8 @@
         ],
         "superseded_ids": [
           "cee"
-        ]
+        ],
+        "gaps": []
       },
       {
         "id": "C-guid-steals-cash",
@@ -278,30 +283,29 @@
         ],
         "superseded_ids": [
           "cash-clean"
-        ]
+        ],
+        "gaps": []
       },
       {
         "id": "C-retrieve-crowd",
-        "chars": 2100,
+        "chars": 1280,
         "over_budget": false,
         "budget": {
           "limit_chars": 10000,
-          "used_chars": 2100,
+          "used_chars": 1280,
           "trimmed": false
         },
         "claim_ids": [
           "rev9",
-          "rev8",
-          "rev7",
-          "rev6",
-          "rev5",
-          "rev4",
-          "rev3",
-          "rev2",
-          "rev1",
-          "rev0",
           "cash-old",
-          "debt-old"
+          "debt-old",
+          "gm-old"
+        ],
+        "metric_ids": [
+          "company_revenue",
+          "cash",
+          "long_term_debt",
+          "gross_margin"
         ],
         "gap_texts": [
           "GAP-CANARY-TAIL"
@@ -318,23 +322,26 @@
       },
       {
         "id": "C-retrieve-fat-claims",
-        "chars": 16891,
-        "over_budget": true,
+        "chars": 1882,
+        "over_budget": false,
         "budget": {
           "limit_chars": 10000,
-          "used_chars": 16891,
+          "used_chars": 1882,
           "trimmed": true
         },
         "claim_ids": [
           "fat2",
           "fat1"
         ],
+        "metric_ids": [
+          "gross_margin",
+          "company_revenue"
+        ],
         "gap_texts": [
-          "GAP-CANARY-TAIL",
-          "pack over budget after trim (16910 > 10000)"
+          "GAP-CANARY-TAIL"
         ],
         "series_ids": [],
-        "has_provenance": false,
+        "has_provenance": true,
         "house_keys": [
           "date",
           "play",
@@ -345,45 +352,49 @@
       },
       {
         "id": "C-retrieve-unknown-house-field",
-        "chars": 20792,
-        "over_budget": true,
+        "chars": 857,
+        "over_budget": false,
         "budget": {
           "limit_chars": 10000,
-          "used_chars": 20792,
+          "used_chars": 857,
           "trimmed": true
         },
         "claim_ids": [
           "rev"
         ],
+        "metric_ids": [
+          "company_revenue"
+        ],
         "gap_texts": [
           "GAP-CANARY-TAIL",
-          "pack over budget after trim (20811 > 10000)"
+          "dropped house_prior.notes"
         ],
         "series_ids": [],
-        "has_provenance": false,
+        "has_provenance": true,
         "house_keys": [
           "date",
-          "notes",
           "play",
           "status",
           "view_excerpt"
         ],
-        "notes_len": 20000
+        "notes_len": 0
       },
       {
         "id": "C-retrieve-risks-mu-filter",
-        "chars": 524,
+        "chars": 565,
         "over_budget": false,
         "budget": {
           "limit_chars": 10000,
-          "used_chars": 524,
+          "used_chars": 565,
           "trimmed": false
         },
         "claim_ids": [],
+        "metric_ids": [],
         "gap_texts": [
           "GAP-CANARY-TAIL"
         ],
         "series_ids": [
+          "demo-price",
           "mu-price"
         ],
         "has_provenance": true,
@@ -397,12 +408,14 @@
       },
       {
         "id": "C-agent-tail-cut",
-        "chars": 28042,
-        "truncated": true,
+        "chars": 2139,
+        "max_chars": 28000,
+        "truncated": false,
         "has_gap_canary": true,
-        "has_end_marker": false,
+        "has_end_marker": true,
         "has_head_canary": true,
-        "tail": "WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WOR\n\n…[agent context truncated at max_chars]…"
+        "middle_omitted": false,
+        "tail": "D WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WOR ← fixture\n\n## Risks — 0 total; WATCH: —\n\n## Gaps\n- GAP-CANARY-TAIL\n\n_Decision-support only. No buy/sell/hold/target/sizing._\n\n## Ontology gaps\n- GAP-CANARY-TAIL\n---\nEND CONTEXT. Answer the user question using only the material above. Cite claim grades/dates. Flag gaps."
       }
     ]
   },

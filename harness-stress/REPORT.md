@@ -2,7 +2,7 @@
 
 Measured on this tree. A flaw is listed below only when this run still reproduces it.
 
-Run at: 2026-10-11T05:58:52.768Z
+Run at: 2026-10-11T06:26:20.339Z
 Tokenizer: gpt-tokenizer@2.9.0 default encode
 Product desks unchanged during the run: yes
 
@@ -26,11 +26,6 @@ The 2026-10-10 code-read audit said context handling and the 24-tool surface wer
 
 | ID | Sev | Area | Verdict | Title |
 | --- | --- | --- | --- | --- |
-| F5 | P1 | context | confirmed | The 10k cap is on retrieve(), and the MCP pack path does not apply it |
-| F6 | P1 | context | confirmed | ont agent context hard-cuts at 28,000 characters and drops the closing instruction |
-| F7 | P2 | context | confirmed | The risks intent keeps series whose ids start with "mu" |
-| F8 | P1 | context | confirmed | retrieve() keeps the newest claims, so repeated revenue lines crowd out older metrics |
-| F10 | P2 | context | confirmed | Unclassified dollar claims are capped at 8 |
 | F11 | P1 | context | confirmed | A new-desk trajectory overflows tight host budgets and a tail-keep drops the seeded facts |
 | F12 | P2 | tools | confirmed | Full catalog versus an 8-tool core, including two tools that always refuse |
 | F13 | P2 | tools | confirmed | Malformed args, unknown desks, and refused writes return errors with no retry hint |
@@ -40,184 +35,6 @@ The 2026-10-10 code-read audit said context handling and the 24-tool surface wer
 | F16 | P1 | tools+context | measured | Model arm: recall and tool choice on two models, three arms, repeated |
 
 Severity: P0 means a later step can treat a wrong figure as the live metric. P1 means seeded facts disappear, or the documented budget is not the path the agent uses. P2 means token cost, overlap, or errors without a retry hint.
-
-## F5 — The 10k cap is on retrieve(), and the MCP pack path does not apply it
-
-**Severity:** P1 · **Verdict:** confirmed · **Area:** context
-
-**Hypothesis:** A hard 10k-character cap binds the agent context pack (D-ONTO-8, CONTRACT.md).
-
-assembleAgentPack has no budget field (has_budget=false). A two-claim fixture serializes to 16588 characters. get_pack_snapshot on a fat DEMO pack returned 46089 characters (16013 tokens). retrieve() on fat claim text returned 16891 characters, over_budget=true, trimmed=true. An unknown house_prior.notes field of 20000 characters survives the cutter (over_budget=true) because the cutter only shrinks known keys.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See context.json C-js-no-char-cap, C-retrieve-fat-claims, C-retrieve-unknown-house-field, and tools.json fat_pack.
-
-**Evidence**
-
-```json
-{
-  "assemble": {
-    "chars": 778,
-    "has_budget": false,
-    "has_stale_tripwires": false
-  },
-  "js_fat_chars": 16588,
-  "tool_fat": {
-    "chars": 46089,
-    "tokens": 16013,
-    "over_10000_chars": true
-  },
-  "retrieve_fat": {
-    "chars": 16891,
-    "budget": {
-      "limit_chars": 10000,
-      "used_chars": 16891,
-      "trimmed": true
-    },
-    "over_budget": true
-  },
-  "unknown_field": {
-    "chars": 20792,
-    "notes_len": 20000,
-    "over_budget": true,
-    "budget": {
-      "limit_chars": 10000,
-      "used_chars": 20792,
-      "trimmed": true
-    }
-  }
-}
-```
-
-## F6 — ont agent context hard-cuts at 28,000 characters and drops the closing instruction
-
-**Severity:** P1 · **Verdict:** confirmed · **Area:** context
-
-**Hypothesis:** Overview budgets never drop the closing contract. Long runs have no summarize step inside Cockpit.
-
-build_agent_context returned 28042 characters. truncated=true. The string "END CONTEXT" is present=false. GAP-CANARY-TAIL is present=true because that canary is also copied into the overview pack earlier in the string; the cut removed the final instruction instead. The slice is not aligned to a claim boundary (the tail is a partial "WORD" run plus the truncation marker). Command files that mention summarize or a context window: (none). implementation-notes.md still describes itself as a resume anchor; that file is prose, not a compactor.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See context.json python case C-agent-tail-cut and flow.json.
-
-**Evidence**
-
-```json
-{
-  "agent": {
-    "id": "C-agent-tail-cut",
-    "chars": 28042,
-    "truncated": true,
-    "has_gap_canary": true,
-    "has_end_marker": false,
-    "has_head_canary": true,
-    "tail": "WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WOR\n\n…[agent context truncated at max_chars]…"
-  },
-  "summarize_mentions": [],
-  "resume_anchor_prose": true
-}
-```
-
-## F7 — The risks intent keeps series whose ids start with "mu"
-
-**Severity:** P2 · **Verdict:** confirmed · **Area:** context
-
-**Hypothesis:** Retrieve is generic across desks.
-
-retrieve(DEMO, "risks") returned series ids ["mu-price"]. The fixture series demo-price was removed. The mu-price row was kept. The filter is hard-coded in ontology/api/retrieve.py.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See context.json case C-retrieve-risks-mu-filter.
-
-**Evidence**
-
-```json
-{
-  "series_ids": [
-    "mu-price"
-  ]
-}
-```
-
-## F8 — retrieve() keeps the newest claims, so repeated revenue lines crowd out older metrics
-
-**Severity:** P1 · **Verdict:** confirmed · **Area:** context
-
-**Hypothesis:** The 10k overview trim drops lowest-priority extras and keeps a representative claim set.
-
-The fixture had 10 newer revenue claims plus cash, debt, and gross-margin claims from 2020. Overview claim ids kept: rev9, rev8, rev7, rev6, rev5, rev4, rev3, rev2, rev1, rev0, cash-old, debt-old. Older unique metrics kept: cash-old, debt-old. This trim is count-based on as_of, which is a different algorithm from contextpack.js one-per-metric.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See context.json case C-retrieve-crowd.
-
-**Evidence**
-
-```json
-{
-  "claim_ids": [
-    "rev9",
-    "rev8",
-    "rev7",
-    "rev6",
-    "rev5",
-    "rev4",
-    "rev3",
-    "rev2",
-    "rev1",
-    "rev0",
-    "cash-old",
-    "debt-old"
-  ],
-  "chars": 2100,
-  "budget": {
-    "limit_chars": 10000,
-    "used_chars": 2100,
-    "trimmed": false
-  }
-}
-```
-
-## F10 — Unclassified dollar claims are capped at 8
-
-**Severity:** P2 · **Verdict:** confirmed · **Area:** context
-
-**Hypothesis:** Residual numbered claims are capped.
-
-12 unclassified dollar claims went in. 8 came out. Kept ids: r12, r11, r10, r9, r8, r7, r6, r5.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See context.json case C-residual-cap.
-
-**Evidence**
-
-```json
-{
-  "id": "C-residual-cap",
-  "input": 12,
-  "kept": 8,
-  "kept_ids": [
-    "r12",
-    "r11",
-    "r10",
-    "r9",
-    "r8",
-    "r7",
-    "r6",
-    "r5"
-  ],
-  "cap": 8
-}
-```
 
 ## F11 — A new-desk trajectory overflows tight host budgets and a tail-keep drops the seeded facts
 
@@ -480,7 +297,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 1,
+      "ms": 3,
       "error": "propose_house refuses FORMING. Only CONFIRMED markdown after user GO."
     },
     {
@@ -489,7 +306,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 1,
+      "ms": 2,
       "error": "SAVE DRAFT / FORMING does not propose — stay in Grok. Glass never gets a FORMING house proposal."
     },
     {
@@ -600,7 +417,7 @@ Highest description Jaccard pairs: accept_house_proposal/accept_risk_proposal=0.
 
 **Hypothesis:** commit_on_go kind=register closes the register before drivers can proceed.
 
-commit_on_go kind=register returned ok=true in 4 ms. commit_on_go kind=drivers then returned ok=false: Register is not closed. 08 missing or thin (### Rn 2, tripwire tables 2; need ≥4). Draft register, dump full 08 in Grok. Drivers start after register-closeout PASS. Three of the four add_risk chips in the same run were skipped as already in the source of record, and the success result still stamped the session. There is no retry hint on either call.
+commit_on_go kind=register returned ok=true in 3 ms. commit_on_go kind=drivers then returned ok=false: Register is not closed. 08 missing or thin (### Rn 2, tripwire tables 2; need ≥4). Draft register, dump full 08 in Grok. Drivers start after register-closeout PASS. Three of the four add_risk chips in the same run were skipped as already in the source of record, and the success result still stamped the session. There is no retry hint on either call.
 
 **Repro**
 
@@ -611,7 +428,7 @@ commit_on_go kind=register returned ok=true in 4 ms. commit_on_go kind=drivers t
 
 ```json
 {
-  "register_excerpt": "{\n  \"ok\": true,\n  \"available\": true,\n  \"kind\": \"register\",\n  \"slug\": \"demo\",\n  \"applied\": [\n    {\n      \"id\": \"rp_mv3exba7_01fe0a\",\n      \"kind\": \"add_risk\",\n      \"status\": \"accepted\"\n    }\n  ],\n  \"skipped\": [\n    {\n      \"id\": \"rp_mv3exba6_2f26d8\",\n      \"error\": \"already in SoR\"\n    },\n    {\n      \"id\": \"rp_mv3exba5_a5a7be\",\n      \"error\": \"already in SoR\"\n    },\n    {\n      \"id\": \"rp_mv3exba3_665e26\",\n      \"error\": \"already in SoR\"\n    }\n  ],\n  \"header_accepted\": true,\n  \"snapshot\": \"cockpit/history/register-demo.2026-10-11T05-58-49-952Z.md\",\n  \"session\": {\n    \"version\": 1,\n    \"slug\": \"demo\",\n    \"phase\": \"REGISTER_COMMITTED\",\n    \"house_proposal_id\": \"hp_mv3exb98_caa442\",\n    \"house_committed_at\": \"2026-10-11T05:58:49.940Z\",\n    \"house_snapshot\": \"cockpit/history/house-demo.2026-10-11T05-58-49-939Z.md\",\n    \"compile\": {\n      \"ran\": false,\n      \"reason\": \"COCKPIT_GO_COMMIT_NO_CO",
+  "register_excerpt": "{\n  \"ok\": true,\n  \"available\": true,\n  \"kind\": \"register\",\n  \"slug\": \"demo\",\n  \"applied\": [\n    {\n      \"id\": \"rp_mv3fwmnv_1bcc5c\",\n      \"kind\": \"add_risk\",\n      \"status\": \"accepted\"\n    }\n  ],\n  \"skipped\": [\n    {\n      \"id\": \"rp_mv3fwmnt_daa1b1\",\n      \"error\": \"already in SoR\"\n    },\n    {\n      \"id\": \"rp_mv3fwmns_4d7990\",\n      \"error\": \"already in SoR\"\n    },\n    {\n      \"id\": \"rp_mv3fwmnr_3d53dc\",\n      \"error\": \"already in SoR\"\n    }\n  ],\n  \"header_accepted\": true,\n  \"snapshot\": \"cockpit/history/register-demo.2026-10-11T06-26-17-660Z.md\",\n  \"session\": {\n    \"version\": 1,\n    \"slug\": \"demo\",\n    \"phase\": \"REGISTER_COMMITTED\",\n    \"house_proposal_id\": \"hp_mv3fwmmy_ebd8ec\",\n    \"house_committed_at\": \"2026-10-11T06:26:17.646Z\",\n    \"house_snapshot\": \"cockpit/history/house-demo.2026-10-11T06-26-17-645Z.md\",\n    \"compile\": {\n      \"ran\": false,\n      \"reason\": \"COCKPIT_GO_COMMIT_NO_CO",
   "drivers_error": "Register is not closed. 08 missing or thin (### Rn 2, tripwire tables 2; need ≥4). Draft register, dump full 08 in Grok. Drivers start after register-closeout PASS."
 }
 ```
@@ -812,6 +629,7 @@ propose_house_view with FORMING was refused (error=propose_house refuses FORMING
 ## Refuted or narrowed
 
 - Phase-1 repros not reproduced on this run: F1 unpadded 2026-10-01 beats 2026-9-30; C-date-iso keeps October; F2 cash-plus-guidance stays cash and the outlook sentence stays revenue_guide; F3 “Cash was $222 million” is the live cash claim; F4 employees, “45 percent”, and spaced “$ 12” stay; the qualitative canary is elided; F9 missing grade and explicit C pick bare in both languages; F17 inventory impairment is impairment and a goodwill balance is goodwill.
+- Phase-2 repros not reproduced on this run: F5 assemble, retrieve, and get_pack_snapshot stay within 10000 characters; unknown house notes do not survive; F6 END CONTEXT is inside max_chars; F7 risks intent keeps demo-price; F8 older cash, debt, and gross margin stay beside newer revenue; F10 the residual cap of 8 names the omitted claims.
 - Unpadded and padded dates keep the newer claim (C-date-unpadded winner=oct, C-date-iso winner=new). A bare FY label still has no invented month.
 - Same-day ties keep the earlier array element (C-same-day-tie winner=first). That matches a stable sort. It is an arbitrary pick when two filings share a date, and it is visible in the case.
 - Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. The host trajectory of the new-desk command plus eight slice notes is still a tail-keep, which is F11.
