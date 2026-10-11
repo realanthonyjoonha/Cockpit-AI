@@ -2,7 +2,7 @@
 
 Measured on this tree. A flaw is listed below only when this run still reproduces it.
 
-Run at: 2026-10-11T06:46:21.695Z
+Run at: 2026-10-11T06:59:08.908Z
 Tokenizer: gpt-tokenizer@2.9.0 default encode
 Product desks unchanged during the run: yes
 
@@ -26,99 +26,12 @@ The 2026-10-10 code-read audit said context handling and the 24-tool surface wer
 
 | ID | Sev | Area | Verdict | Title |
 | --- | --- | --- | --- | --- |
-| F11 | P1 | context | confirmed | A new-desk trajectory overflows tight host budgets and a tail-keep drops the seeded facts |
 | F12 | P2 | tools | confirmed | Full catalog versus an 8-tool core, including two tools that always refuse |
 | F13 | P2 | tools | confirmed | Malformed args, unknown desks, and refused writes return errors with no retry hint |
 | F14 | P2 | tools | confirmed | Description overlap plus a metrics tool that is a trap |
 | F16 | P1 | tools+context | measured | Model arm: recall and tool choice on two models, three arms, repeated |
 
 Severity: P0 means a later step can treat a wrong figure as the live metric. P1 means seeded facts disappear, or the documented budget is not the path the agent uses. P2 means token cost, overlap, or errors without a retry hint.
-
-## F11 — A new-desk trajectory overflows tight host budgets and a tail-keep drops the seeded facts
-
-**Severity:** P1 · **Verdict:** confirmed · **Area:** context
-
-**Hypothesis:** Long DEEP runs depend on the host window. Cockpit does not summarize between slices.
-
-cockpit-new-desk.md is 4184 tokens. AGENTS.md is 2933 tokens. With ~6000-token slice notes, the transcript ends at 62382 tokens. First overflowing step by budget: {"8000":1,"16000":2,"32000":4,"64000":null,"96000":null,"128000":null}. On that deep trajectory the 32k tail-keep at the last step retains 0 of 8 seeded facts. The 128k window still holds 8 of 8, so this particular 8-slice transcript fits a 128k host and does not fit a 32k host. Twelve repeated pack snapshots cost 19392 tokens and still fit in 32k; the waste is duplicate payload, and the canaries survive. Cockpit does not write a slice summary back into the running prompt. The simulator's compaction is a tail-keep, which is what a host does when it has no summary step.
-
-**Repro**
-
-- node harness-stress/run.mjs
-- See flow.json trajectories and repeated_pack_calls.
-
-**Evidence**
-
-```json
-{
-  "command_tokens": 4184,
-  "agents_tokens": 2933,
-  "overflow_step": {
-    "8000": 1,
-    "16000": 2,
-    "32000": 4,
-    "64000": null,
-    "96000": null,
-    "128000": null
-  },
-  "final_tokens": 62382,
-  "step0_32k": {
-    "overflow": false,
-    "tokens_after_tail_keep": 7335,
-    "canaries_kept": 8,
-    "canaries": {
-      "F1": true,
-      "F2": true,
-      "F3": true,
-      "F4": true,
-      "F5": true,
-      "F6": true,
-      "F7": true,
-      "F8": true,
-      "kept": 8,
-      "total": 8
-    }
-  },
-  "last_32k": {
-    "overflow": true,
-    "tokens_after_tail_keep": 32000,
-    "canaries_kept": 0,
-    "canaries": {
-      "F1": false,
-      "F2": false,
-      "F3": false,
-      "F4": false,
-      "F5": false,
-      "F6": false,
-      "F7": false,
-      "F8": false,
-      "kept": 0,
-      "total": 8
-    }
-  },
-  "repeated_pack_tail": [
-    {
-      "call": 1,
-      "tokens": 1682,
-      "canaries_in_full": 8,
-      "canaries_in_32k_tail": 8
-    },
-    {
-      "call": 6,
-      "tokens": 9732,
-      "canaries_in_full": 8,
-      "canaries_in_32k_tail": 8
-    },
-    {
-      "call": 12,
-      "tokens": 19392,
-      "canaries_in_full": 8,
-      "canaries_in_32k_tail": 8
-    }
-  ],
-  "schema_tokens_each_call": 3063
-}
-```
 
 ## F12 — Full catalog versus an 8-tool core, including two tools that always refuse
 
@@ -304,7 +217,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 1,
+      "ms": 0,
       "error": "SAVE DRAFT / FORMING does not propose — stay in Grok. Glass never gets a FORMING house proposal."
     },
     {
@@ -322,7 +235,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 0,
+      "ms": 1,
       "error": "to_status required: INTACT | WATCH | FIRED"
     },
     {
@@ -340,7 +253,7 @@ Every captured call has retry_hint false. A missing or mistyped desk is MCP erro
       "isError": false,
       "ok_field": false,
       "retry_hint": false,
-      "ms": 0,
+      "ms": 1,
       "error": "Agent ACCEPT denied. House/risks SoR writes require glass ACCEPT unless this monorepo grants agent accept (COCKPIT_AGENT_ACCEPT=1 or .cockpit-scenario.json agent_accept:true). Use scenario-up (agent accept on by default) or explicit grant — never on kernel dogfood by accident."
     }
   ]
@@ -581,9 +494,10 @@ Highest description Jaccard pairs: accept_house_proposal/accept_risk_proposal=0.
 - Phase-1 repros not reproduced on this run: F1 unpadded 2026-10-01 beats 2026-9-30; C-date-iso keeps October; F2 cash-plus-guidance stays cash and the outlook sentence stays revenue_guide; F3 “Cash was $222 million” is the live cash claim; F4 employees, “45 percent”, and spaced “$ 12” stay; the qualitative canary is elided; F9 missing grade and explicit C pick bare in both languages; F17 inventory impairment is impairment and a goodwill balance is goodwill.
 - Phase-2 repros not reproduced on this run: F5 assemble, retrieve, and get_pack_snapshot stay within 10000 characters; unknown house notes do not survive; F6 END CONTEXT is inside max_chars; F7 risks intent keeps demo-price; F8 older cash, debt, and gross margin stay beside newer revenue; F10 the residual cap of 8 names the omitted claims.
 - Phase-3 repros not reproduced on this run: F18 register ok=true and drivers is not rejected for a thin register (drivers ok=true); F15 a shell append still changes bytes (254 → 274) and is not a GO: audit mismatch, house-closeout fails.
+- Phase-4 repros not reproduced on this run: F11 slice cards keep 8 of 8 seeded facts in a 32k tail (raw notes still keep 0; that control is the old trajectory).
 - Unpadded and padded dates keep the newer claim (C-date-unpadded winner=oct, C-date-iso winner=new). A bare FY label still has no invented month.
 - Same-day ties keep the earlier array element (C-same-day-tie winner=first). That matches a stable sort. It is an arbitrary pick when two filings share a date, and it is visible in the case.
-- Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. The host trajectory of the new-desk command plus eight slice notes is still a tail-keep, which is F11.
+- Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. Slice cards keep the eight seeded facts in a 32k tail. The raw-note trajectory remains the control.
 - Model arm: 32 Cursor subagent replies. Strong model gpt-5.6-sol-high. Cheaper model gemini-3.8-flash-low. No XAI_API_KEY. Recall of 8 seeded facts was 8/8 on recall-s (513 tokens) and recall-l (15485 tokens), 3 and 2 repeats. A 4-turn resume kept all 8 facts at the end (n=1 chain per model). The host did not error, and the replies contain no compaction notice. Tool identity on the full 24-tool catalog was 11/11 for both models across 3 repeats. Argument values were placeholders when the prompt had no real proposal id. On the 8-tool core, gpt-5.6-sol-high stayed 11/11 (null where the tool is absent). gemini-3.8-flash-low missed once in 3: it called commit_on_go kind=drivers for KEEP, a tool that is in the core list but is the wrong write. Bash-only reads of thin-desks.json, the house file, DEMO.json, and 08-risks matched the layout. Both models sometimes emitted go-commit.mjs for a GO write, which skips propose. One strong-model read used house-view-DEMO.md (wrong case on Linux). The host did not return token-usage counters for these subagents. A few long awk expressions in the bash logs are shortened; the path and whether the command writes are unchanged.
 
 ## Raw logs
