@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadCompanyfactsFile, taggedSlots } from '../server/companyfacts.js';
+import { headlineGaps, loadCompanyfactsFile, taggedSlots } from '../server/companyfacts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.resolve(HERE, '../../harness-stress/fixtures/companyfacts');
@@ -40,6 +40,10 @@ for (const id of dirs) {
   }
   for (const mid of expected.empty || []) {
     if (slots[mid]) fail(`${id} ${mid} should be empty`);
+  }
+  const gaps = headlineGaps(slots, null, parsed.facts);
+  for (const msg of expected.gaps_contain || []) {
+    if (!gaps.includes(msg)) fail(`${id} missing gap ${msg}`);
   }
 }
 

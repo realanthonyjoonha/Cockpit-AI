@@ -61,33 +61,6 @@
       "filed": "2026-05-04",
       "unit": "USD"
     },
-    "goodwill_impairment": {
-      "value_text": "611000000",
-      "end": "2020-12-31",
-      "start": "2020-01-01",
-      "concept": "us-gaap:GoodwillImpairmentLoss",
-      "form": "10-K",
-      "filed": "2022-02-23",
-      "unit": "USD"
-    },
-    "impairment": {
-      "value_text": "3300000000",
-      "end": "2023-12-31",
-      "start": "2023-01-01",
-      "concept": "us-gaap:ImpairmentOfLongLivedAssetsHeldForUse",
-      "form": "10-K",
-      "filed": "2026-02-18",
-      "unit": "USD"
-    },
-    "inventory": {
-      "value_text": "15158000000",
-      "end": "2012-06-30",
-      "start": null,
-      "concept": "us-gaap:InventoryNet",
-      "form": "10-Q",
-      "filed": "2012-08-02",
-      "unit": "USD"
-    },
     "rnd_expense": {
       "value_text": "1200000000",
       "end": "2025-12-31",
@@ -95,15 +68,6 @@
       "concept": "us-gaap:ResearchAndDevelopmentExpense",
       "form": "10-K",
       "filed": "2026-02-18",
-      "unit": "USD"
-    },
-    "purchase_commitments": {
-      "value_text": "936000000",
-      "end": "2015-12-31",
-      "start": null,
-      "concept": "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount",
-      "form": "10-K",
-      "filed": "2016-02-24",
       "unit": "USD"
     },
     "capex": {
@@ -114,15 +78,6 @@
       "form": "10-Q",
       "filed": "2026-05-04",
       "unit": "USD"
-    },
-    "diluted_shares": {
-      "value_text": "4419000000",
-      "end": "2013-12-31",
-      "start": "2013-01-01",
-      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
-      "form": "10-K",
-      "filed": "2014-02-26",
-      "unit": "shares"
     },
     "share_repurchase": {
       "value_text": "4868000000",
@@ -142,7 +97,12 @@
     "credit_loss_provision",
     "rpo_backlog",
     "guarantees",
-    "dividends"
+    "dividends",
+    "goodwill_impairment",
+    "impairment",
+    "inventory",
+    "purchase_commitments",
+    "diluted_shares"
   ],
   "gaps_contain": [
     "operating_income: not reported in structured data",
@@ -152,6 +112,11 @@
     "credit_loss_provision: not reported in structured data",
     "rpo_backlog: not reported in structured data",
     "guarantees: not reported in structured data",
-    "dividends: not reported in structured data"
+    "dividends: not reported in structured data",
+    "goodwill_impairment: stale: last reported 2020-12-31",
+    "impairment: stale: last reported 2023-12-31",
+    "inventory: stale: last reported 2012-06-30",
+    "purchase_commitments: stale: last reported 2015-12-31",
+    "diluted_shares: stale: last reported 2013-12-31"
   ]
 }

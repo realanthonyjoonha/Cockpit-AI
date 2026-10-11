@@ -18,7 +18,7 @@ import {
   sentenceHasAmount,
 } from '../server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../server/assistContext.js';
-import { mappedFacts, parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
+import { headlineGaps, mappedFacts, parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
 import { checkCompanyfactsExact } from '../../harness-stress/lib/review-check.mjs';
 import {
   bannedNeedles,
@@ -158,7 +158,7 @@ if ((crowded.claims || []).some((c) => c.origin === 'companyfacts' || c.origin =
   ok('JS over-budget pack keeps the tagged row');
 } else bad(`JS tagged-first ${JSON.stringify((crowded.claims || []).map((c) => c.origin))} size=${JSON.stringify(crowded).length}`);
 
-const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots };
+const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots, headlineGaps };
 const exactErrors = checkCompanyfactsExact(xApi);
 if (!exactErrors.length) ok('JS companyfacts fixtures match expected.json');
 else exactErrors.forEach((e) => bad(e));

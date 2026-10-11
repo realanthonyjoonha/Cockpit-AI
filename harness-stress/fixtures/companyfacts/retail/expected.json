@@ -90,15 +90,6 @@
       "filed": "2026-08-28",
       "unit": "USD"
     },
-    "impairment": {
-      "value_text": "400000000",
-      "end": "2021-07-31",
-      "start": "2021-02-01",
-      "concept": "us-gaap:AssetImpairmentCharges",
-      "form": "10-Q",
-      "filed": "2021-09-02",
-      "unit": "USD"
-    },
     "goodwill": {
       "value_text": "28260000000",
       "end": "2026-07-31",
@@ -115,15 +106,6 @@
       "concept": "us-gaap:InventoryNet",
       "form": "10-Q",
       "filed": "2026-08-28",
-      "unit": "USD"
-    },
-    "net_interest_income": {
-      "value_text": "-600000000",
-      "end": "2024-04-30",
-      "start": "2024-02-01",
-      "concept": "us-gaap:InterestIncomeExpenseNet",
-      "form": "10-Q",
-      "filed": "2024-06-07",
       "unit": "USD"
     },
     "capex": {
@@ -157,15 +139,6 @@
       "form": "10-Q",
       "filed": "2026-08-28",
       "unit": "USD"
-    },
-    "dividends": {
-      "value_text": "6048000000",
-      "end": "2020-01-31",
-      "start": "2019-02-01",
-      "concept": "us-gaap:PaymentsOfDividends",
-      "form": "10-K",
-      "filed": "2020-03-20",
-      "unit": "USD"
     }
   },
   "empty": [
@@ -175,7 +148,10 @@
     "rnd_expense",
     "rpo_backlog",
     "purchase_commitments",
-    "guarantees"
+    "guarantees",
+    "impairment",
+    "net_interest_income",
+    "dividends"
   ],
   "gaps_contain": [
     "goodwill_impairment: not reported in structured data",
@@ -184,6 +160,9 @@
     "rnd_expense: not reported in structured data",
     "rpo_backlog: not reported in structured data",
     "purchase_commitments: not reported in structured data",
-    "guarantees: not reported in structured data"
+    "guarantees: not reported in structured data",
+    "impairment: stale: last reported 2021-07-31",
+    "net_interest_income: stale: last reported 2024-04-30",
+    "dividends: stale: last reported 2020-01-31"
   ]
 }
