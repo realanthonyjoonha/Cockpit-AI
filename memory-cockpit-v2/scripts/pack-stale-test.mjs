@@ -58,6 +58,18 @@ const stale = inspectPackStale({ ticker: 'ZZ', vaultDir: vault, ontRoot: ont });
 if (stale.stale && stale.reason === 'vault newer than pack') ok('house newer → stale');
 else bad(`stale? ${JSON.stringify(stale)}`);
 
+const tStore = Date.now() / 1000 + 180;
+fs.utimesSync(storePath, tStore, tStore);
+const factsDir = path.join(vault, 'raw', 'zz-research', 'sec');
+fs.mkdirSync(factsDir, { recursive: true });
+const factsPath = path.join(factsDir, 'companyfacts.json');
+fs.writeFileSync(factsPath, '{"facts":{}}\n');
+fs.utimesSync(factsPath, tStore + 60, tStore + 60);
+const factsStale = inspectPackStale({ ticker: 'ZZ', vaultDir: vault, ontRoot: ont });
+if (factsStale.stale && String(factsStale.newest_input || '').includes('companyfacts.json')) {
+  ok('companyfacts cache newer → stale');
+} else bad(`facts stale? ${JSON.stringify(factsStale)}`);
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass} passed · ${fail} failed`);
 process.exit(fail ? 1 : 0);

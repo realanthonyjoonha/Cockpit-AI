@@ -104,6 +104,54 @@
       "form": "20-F",
       "reporting": "ifrs-full",
       "currency": "EUR"
+    },
+    {
+      "id": "old-primary",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "q111",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-Q",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "q111-rev",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-Q",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "concept-priority",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "sixk-q",
+      "src": "review",
+      "sector": "selection",
+      "form": "6-K",
+      "reporting": "ifrs-full",
+      "currency": "EUR"
+    },
+    {
+      "id": "tenkt",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-KT",
+      "reporting": "us-gaap",
+      "currency": "USD"
     }
   ]
 }
