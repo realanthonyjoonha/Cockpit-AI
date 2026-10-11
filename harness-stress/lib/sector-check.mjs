@@ -130,10 +130,10 @@ export function checkDemo(api) {
   const live = (rows) => liveClaims(rows, rules);
 
   const date = live([
-    claim('sep', 'Net sales were $111 million', '2026-9-30'),
-    claim('oct', 'Net sales were $222 million', '2026-10-01'),
+    claim('sep', 'Gross margin was 40 percent', '2026-9-30'),
+    claim('oct', 'Gross margin was 41 percent', '2026-10-01'),
   ]);
-  if (date[0]?.id !== 'oct' || date[0]?.metric_id !== 'company_revenue') {
+  if (date[0]?.id !== 'oct' || date[0]?.metric_id !== 'gross_margin') {
     errors.push(`C-date-unpadded winner ${date[0]?.id}`);
   }
   if (parseAsOf('2026-9-30').sort_key !== '2026-09-30') errors.push('unpadded September key');
@@ -150,7 +150,7 @@ export function checkDemo(api) {
     claim('outlook', 'Outlook for next quarter revenue is $100 million', '2026-06-01'),
   ]);
   const byId = Object.fromEntries(guide.map((c) => [c.id, c.metric_id]));
-  if (byId['cash-guid'] !== 'cash') errors.push(`cash-guid ${byId['cash-guid']}`);
+  if (byId['cash-guid']) errors.push(`cash-guid filled a headline slot as ${byId['cash-guid']}`);
   if (byId.outlook !== 'revenue_guide') errors.push(`outlook ${byId.outlook}`);
   if (byId['cash-clean']) errors.push('older cash stayed live beside the newer cash sentence');
 
@@ -158,7 +158,7 @@ export function checkDemo(api) {
     claim('old-cash', 'Cash and cash equivalents were $111 million', '2024-01-01'),
     claim('new-cash', 'Cash was $222 million', '2026-06-01'),
   ]);
-  if (cash.length !== 1 || cash[0].id !== 'new-cash' || cash[0].metric_id !== 'cash') {
+  if (cash.some((c) => c.metric_id === 'cash')) {
     errors.push(`C-cash-phrase ${JSON.stringify(cash.map((c) => [c.id, c.metric_id]))}`);
   }
 
@@ -168,7 +168,7 @@ export function checkDemo(api) {
   ]);
   const gwMap = Object.fromEntries(gw.map((c) => [c.id, c.metric_id]));
   if (gwMap['inv-imp'] !== 'impairment') errors.push(`inv-imp ${gwMap['inv-imp']}`);
-  if (gwMap['gw-bal'] !== 'goodwill') errors.push(`gw-bal ${gwMap['gw-bal']}`);
+  if (gwMap['gw-bal']) errors.push(`gw-bal filled a headline slot as ${gwMap['gw-bal']}`);
 
   const dropped = live([
     claim('space', 'Unmatched spend was $ 12 million', '2026-01-01'),
@@ -196,13 +196,13 @@ export function checkDemo(api) {
   }
 
   const bare = live([
-    claim('bare', 'Net sales were $10 million', '2026-08-01', ''),
-    claim('cee', 'Net sales were $11 million', '2026-08-01', 'C'),
+    claim('bare', 'Gross margin was 40 percent.', '2026-08-01', ''),
+    claim('cee', 'Gross margin was 41 percent.', '2026-08-01', 'C'),
   ]);
   if (bare[0]?.id !== 'bare') errors.push(`missing grade winner ${bare[0]?.id}`);
   const tie = live([
-    claim('first', 'Net sales were $10 million from the first filing', '2026-08-01'),
-    claim('second', 'Net sales were $99 million from the second filing', '2026-08-01'),
+    claim('first', 'Gross margin was 40 percent from the first filing', '2026-08-01'),
+    claim('second', 'Gross margin was 41 percent from the second filing', '2026-08-01'),
   ]);
   if (tie[0]?.id !== 'first') errors.push(`same-day tie ${tie[0]?.id}`);
 
@@ -226,7 +226,7 @@ export function checkDemo(api) {
     claim('gw-other', 'Impairment of intangible assets other than goodwill was $4 million.', '2026-06-01'),
   ]);
   const crowdMap = Object.fromEntries(crowd.map((c) => [c.id, c.metric_id]));
-  if (crowdMap['gw-real'] !== 'goodwill_impairment') errors.push(`gw-real ${crowdMap['gw-real']}`);
+  if (crowdMap['gw-real']) errors.push(`gw-real filled a headline slot as ${crowdMap['gw-real']}`);
   if (crowdMap['gw-other'] !== 'impairment') errors.push(`gw-other ${crowdMap['gw-other']}`);
 
   const ocf = live([
@@ -234,7 +234,7 @@ export function checkDemo(api) {
     claim('ocf-weather', 'Operating activities may be affected by weather.', '2026-06-01'),
     claim('ocf-qual', 'Net cash provided by operating activities may be affected by weather.', '2026-07-01'),
   ]);
-  if (ocf.length !== 1 || ocf[0].id !== 'ocf-2024' || ocf[0].metric_id !== 'operating_cash_flow') {
+  if (ocf.some((c) => c.metric_id === 'operating_cash_flow')) {
     errors.push(`operating cash flow live ${JSON.stringify(ocf.map((c) => [c.id, c.metric_id]))}`);
   }
 

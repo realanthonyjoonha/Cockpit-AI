@@ -13,7 +13,7 @@ export const SLICE_CARD_TOKEN_CAP = 1500;
 
 const SLUG_RE = /\[\[[A-Za-z0-9][A-Za-z0-9_-]*\]\]/;
 const FORM_RE = /\b(?:10-K|10-Q|8-K|20-F|6-K|40-F)\b/g;
-const ADVICE_RE = /\b(?:buy|sell|hold)\b|\bprice targets?\b|\btarget prices?\b|\bposition siz(?:e|ing)\b|\bPTs?\b/i;
+const ADVICE_RE = /(?<![\w-])(?:buy|sell)(?![\w-])|\bhold\b(?!\s+a\s+meeting)|\bprice targets?\b|\btarget prices?\b|\bposition siz(?:e|ing)\b|\bPTs?\b/i;
 const FIGURE_RE = /[$€£¥%]|\b(?:million|billion|thousand|trillion|percent|pct)\b/i;
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -54,6 +54,7 @@ export function countCardTokens(text) {
 function lineHasUncitedNumber(line) {
   const trimmed = line.trim();
   if (!trimmed) return false;
+  if (/^GAP\s*:/i.test(trimmed)) return false;
   if (/^#{1,6}\s/.test(trimmed)) {
     const heading = trimmed.replace(FORM_RE, '');
     if (!FIGURE_RE.test(heading)) return false;

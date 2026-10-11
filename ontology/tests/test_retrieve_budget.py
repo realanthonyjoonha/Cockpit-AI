@@ -105,13 +105,13 @@ class TestRetrieveBudget(unittest.TestCase):
             for i in range(10)
         ]
         claims += [
-            _claim("cash-old", "Cash and cash equivalents were $5 million", "2020-01-01"),
+            _claim("inv-old", "Inventory was $5 million", "2020-01-01"),
             _claim("debt-old", "Long-term debt was $7 million", "2020-01-01"),
             _claim("gm-old", "Gross margin was 40%", "2020-01-01"),
         ]
         self._write("DEMO", _store(claims))
         ids = [c.get("id") for c in retrieve("DEMO", "overview").get("claims") or []]
-        for cid in ("cash-old", "debt-old", "gm-old"):
+        for cid in ("inv-old", "debt-old", "gm-old"):
             self.assertIn(cid, ids)
 
     def test_risks_intent_returns_the_store_series(self):
@@ -240,6 +240,38 @@ class TestRetrieveBudget(unittest.TestCase):
                 self._assert_under(pack)
                 got = {c.get("id") for c in pack.get("claims") or [] if c.get("origin") == "xbrl"}
                 self.assertEqual(got, want, issuer["id"])
+
+    def test_over_budget_keeps_tagged_before_sentences(self):
+        pack = {
+            "focus": {"ticker": "DEMO", "id": "demo"},
+            "intent": "overview",
+            "house_prior": {"status": "CONFIRMED", "date": "2026-01-15", "view_excerpt": "H" * 1800},
+            "claims": [
+                {
+                    "id": f"sent-{i}",
+                    "metric_id": "gross_margin",
+                    "text": f"Gross margin was {40 + i} percent. " + ("WORD " * 60),
+                    "origin": "sentence",
+                    "confidence": "low",
+                    "as_of": "2026-01-01",
+                    "grade": "A",
+                }
+                for i in range(16)
+            ] + [{
+                "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+                "metric_id": "company_revenue",
+                "origin": "xbrl",
+                "confidence": "tagged",
+                "text": "Revenues USD 48,000,000,000 for 2025-01-01 to 2025-12-31 (consolidated tagged fact)",
+                "value_text": "48000000000",
+                "as_of": "2025-12-31",
+                "grade": "A",
+            }],
+            "gaps": [],
+        }
+        out = enforce_char_budget(pack, 2800)
+        self.assertLessEqual(len(json.dumps(out, separators=(",", ":"))), 2800)
+        self.assertTrue(any(c.get("origin") == "xbrl" for c in out.get("claims") or []))
 
     def test_stub_still_meets_the_post_condition(self):
         pack = {
