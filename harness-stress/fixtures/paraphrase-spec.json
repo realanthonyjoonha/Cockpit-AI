@@ -1215,7 +1215,6 @@
         }
       ],
       "live": {
-        "a": "goodwill_impairment",
         "b": "impairment"
       }
     },
@@ -1244,7 +1243,6 @@
         }
       ],
       "live": {
-        "total": "company_revenue",
         "unearned": "other",
         "interest": "interest_revenue"
       }
@@ -1274,10 +1272,10 @@
         }
       ],
       "live": {
-        "ocf": "operating_cash_flow",
         "lease": "other"
       },
       "absent": [
+        "ocf",
         "weather"
       ]
     },

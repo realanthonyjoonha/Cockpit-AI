@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from api.xbrl_facts import mapped_facts, parse_xbrl_facts
+from api.xbrl_facts import filing_meta, mapped_facts, parse_xbrl_facts
 
 DEFAULT_GLOBS = (
     "raw/{slug}-research/filings/*.htm",
@@ -37,6 +37,15 @@ def load_filing_facts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[s
     notes: list[str] = []
     used: list[str] = []
     order = 0
+    dated: list[tuple[str, Path]] = []
+    for path in files:
+        try:
+            peek = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            dated.append(("", path))
+            continue
+        dated.append((filing_meta(peek, source_id=path.name).get("filed") or "", path))
+    files = [p for _, p in sorted(dated, key=lambda row: (row[0], row[1].name))]
     for path in files:
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

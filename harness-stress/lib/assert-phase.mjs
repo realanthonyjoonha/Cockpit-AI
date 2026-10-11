@@ -31,6 +31,7 @@ import {
 import {
   FACT_SETS,
   checkReview,
+  checkReviewerCases,
   checkTaggedSectors,
   factsFor,
   loadReview,
@@ -119,6 +120,9 @@ export function assertSectors() {
   const review = checkReview(api);
   if (review.errors.length) errors.push(...review.errors.slice(0, 40), `review ${review.errors.length} problem(s)`);
   else console.log(`review sentences=${review.sentences} pairs=${review.pairs} tagged slots held`);
+  const reviewer = checkReviewerCases(api);
+  if (reviewer.length) errors.push(...reviewer.slice(0, 20), `reviewer ${reviewer.length} problem(s)`);
+  else console.log('reviewer restatement/headline/dimension cases held');
   const rulesText = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
   const xbrlText = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
   for (const hit of bannedWordHits(rulesText)) errors.push(`metrics JSON contains ${hit}`);
@@ -170,16 +174,16 @@ export function assertP0() {
     {
       id: 'C-date-unpadded',
       claims: [
-        claim('sep', 'Net sales were $111 million', '2026-9-30'),
-        claim('oct', 'Net sales were $222 million', '2026-10-01'),
+        claim('sep', 'Gross margin was 40 percent', '2026-9-30'),
+        claim('oct', 'Gross margin was 41 percent', '2026-10-01'),
       ],
       winner: 'oct',
     },
     {
       id: 'C-date-iso',
       claims: [
-        claim('old', 'Net sales were $111 million', '2026-09-30'),
-        claim('new', 'Net sales were $222 million', '2026-10-01'),
+        claim('old', 'Gross margin was 40 percent', '2026-09-30'),
+        claim('new', 'Gross margin was 41 percent', '2026-10-01'),
       ],
       winner: 'new',
     },
@@ -190,7 +194,8 @@ export function assertP0() {
         claim('cash-guid', 'Cash and cash equivalents were $90 million. See guidance.', '2026-06-02'),
         claim('outlook', 'Outlook for next quarter revenue is $100 million', '2026-06-01'),
       ],
-      live: { 'cash-guid': 'cash', outlook: 'revenue_guide' },
+      live: { outlook: 'revenue_guide' },
+      absent: ['cash-guid', 'cash-clean'],
     },
     {
       id: 'C-cash-phrase',
@@ -198,7 +203,7 @@ export function assertP0() {
         claim('old-cash', 'Cash and cash equivalents were $111 million', '2024-01-01'),
         claim('new-cash', 'Cash was $222 million', '2026-06-01'),
       ],
-      live: { 'new-cash': 'cash' },
+      absent: ['old-cash', 'new-cash'],
     },
     {
       id: 'C-drops',
@@ -220,21 +225,22 @@ export function assertP0() {
         claim('inv-imp', 'Inventory impairment of $9 million', '2026-05-01'),
         claim('gw-bal', 'A goodwill balance of $5 billion', '2026-05-01'),
       ],
-      live: { 'inv-imp': 'impairment', 'gw-bal': 'goodwill' },
+      live: { 'inv-imp': 'impairment' },
+      absent: ['gw-bal'],
     },
     {
       id: 'C-missing-grade',
       claims: [
-        claim('bare', 'Net sales were $10 million', '2026-08-01', ''),
-        claim('cee', 'Net sales were $11 million', '2026-08-01', 'C'),
+        claim('bare', 'Gross margin was 40 percent.', '2026-08-01', ''),
+        claim('cee', 'Gross margin was 41 percent.', '2026-08-01', 'C'),
       ],
       winner: 'bare',
     },
     {
       id: 'C-same-day-tie',
       claims: [
-        claim('first', 'Net sales were $10 million from the first filing', '2026-08-01'),
-        claim('second', 'Net sales were $99 million from the second filing', '2026-08-01'),
+        claim('first', 'Gross margin was 40 percent from the first filing', '2026-08-01'),
+        claim('second', 'Gross margin was 41 percent from the second filing', '2026-08-01'),
       ],
       winner: 'first',
     },

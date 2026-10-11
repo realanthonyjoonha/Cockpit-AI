@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from api.xbrl_facts import concept_index, load_taxonomy, tagged_slots  # noqa: E402
+from api.xbrl_facts import concept_index, load_taxonomy, sentence_fill_allowed, tagged_slots  # noqa: E402
 
 RULES_PATH = ROOT / "schema" / "contextpack_metrics.json"
 XBRL_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
@@ -28,6 +28,7 @@ XBRL_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
 GRADE_W = {"A": 3, "B": 2, "C": 1}
 FISCAL_GAP = "as_of is a fiscal label without a period-end date"
 SENTENCE_GAP = "no tagged XBRL fact; live value is sentence-derived (low confidence): "
+HEADLINE_GAP = "{mid}: no tagged fact; {n} candidate sentences in context"
 CONTEXT_CAP = 8
 _COUNT = re.compile(r"\b(?!(?:19|20)\d{2}\b)\d[\d,]*(?:\.\d+)?\b")
 
@@ -560,6 +561,7 @@ def live_claims(
     gaps: list[str] = []
     seen: set[str] = set()
     newer: dict[str, int] = {}
+    blocked: dict[str, int] = {}
     base = len(slots)
 
     def add_gap(msg: str) -> None:
@@ -584,6 +586,12 @@ def live_claims(
                 own_key = parse_as_of(c.get("as_of")).get("sort_key") or ""
                 if own_key > slot_key:
                     newer[mid] = newer.get(mid, 0) + 1
+            elif not sentence_fill_allowed(mid, tax):
+                if sentence_has_amount(mid, text, tax):
+                    context.append((i, _context_row(c, mid, "no_tagged_fact")))
+                    blocked[mid] = blocked.get(mid, 0) + 1
+                else:
+                    context.append((i, _context_row(c, mid, "no_amount")))
             elif not sentence_has_amount(mid, text, tax):
                 context.append((i, _context_row(c, mid, "no_amount")))
             else:
@@ -595,6 +603,8 @@ def live_claims(
     superseded: list[dict[str, Any]] = []
     for mid, n in newer.items():
         add_gap(f"{mid}: {n} newer sentence(s) not used; live value is the tagged {slots[mid]['as_of']} fact")
+    for mid, n in blocked.items():
+        add_gap(HEADLINE_GAP.format(mid=mid, n=n))
     for k, row in enumerate(slots.values()):
         indexed.append((k, dict(row)))
     if buckets:

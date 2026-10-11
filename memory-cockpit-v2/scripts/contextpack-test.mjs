@@ -26,7 +26,7 @@ import {
   checkSectors,
   loadSectors,
 } from '../../harness-stress/lib/sector-check.mjs';
-import { checkReview, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
+import { checkReview, checkReviewerCases, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(ROOT, '..');
@@ -63,11 +63,11 @@ if (!hits.length) ok('metrics JSON has no issuer/sector names');
 else bad(`metrics desk-tuned: ${hits}`);
 
 const acme = liveClaims([
-  { id: 'n', text: 'Net sales were $12.4 billion in the quarter', as_of: '2026-08-15', grade: 'A' },
-  { id: 'o', text: 'Net sales were $11.0 billion in the quarter', as_of: '2026-05-15', grade: 'A' },
+  { id: 'n', text: 'Gross margin was 41 percent in the quarter', as_of: '2026-08-15', grade: 'A' },
+  { id: 'o', text: 'Gross margin was 40 percent in the quarter', as_of: '2026-05-15', grade: 'A' },
 ], rules);
-const acmeRev = acme.filter((c) => c.metric_id === 'company_revenue');
-if (acmeRev.length === 1 && /12\.4/.test(acmeRev[0].text)) ok('JS retailer net sales latest wins');
+const acmeRev = acme.filter((c) => c.metric_id === 'gross_margin');
+if (acmeRev.length === 1 && acmeRev[0].id === 'n') ok('JS retailer latest sentence wins a non-headline slot');
 else bad(`JS acme ${JSON.stringify(acmeRev)}`);
 if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) === 'company_revenue') {
   ok('JS files a revenue line as company_revenue');
@@ -156,6 +156,9 @@ else taggedBudget.forEach((e) => bad(e));
 const reviewRun = checkReview(xApi);
 if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave tagged slots alone`);
 else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
+const reviewerErrors = checkReviewerCases(xApi);
+if (!reviewerErrors.length) ok('JS reviewer restatement/headline/dimension cases');
+else reviewerErrors.forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);

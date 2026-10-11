@@ -279,8 +279,170 @@ class TestReviewSentences(unittest.TestCase):
             hit = next((c for c in bare if c["metric_id"] == pair["metric_id"]), None)
             if pair.get("sentence_only"):
                 self.assertEqual((hit or {}).get("id"), pair["sentence_only"], pair["id"])
+            else:
+                self.assertIsNone(hit, pair["id"])
             if hit:
                 self.assertEqual(hit.get("confidence"), "low", pair["id"])
+
+
+class TestReviewerCases(unittest.TestCase):
+    """Every case from the latest PR #5 review, both blockers and should-fixes."""
+
+    def test_restatement_same_context_first_kept_in_one_doc(self):
+        body = (
+            nf("us-gaap:Revenues", "FY25", "10,000", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:Revenues", "FY25", "14,000", scale="6", format="ixt:num-dot-decimal")
+        )
+        parsed = parse_xbrl_facts(doc(body))
+        self.assertEqual(tagged_slots(parsed["facts"])["company_revenue"]["value_text"], "10000000000")
+        self.assertTrue(any("duplicate facts" in n for n in parsed["notes"]), parsed["notes"])
+
+    def test_restatement_new_context_later_filed_wins(self):
+        orig = parse_xbrl_facts(
+            "<FILING-DATE>2026-02-01</FILING-DATE><ACCESSION-NUMBER>0000900001-26-000001</ACCESSION-NUMBER>"
+            + doc(nf("us-gaap:Revenues", "FY25", "10,000", scale="6", format="ixt:num-dot-decimal")),
+            source_id="10k.htm",
+        )["facts"]
+        amend = parse_xbrl_facts(
+            "<FILING-DATE>2026-03-15</FILING-DATE><ACCESSION-NUMBER>0000900001-26-000010</ACCESSION-NUMBER>"
+            + '<ix:nonNumeric name="dei:DocumentType" contextRef="FY25">10-K/A</ix:nonNumeric>'
+            + doc(nf("us-gaap:Revenues", "FY25", "14,200", scale="6", format="ixt:num-dot-decimal")),
+            source_id="10ka.htm",
+            order_base=50,
+        )["facts"]
+        slot = tagged_slots(orig + amend)["company_revenue"]
+        self.assertEqual(slot["value_text"], "14200000000")
+        self.assertEqual(slot["filed"], "2026-03-15")
+        self.assertEqual(slot["accession"], "0000900001-26-000010")
+        self.assertTrue((slot.get("prior") or {}).get("restated"))
+        self.assertEqual(slot["prior"]["value_text"], "10000000000")
+
+    def test_restated_context_id_wins_same_file(self):
+        extra = ctx("FY25_Restated", "2025-01-01", "2025-12-31")
+        body = (
+            nf("us-gaap:Revenues", "FY25", "10,000", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:Revenues", "FY25_Restated", "14,200", scale="6", format="ixt:num-dot-decimal")
+        )
+        html = HEAD.format(gaap="us-gaap") + CTXS + extra + UNITS + "</ix:resources></ix:header>" + body + "</body></html>"
+        slot = tagged_slots(parse_xbrl_facts(html)["facts"])["company_revenue"]
+        self.assertEqual(slot["value_text"], "14200000000")
+        self.assertTrue(slot["prior"]["restated"])
+
+    def test_same_file_new_contexts_later_order_wins(self):
+        extra = ctx("FY25b", "2025-01-01", "2025-12-31")
+        body = (
+            nf("us-gaap:Revenues", "FY25", "10,000", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:Revenues", "FY25b", "14,200", scale="6", format="ixt:num-dot-decimal")
+        )
+        html = HEAD.format(gaap="us-gaap") + CTXS + extra + UNITS + "</ix:resources></ix:header>" + body + "</body></html>"
+        slot = tagged_slots(parse_xbrl_facts(html)["facts"])["company_revenue"]
+        self.assertEqual(slot["value_text"], "14200000000")
+        self.assertEqual(slot["prior"]["value_text"], "10000000000")
+        self.assertTrue(slot["prior"]["restated"])
+
+    def test_amended_filename_wins_without_filed_date(self):
+        orig = parse_xbrl_facts(
+            doc(nf("us-gaap:Revenues", "FY25", "10,000", scale="6", format="ixt:num-dot-decimal")),
+            source_id="10k.htm",
+        )["facts"]
+        amend = parse_xbrl_facts(
+            doc(nf("us-gaap:Revenues", "FY25", "14,200", scale="6", format="ixt:num-dot-decimal")),
+            source_id="10ka.htm",
+            order_base=50,
+        )["facts"]
+        slot = tagged_slots(orig + amend)["company_revenue"]
+        self.assertEqual(slot["value_text"], "14200000000")
+        self.assertEqual(slot["source_id"], "10ka.htm")
+        self.assertTrue(slot["prior"]["restated"])
+        self.assertEqual(slot["prior"]["value_text"], "10000000000")
+
+    def test_later_period_end_still_wins(self):
+        body = (
+            nf("us-gaap:Revenues", "FY24", "10,000", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:Revenues", "FY25", "15,000", scale="6", format="ixt:num-dot-decimal")
+        )
+        slot = tagged_slots(parse_xbrl_facts(doc(body))["facts"])["company_revenue"]
+        self.assertEqual(slot["value_text"], "15000000000")
+        self.assertEqual(slot["prior"]["value_text"], "10000000000")
+        self.assertFalse(slot["prior"].get("restated"))
+
+    def test_headline_sentences_never_fill(self):
+        rules = load_rules()
+        ctx_rows: list[dict] = []
+        gaps: list[str] = []
+        live, _ = live_claims([
+            claim("total", "Total revenues were $48.2 billion.", "2025-12-31"),
+            claim("svc", "Service revenue was $2.2 billion.", "2026-02-20"),
+        ], rules, gaps_out=gaps, context_out=ctx_rows)
+        self.assertFalse(any(c["metric_id"] == "company_revenue" for c in live))
+        self.assertIn("company_revenue: no tagged fact; 2 candidate sentences in context", gaps)
+        self.assertEqual({c["id"] for c in ctx_rows}, {"total", "svc"})
+        gw, _ = live_claims([
+            claim("bal", "Goodwill was $4.1 billion.", "2025-12-31"),
+            claim("imp", "Goodwill related to the 2019 acquisition was impaired by $75 million.", "2026-01-20"),
+        ], rules)
+        self.assertFalse(any(c["metric_id"] in ("goodwill", "goodwill_impairment") for c in gw))
+
+    def test_lowercase_member_is_dimensional(self):
+        seg = (
+            '<xbrli:context id="FY25low">' + ENTITY.format(
+                seg='<xbrli:segment><xbrldi:explicitmember dimension="srt:ProductOrServiceAxis">fix:ServiceMember</xbrldi:explicitmember></xbrli:segment>'
+            ) + "<xbrli:period><xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-12-31</xbrli:endDate></xbrli:period></xbrli:context>"
+        )
+        body = (
+            nf("us-gaap:OperatingIncomeLoss", "FY25low", "7,000", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:OperatingIncomeLoss", "FY25", "11,000", scale="6", format="ixt:num-dot-decimal")
+        )
+        html = HEAD.format(gaap="us-gaap") + CTXS + seg + UNITS + "</ix:resources></ix:header>" + body + "</body></html>"
+        facts = parse_xbrl_facts(html)["facts"]
+        low = next(f for f in facts if f["context_id"] == "FY25low")
+        self.assertTrue(low["dimensional"])
+        self.assertEqual(tagged_slots(facts)["operating_income"]["value_text"], "11000000000")
+
+    def test_pascal_member_alone_does_not_fill(self):
+        seg = (
+            '<xbrli:context id="FY25P">' + ENTITY.format(
+                seg='<xbrli:segment><xbrldi:ExplicitMember dimension="srt:ProductOrServiceAxis">fix:NorthMember</xbrldi:ExplicitMember></xbrli:segment>'
+            ) + "<xbrli:period><xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-12-31</xbrli:endDate></xbrli:period></xbrli:context>"
+        )
+        body = nf("us-gaap:NetIncomeLoss", "FY25P", "4,000", scale="6", format="ixt:num-dot-decimal")
+        html = HEAD.format(gaap="us-gaap") + CTXS + seg + UNITS + "</ix:resources></ix:header>" + body + "</body></html>"
+        self.assertNotIn("net_income", tagged_slots(parse_xbrl_facts(html)["facts"]))
+
+    def test_duplicate_context_id_first_wins(self):
+        seg = ctx("cDup", "2025-01-01", "2025-12-31",
+                  '<xbrli:segment><xbrldi:explicitMember dimension="srt:ProductOrServiceAxis">fix:ServiceMember</xbrldi:explicitMember></xbrli:segment>')
+        empty = ctx("cDup", "2025-01-01", "2025-12-31")
+        body = nf("us-gaap:Revenues", "cDup", "777", scale="6", format="ixt:num-dot-decimal")
+        html = HEAD.format(gaap="us-gaap") + seg + empty + UNITS + "</ix:resources></ix:header>" + body + "</body></html>"
+        parsed = parse_xbrl_facts(html)
+        self.assertTrue(parsed["facts"][0]["dimensional"])
+        self.assertTrue(any("duplicate context" in n for n in parsed["notes"]))
+        self.assertNotIn("company_revenue", tagged_slots(parsed["facts"]))
+
+    def test_tenq_prefers_quarter_keeps_ytd(self):
+        q = ctx("Q3", "2025-07-01", "2025-09-30")
+        ytd = ctx("YTD", "2025-01-01", "2025-09-30")
+        body = (
+            nf("us-gaap:Revenues", "Q3", "2,200", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:SalesRevenueNet", "Q3", "2,100", scale="6", format="ixt:num-dot-decimal")
+            + nf("us-gaap:Revenues", "YTD", "9,100", scale="6", format="ixt:num-dot-decimal")
+        )
+        html = HEAD.format(gaap="us-gaap") + q + ytd + UNITS + "</ix:resources></ix:header>" + body + "</body></html>"
+        slot = tagged_slots(parse_xbrl_facts(html)["facts"])["company_revenue"]
+        self.assertEqual(slot["value_text"], "2200000000")
+        self.assertEqual((slot.get("ytd") or {}).get("value_text"), "9100000000")
+
+    def test_plus_scale_and_sign_abs(self):
+        body = (
+            nf("us-gaap:LongTermDebtNoncurrent", "I25", "10", scale="+6")
+            + nf("us-gaap:ResearchAndDevelopmentExpense", "FY25", "-88", scale="6", sign="-")
+            + nf("us-gaap:OperatingIncomeLoss", "FY25", "88", scale="6", sign="-")
+        )
+        by = {f["concept"]: f for f in parse_xbrl_facts(doc(body))["facts"]}
+        self.assertEqual(by["us-gaap:LongTermDebtNoncurrent"]["value_text"], "10000000")
+        self.assertEqual(by["us-gaap:ResearchAndDevelopmentExpense"]["value_text"], "-88000000")
+        self.assertEqual(by["us-gaap:OperatingIncomeLoss"]["value_text"], "-88000000")
 
 
 if __name__ == "__main__":

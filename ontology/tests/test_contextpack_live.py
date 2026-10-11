@@ -86,8 +86,8 @@ class TestDates(unittest.TestCase):
     def test_unpadded_october_beats_september(self):
         rules = load_rules()
         live, _ = live_claims([
-            _claim("sep", "Net sales were $111 million", "2026-9-30"),
-            _claim("oct", "Net sales were $222 million", "2026-10-01"),
+            _claim("sep", "Gross margin was 40 percent", "2026-9-30"),
+            _claim("oct", "Gross margin was 41 percent", "2026-10-01"),
         ], rules)
         self.assertEqual(live[0]["id"], "oct")
 
@@ -97,13 +97,13 @@ class TestDates(unittest.TestCase):
         self.assertEqual(grade_weight("C"), 1)
         rules = load_rules()
         live, _ = live_claims([
-            _claim("bare", "Net sales were $10 million", "2026-08-01", ""),
-            _claim("cee", "Net sales were $11 million", "2026-08-01", "C"),
+            _claim("bare", "Gross margin was 40 percent.", "2026-08-01", ""),
+            _claim("cee", "Gross margin was 41 percent.", "2026-08-01", "C"),
         ], rules)
         self.assertEqual(live[0]["id"], "bare")
         tie, _ = live_claims([
-            _claim("first", "Net sales were $10 million from the first filing", "2026-08-01"),
-            _claim("second", "Net sales were $99 million from the second filing", "2026-08-01"),
+            _claim("first", "Gross margin was 40 percent from the first filing", "2026-08-01"),
+            _claim("second", "Gross margin was 41 percent from the second filing", "2026-08-01"),
         ], rules)
         self.assertEqual(tie[0]["id"], "first")
 
@@ -262,30 +262,23 @@ class TestClassify(unittest.TestCase):
             _claim("gw-real", "Goodwill impairment was $4 million.", "2024-06-01"),
             _claim("gw-other", "Impairment of intangible assets other than goodwill was $4 million.", "2026-06-01"),
         ], r)
-        self.assertEqual({c["id"]: c["metric_id"] for c in live}, {
-            "gw-real": "goodwill_impairment",
-            "gw-other": "impairment",
-        })
+        self.assertEqual({c["id"]: c["metric_id"] for c in live}, {"gw-other": "impairment"})
         ocf, _ = live_claims([
             _claim("ocf-2024", "Net cash provided by operating activities was $500 million.", "2024-12-31"),
             _claim("ocf-weather", "Operating activities may be affected by weather.", "2026-06-01"),
         ], r)
-        self.assertEqual([c["id"] for c in ocf], ["ocf-2024"])
+        self.assertFalse(any(c["metric_id"] == "operating_cash_flow" for c in ocf))
         kept, _ = live_claims([
             _claim("a", "Goodwill impairment was $9 million.", "2024-06-01"),
             _claim("b", "Impairment of non-goodwill intangible assets was $4 million.", "2026-12-01"),
         ], r)
-        self.assertEqual({c["id"]: c["metric_id"] for c in kept}, {
-            "a": "goodwill_impairment",
-            "b": "impairment",
-        })
+        self.assertEqual({c["id"]: c["metric_id"] for c in kept}, {"b": "impairment"})
         top, _ = live_claims([
             _claim("total", "Total revenue was $20 billion.", "2024-01-01"),
             _claim("unearned", "Unearned revenue was $40 million.", "2026-06-01"),
             _claim("interest", "Interest revenue was $8 billion.", "2026-02-01"),
         ], r)
         self.assertEqual({c["id"]: c["metric_id"] for c in top}, {
-            "total": "company_revenue",
             "unearned": "other",
             "interest": "interest_revenue",
         })
