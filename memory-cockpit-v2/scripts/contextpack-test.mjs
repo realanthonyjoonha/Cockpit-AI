@@ -15,8 +15,10 @@ import {
   parseAmounts,
   parseAsOf,
   riskMetric,
+  sentenceHasAmount,
 } from '../server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER } from '../server/assistContext.js';
+import { factNumber, mappedFacts, parseXbrlFacts, shiftDecimal, taggedSlots } from '../server/xbrlFacts.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -24,6 +26,7 @@ import {
   checkSectors,
   loadSectors,
 } from '../../harness-stress/lib/sector-check.mjs';
+import { checkReview, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(ROOT, '..');
@@ -123,6 +126,36 @@ if (JSON.stringify(pretty, null, 2).length <= 10000 && !(pretty.house_prior && p
 const clip = capAssistClipboard('rules\n```markdown\n' + 'H'.repeat(20000) + '\n```\n');
 if (clip.length <= 10000 && clip.includes(HOUSE_FILE_POINTER)) ok('assist clipboard points at get_house_view');
 else bad(`assist clipboard ${clip.length}`);
+
+const xbrlUnits = [
+  [shiftDecimal('1234.5', 6), '1234500000'],
+  [shiftDecimal('12', -2), '0.12'],
+  [shiftDecimal('-3', 3), '-3000'],
+  [factNumber('1.234,5', 'ixt:num-comma-decimal'), '1234.5'],
+  [factNumber('No', 'ixt-sec:numwordsen'), '0'],
+  [factNumber('\u2014', 'ixt:fixed-zero'), '0'],
+  [factNumber('about nine', 'ixt:num-dot-decimal'), null],
+];
+if (xbrlUnits.every(([got, want]) => got === want)) ok('JS XBRL scale and formats are string-exact');
+else bad(`JS XBRL units ${JSON.stringify(xbrlUnits)}`);
+const xApi = { ...api, sentenceHasAmount, parseXbrlFacts, taggedSlots };
+const taggedErrors = checkTaggedSectors(loadSectors(), xApi);
+if (!taggedErrors.length) ok('JS tagged XBRL slots own the ten-sector live values');
+else taggedErrors.forEach((e) => bad(e));
+const taggedBudget = loadSectors().issuers.flatMap((issuer) => {
+  const doc = readFileSync(path.join(REPO, 'harness-stress/fixtures', issuer.xbrl), 'utf8');
+  const facts = mappedFacts(parseXbrlFacts(doc, { sourceId: `raw/${issuer.id}-research/filings/10k.htm` }).facts);
+  const want = Object.values(taggedSlots(facts)).map((s) => s.id).sort();
+  const pack = assembleAgentPack({ compiled_at: '2026-01-15T00:00:00Z', claims: issuer.claims, facts, gaps: [] }, rules);
+  const got = pack.claims.filter((c) => c.origin === 'xbrl').map((c) => c.id).sort();
+  const size = JSON.stringify(pack).length;
+  return size <= OVERVIEW_BUDGET_CHARS && got.join('|') === want.join('|') ? [] : [`${issuer.id} ${size} chars, tagged ${got.length}/${want.length}`];
+});
+if (!taggedBudget.length) ok('JS every tagged slot survives the 10000 cap');
+else taggedBudget.forEach((e) => bad(e));
+const reviewRun = checkReview(xApi);
+if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave tagged slots alone`);
+else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);

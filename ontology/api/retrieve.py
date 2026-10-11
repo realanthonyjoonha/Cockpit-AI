@@ -72,6 +72,7 @@ PACK_KEYS = {
     "superseded_count",
     "stale_tripwires",
     "store_claims",
+    "context_claims",
     "decision_support_only",
     "budget",
     "available",
@@ -332,6 +333,7 @@ def enforce_char_budget(
     trimmed = True
     steps = [
         lambda: _clear_list(pack, "related"),
+        lambda: _clear_list(pack, "context_claims"),
         lambda: _clip_claim_texts(pack, 480, "other"),
         lambda: _clip_claim_texts(pack, 480, None),
         lambda: _clip_object(pack, 300),
@@ -385,26 +387,16 @@ def _budget_cut(pack: dict[str, Any], limit: int) -> dict[str, Any]:
 
 def _overview_claims(store: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     """One live claim per metric. Newest-12 is not the overview rule."""
-    from api.contextpack import live_claims, load_rules
+    from api.contextpack import live_claims, load_rules, pack_claim
 
     extra: list[str] = []
     live, _superseded = live_claims(
         list(store.get("claims") or []),
         load_rules(),
         gaps_out=extra,
+        facts=list(store.get("facts") or []),
     )
-    rows = [
-        {
-            "id": c.get("id"),
-            "metric_id": c.get("metric_id"),
-            "text": c.get("text"),
-            "as_of": c.get("as_of"),
-            "grade": c.get("grade"),
-            "source_id": c.get("source_id"),
-        }
-        for c in live
-    ]
-    return rows, extra
+    return [pack_claim(c) for c in live], extra
 
 
 def retrieve(
