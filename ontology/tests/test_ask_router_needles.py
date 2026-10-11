@@ -12,9 +12,8 @@ sys.path.insert(0, str(ROOT))
 
 ASK = ROOT / "api" / "ask.py"
 
-# Flagged in docs/HARNESS-FIX-PLAN.md. A new issuer needle is not allowed.
-# The contract scorer no longer keeps issuer or dollar-amount literals.
-GRANDFATHERED = {"nvidia"}
+# Issuer and product needles are not part of the router.
+GRANDFATHERED = set()
 ISSUER = {
     "micron", "mu", "nvidia", "nvda", "amazon", "amzn", "nebius", "nbis",
     "apple", "aapl", "google", "goog", "googl", "alphabet", "tesla", "tsla",
@@ -55,15 +54,32 @@ class TestRouterNeedles(unittest.TestCase):
         self.assertIsNone(re.search(r"microsoft", src, re.I))
         self.assertIsNone(re.search(r"meta agreement", src, re.I))
         self.assertIsNone(re.search(r"\$100\b", src))
+        for banned in ("nvidia", "hbm", "mehrotra", "lpdram"):
+            self.assertIsNone(re.search(rf"\b{banned}\b", src, re.I), banned)
         for text in _string_constants(ASK):
             low = text.lower()
             self.assertNotIn("microsoft", low, text)
             self.assertNotIn("meta agreement", low, text)
             self.assertNotIn("$100", text)
+            for banned in ("nvidia", "hbm", "mehrotra", "lpdram"):
+                self.assertIsNone(re.search(rf"\b{banned}\b", low), text)
             # mode="meta" is the source viewer, not an issuer boost.
             if low.strip() == "meta":
                 continue
             self.assertIsNone(re.search(r"\bmeta\b", low), text)
+
+    def test_contract_pattern_is_positive(self):
+        src = ASK.read_text(encoding="utf-8")
+        start = src.index("contract_re = re.compile(")
+        chunk = src[start:src.index("\n        )", start)]
+        parts = re.findall(r'r"([^"]*)"', chunk)
+        self.assertTrue(parts)
+        rx = re.compile("".join(parts), re.I)
+        self.assertIsNotNone(rx.search("Remaining performance obligations were $11 million."))
+        self.assertIsNotNone(rx.search("RPO was $11 million."))
+        self.assertIsNone(rx.search("The regulatory commitment is to keep the rate base intact."))
+        self.assertIsNone(rx.search("Regulatory commitment to the rate case"))
+        self.assertNotIn("|commitment|", src)
 
     def test_stance_literal_removed(self):
         src = ASK.read_text(encoding="utf-8").lower()

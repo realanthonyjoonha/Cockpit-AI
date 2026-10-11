@@ -167,8 +167,9 @@ def answer(focus: str, question: str) -> str:
     ):
         contract_re = re.compile(
             r"strategic customer|\bSCAs?\b|minimum revenue|"
-            r"\bRPO\b|backlog|take-or-pay|tranche|upfront|"
-            r"deferred revenue|commitment",
+            r"\bRPO\b|remaining performance obligations?|"
+            r"backlog|take-or-pay|tranche|upfront|deferred revenue|"
+            r"purchase commitments?|customer commitments?",
             re.I,
         )
 
@@ -177,11 +178,11 @@ def answer(focus: str, question: str) -> str:
             score = 0
             if re.search(r"take-or-pay|tranche", t, re.I):
                 score += 50
-            if re.search(r"\bRPO\b|backlog", t, re.I):
+            if re.search(r"\bRPO\b|remaining performance obligations?|backlog", t, re.I):
                 score += 40
             if re.search(r"strategic customer|\bSCAs?\b", t, re.I):
                 score += 50
-            if re.search(r"commitment|upfront|deferred", t, re.I):
+            if re.search(r"upfront|deferred revenue|purchase commitments?|customer commitments?", t, re.I):
                 score += 10
             if c.get("grade") == "A":
                 score += 5
@@ -202,7 +203,7 @@ def answer(focus: str, question: str) -> str:
         # deep link long research
         try:
             sources = list_sources(focus)
-            # prefer nebius handoff/claim-bank/master or MU earnings master
+            # prefer a handoff, claim bank, filing, or earnings source
             prefer = (
                 "handoff",
                 "claim-bank",
@@ -216,7 +217,7 @@ def answer(focus: str, question: str) -> str:
                 if sid:
                     break
             if sid:
-                for query in ("take-or-pay", "RPO", "SCA", "strategic customer", "backlog"):
+                for query in ("take-or-pay", "remaining performance obligations", "RPO", "SCA", "strategic customer", "backlog"):
                     deep = get_source(focus, sid, mode="search", query=query)
                     if deep.get("hit_count"):
                         lines.append("")
@@ -243,13 +244,9 @@ def answer(focus: str, question: str) -> str:
         "eps",
         "sca",
         "backlog",
-        "hbm",
         "margin",
         "number",
         "fact",
-        "mehrotra",
-        "nvidia",
-        "lpdram",
         "what do we know",
     ) or len(q.split()) <= 12:
         hits = _search_claims(store.get("claims") or [], q)
