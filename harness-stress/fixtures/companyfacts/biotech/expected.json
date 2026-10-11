@@ -1,0 +1,194 @@
+{
+  "id": "biotech",
+  "cik": "0000882095",
+  "entity": "GILEAD SCIENCES, INC.",
+  "sector": "biotech",
+  "form": "10-K",
+  "reporting": "us-gaap",
+  "currency": "USD",
+  "slots": {
+    "company_revenue": {
+      "value_text": "7803000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "14763000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "operating_income": {
+      "value_text": "-10394000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:OperatingIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "-7808000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "net_income": {
+      "value_text": "-10496000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:NetIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "-8475000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "diluted_eps": {
+      "value_text": "-8.45",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:EarningsPerShareDiluted",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD/shares",
+      "ytd": {
+        "value_text": "-6.82",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "cash": {
+      "value_text": "3179000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "operating_cash_flow": {
+      "value_text": "6117000000",
+      "end": "2026-06-30",
+      "start": "2026-01-01",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "total_debt": {
+      "value_text": "26246000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:LongTermDebt",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "impairment": {
+      "value_text": "1750000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:ImpairmentOfIntangibleAssetsIndefinitelivedExcludingGoodwill",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "1750000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "goodwill": {
+      "value_text": "8314000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:Goodwill",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "inventory": {
+      "value_text": "1953000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:InventoryNet",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "rnd_expense": {
+      "value_text": "1101000000",
+      "end": "2020-03-31",
+      "start": "2020-01-01",
+      "concept": "us-gaap:ResearchAndDevelopmentExpense",
+      "form": "10-Q",
+      "filed": "2020-05-06",
+      "unit": "USD"
+    },
+    "capex": {
+      "value_text": "257000000",
+      "end": "2026-06-30",
+      "start": "2026-01-01",
+      "concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "diluted_shares": {
+      "value_text": "1243000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "shares",
+      "ytd": {
+        "value_text": "1243000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "share_repurchase": {
+      "value_text": "774000000",
+      "end": "2026-06-30",
+      "start": "2026-01-01",
+      "concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "dividends": {
+      "value_text": "2069000000",
+      "end": "2026-06-30",
+      "start": "2026-01-01",
+      "concept": "us-gaap:PaymentsOfDividends",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    }
+  },
+  "empty": [
+    "goodwill_impairment",
+    "net_interest_income",
+    "interest_revenue",
+    "credit_loss_provision",
+    "rpo_backlog",
+    "purchase_commitments",
+    "guarantees"
+  ],
+  "gaps_contain": [
+    "goodwill_impairment: not reported in structured data",
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "credit_loss_provision: not reported in structured data",
+    "rpo_backlog: not reported in structured data",
+    "purchase_commitments: not reported in structured data",
+    "guarantees: not reported in structured data"
+  ]
+}

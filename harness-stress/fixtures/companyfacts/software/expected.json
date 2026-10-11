@@ -1,0 +1,228 @@
+{
+  "id": "software",
+  "cik": "0001108524",
+  "entity": "Salesforce, Inc.",
+  "sector": "software",
+  "form": "10-K",
+  "reporting": "us-gaap",
+  "currency": "USD",
+  "slots": {
+    "company_revenue": {
+      "value_text": "11345000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "22478000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "operating_income": {
+      "value_text": "2331000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:OperatingIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "4678000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "net_income": {
+      "value_text": "3526000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:NetIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "5633000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "diluted_eps": {
+      "value_text": "4.29",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:EarningsPerShareDiluted",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD/shares",
+      "ytd": {
+        "value_text": "6.67",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "cash": {
+      "value_text": "8310000000",
+      "end": "2026-07-31",
+      "start": null,
+      "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD"
+    },
+    "operating_cash_flow": {
+      "value_text": "1269000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "7970000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "total_debt": {
+      "value_text": "39288000000",
+      "end": "2026-07-31",
+      "start": null,
+      "concept": "us-gaap:LongTermDebt",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD"
+    },
+    "goodwill_impairment": {
+      "value_text": "0",
+      "end": "2022-01-31",
+      "start": "2021-02-01",
+      "concept": "us-gaap:GoodwillImpairmentLoss",
+      "form": "10-K",
+      "filed": "2022-03-11",
+      "unit": "USD"
+    },
+    "impairment": {
+      "value_text": "0",
+      "end": "2022-01-31",
+      "start": "2021-02-01",
+      "concept": "us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill",
+      "form": "10-K",
+      "filed": "2022-03-11",
+      "unit": "USD"
+    },
+    "goodwill": {
+      "value_text": "59250000000",
+      "end": "2026-07-31",
+      "start": null,
+      "concept": "us-gaap:Goodwill",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD"
+    },
+    "rnd_expense": {
+      "value_text": "1687000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:ResearchAndDevelopmentExpense",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "3314000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "rpo_backlog": {
+      "value_text": "66300000000",
+      "end": "2026-07-31",
+      "start": null,
+      "concept": "us-gaap:RevenueRemainingPerformanceObligation",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD"
+    },
+    "purchase_commitments": {
+      "value_text": "4200000000",
+      "end": "2026-07-31",
+      "start": null,
+      "concept": "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD"
+    },
+    "capex": {
+      "value_text": "171000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "316000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "diluted_shares": {
+      "value_text": "821000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "shares",
+      "ytd": {
+        "value_text": "845000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "share_repurchase": {
+      "value_text": "84000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "27332000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    },
+    "dividends": {
+      "value_text": "364000000",
+      "end": "2026-07-31",
+      "start": "2026-05-01",
+      "concept": "us-gaap:PaymentsOfDividends",
+      "form": "10-Q",
+      "filed": "2026-08-27",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "729000000",
+        "start": "2026-02-01",
+        "end": "2026-07-31"
+      }
+    }
+  },
+  "empty": [
+    "inventory",
+    "net_interest_income",
+    "interest_revenue",
+    "credit_loss_provision",
+    "guarantees"
+  ],
+  "gaps_contain": [
+    "inventory: not reported in structured data",
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "credit_loss_provision: not reported in structured data",
+    "guarantees: not reported in structured data"
+  ]
+}

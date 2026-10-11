@@ -167,7 +167,7 @@ export function checkDemo(api) {
     claim('gw-bal', 'A goodwill balance of $5 billion', '2026-05-01'),
   ]);
   const gwMap = Object.fromEntries(gw.map((c) => [c.id, c.metric_id]));
-  if (gwMap['inv-imp'] !== 'impairment') errors.push(`inv-imp ${gwMap['inv-imp']}`);
+  if (gwMap['inv-imp']) errors.push(`inv-imp filled a structured slot as ${gwMap['inv-imp']}`);
   if (gwMap['gw-bal']) errors.push(`gw-bal filled a headline slot as ${gwMap['gw-bal']}`);
 
   const dropped = live([
@@ -227,7 +227,7 @@ export function checkDemo(api) {
   ]);
   const crowdMap = Object.fromEntries(crowd.map((c) => [c.id, c.metric_id]));
   if (crowdMap['gw-real']) errors.push(`gw-real filled a headline slot as ${crowdMap['gw-real']}`);
-  if (crowdMap['gw-other'] !== 'impairment') errors.push(`gw-other ${crowdMap['gw-other']}`);
+  if (crowdMap['gw-other']) errors.push(`gw-other filled a headline slot as ${crowdMap['gw-other']}`);
 
   const ocf = live([
     claim('ocf-2024', 'Net cash provided by operating activities was $500 million.', '2024-12-31'),

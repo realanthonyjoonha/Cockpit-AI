@@ -147,6 +147,14 @@
       "any": ["long-term debt", "long term debt", "notes payable", "convertible notes"]
     },
     {
+      "id": "total_debt",
+      "any": ["total debt"]
+    },
+    {
+      "id": "diluted_eps",
+      "any": ["diluted earnings per share", "diluted eps"]
+    },
+    {
       "id": "diluted_shares",
       "any": [
         "diluted share",
@@ -278,9 +286,9 @@
     ["purchase obligation", "purchase_commitments"],
     ["supply commitments", "purchase_commitments"],
     ["supply commitment", "purchase_commitments"],
-    ["long-term debt", "long_term_debt"],
-    ["long term debt", "long_term_debt"],
-    ["convertible", "long_term_debt"],
+    ["long-term debt", "total_debt"],
+    ["long term debt", "total_debt"],
+    ["convertible", "total_debt"],
     ["export sanctions", "export_controls"],
     ["trade sanctions", "export_controls"],
     ["economic sanctions", "export_controls"],

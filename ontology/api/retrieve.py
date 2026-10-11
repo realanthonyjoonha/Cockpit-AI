@@ -270,7 +270,7 @@ def _drop_other_claims(pack: dict[str, Any]) -> bool:
 
 
 def _is_tagged_claim(claim: dict[str, Any]) -> bool:
-    return claim.get("origin") == "xbrl" or claim.get("confidence") == "tagged"
+    return claim.get("origin") in ("companyfacts", "xbrl") or claim.get("confidence") == "tagged"
 
 
 def _drop_tail_claim(pack: dict[str, Any]) -> bool:

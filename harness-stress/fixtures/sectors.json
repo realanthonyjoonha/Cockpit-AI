@@ -1,5 +1,5 @@
 {
-  "comment": "Harness constants in the wording of public-filing line items. Not a house view, not a desk, not a vault note. Ten sectors, one rule file. Each issuer has a real-shaped iXBRL fixture under xbrl/. live/gaps/context are the sentence-only run; tagged is the same claims with that issuer's XBRL facts. risk_metric rows are the review tripwire names.",
+  "comment": "Harness constants in the wording of public-filing line items. Not a house view, not a desk, not a vault note. Ten sectors, one rule file. Each issuer has a trimmed companyfacts fixture under companyfacts/<id>/. live/gaps/context are the sentence-only run. Structured metrics never fill from sentences. risk_metric rows are the review tripwire names.",
   "risk_metric": [
     {
       "name": "Operating margin pressure",
@@ -76,18 +76,11 @@
       "period": "year ended December 31, 2025",
       "gaps": [
         "as_of is a fiscal label without a period-end date",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): credit_loss_provision, net_interest_income"
+        "net_interest_income: not reported in structured data",
+        "credit_loss_provision: not reported in structured data"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "nii-new",
-          "metric_id": "net_interest_income"
-        },
-        {
-          "id": "pcl",
-          "metric_id": "credit_loss_provision"
-        },
         {
           "id": "deposits",
           "metric_id": "other"
@@ -193,76 +186,32 @@
       ],
       "context": [
         {
+          "id": "nii-new",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "pcl",
+          "metric_id": "credit_loss_provision",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "nii-old",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
+        },
+        {
           "id": "nii-xbrl",
           "metric_id": "net_interest_income",
-          "reason": "no_amount"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "nii-fy",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/bank.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:Goodwill:2025-12-31",
-            "metric_id": "goodwill",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:InterestIncomeExpenseNet:2025-01-01/2025-12-31",
-            "metric_id": "net_interest_income",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:ProvisionForLoanLeaseAndOtherLosses:2025-01-01/2025-12-31",
-            "metric_id": "credit_loss_provision",
-            "confidence": "tagged"
-          },
-          {
-            "id": "deposits",
-            "metric_id": "other",
-            "confidence": null
-          }
-        ],
-        "gaps": [
-          "as_of is a fiscal label without a period-end date"
-        ],
-        "context": [
-          {
-            "id": "nii-new",
-            "metric_id": "net_interest_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "pcl",
-            "metric_id": "credit_loss_provision",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "nii-old",
-            "metric_id": "net_interest_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "nii-xbrl",
-            "metric_id": "net_interest_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "nii-fy",
-            "metric_id": "net_interest_income",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "bank"
     },
     {
       "id": "insurer",
@@ -272,7 +221,7 @@
       "currency": "USD",
       "period": "year ended December 31, 2025",
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context"
+        "company_revenue: not reported in structured data"
       ],
       "absent": [],
       "live": [
@@ -338,47 +287,15 @@
         {
           "id": "prem-new",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "prem-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/insurer.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "claims",
-            "metric_id": "other",
-            "confidence": null
-          }
-        ],
-        "gaps": [],
-        "context": [
-          {
-            "id": "prem-new",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "prem-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "insurer"
     },
     {
       "id": "reit",
@@ -389,7 +306,7 @@
       "period": "year ended December 31, 2025",
       "gaps": [
         "unmapped_concept: us-gaap:FundsFromOperations",
-        "company_revenue: no tagged fact; 2 candidate sentences in context"
+        "company_revenue: not reported in structured data"
       ],
       "absent": [],
       "live": [
@@ -477,59 +394,15 @@
         {
           "id": "rent",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "rent-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/reit.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:ImpairmentOfRealEstate:2025-01-01/2025-12-31",
-            "metric_id": "impairment",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "realestate",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "ffo",
-            "metric_id": "other",
-            "confidence": null
-          }
-        ],
-        "gaps": [
-          "unmapped_concept: us-gaap:FundsFromOperations"
-        ],
-        "context": [
-          {
-            "id": "rent",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rent-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "reit"
     },
     {
       "id": "utility",
@@ -539,7 +412,7 @@
       "currency": "USD",
       "period": "year ended December 31, 2025",
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context"
+        "company_revenue: not reported in structured data"
       ],
       "absent": [],
       "live": [
@@ -605,57 +478,15 @@
         {
           "id": "oprev",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "oprev-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/utility.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:RegulatedAndUnregulatedOperatingRevenue:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:NetCashProvidedByUsedInOperatingActivities:2025-01-01/2025-12-31",
-            "metric_id": "operating_cash_flow",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:LongTermDebtNoncurrent:2025-12-31",
-            "metric_id": "long_term_debt",
-            "confidence": "tagged"
-          },
-          {
-            "id": "regasset",
-            "metric_id": "other",
-            "confidence": null
-          }
-        ],
-        "gaps": [],
-        "context": [
-          {
-            "id": "oprev",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "oprev-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "utility"
     },
     {
       "id": "biotech",
@@ -668,16 +499,11 @@
         "net sales"
       ],
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): rnd_expense"
+        "company_revenue: not reported in structured data",
+        "rnd_expense: not reported in structured data"
       ],
       "absent": [],
-      "live": [
-        {
-          "id": "rnd",
-          "metric_id": "rnd_expense"
-        }
-      ],
+      "live": [],
       "claims": [
         {
           "id": "collab",
@@ -735,62 +561,20 @@
         {
           "id": "collab",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rnd",
+          "metric_id": "rnd_expense",
+          "reason": "no_structured_fact"
         },
         {
           "id": "collab-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/biotech.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:NetCashProvidedByUsedInOperatingActivities:2025-01-01/2025-12-31",
-            "metric_id": "operating_cash_flow",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:NetIncomeLoss:2025-01-01/2025-12-31",
-            "metric_id": "net_income",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:ResearchAndDevelopmentExpense:2025-01-01/2025-12-31",
-            "metric_id": "rnd_expense",
-            "confidence": "tagged"
-          }
-        ],
-        "gaps": [],
-        "context": [
-          {
-            "id": "collab",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rnd",
-            "metric_id": "rnd_expense",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "collab-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "biotech"
     },
     {
       "id": "retail",
@@ -800,15 +584,11 @@
       "currency": "USD",
       "period": "53 weeks ended January 28, 2026",
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): inventory"
+        "company_revenue: not reported in structured data",
+        "inventory: not reported in structured data"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "inv",
-          "metric_id": "inventory"
-        },
         {
           "id": "pct",
           "metric_id": "other"
@@ -888,52 +668,20 @@
         {
           "id": "sales",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "inv",
+          "metric_id": "inventory",
+          "reason": "no_structured_fact"
         },
         {
           "id": "sales-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/retail.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-23/2026-01-28",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:InventoryNet:2026-01-28",
-            "metric_id": "inventory",
-            "confidence": "tagged"
-          },
-          {
-            "id": "pct",
-            "metric_id": "other",
-            "confidence": null
-          }
-        ],
-        "gaps": [],
-        "context": [
-          {
-            "id": "sales",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "inv",
-            "metric_id": "inventory",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "sales-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "retail"
     },
     {
       "id": "energy",
@@ -943,18 +691,13 @@
       "currency": "USD",
       "period": "year ended October 1, 2025",
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): capex"
+        "company_revenue: not reported in structured data",
+        "capex: not reported in structured data"
       ],
       "absent": [
         "barrels"
       ],
-      "live": [
-        {
-          "id": "capex",
-          "metric_id": "capex"
-        }
-      ],
+      "live": [],
       "claims": [
         {
           "id": "rev-oct",
@@ -1022,57 +765,20 @@
         {
           "id": "rev-oct",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "capex",
+          "metric_id": "capex",
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-sep",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/energy.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:ImpairmentOfOilAndGasProperties:2025-01-01/2025-12-31",
-            "metric_id": "impairment",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:PaymentsToAcquirePropertyPlantAndEquipment:2025-01-01/2025-12-31",
-            "metric_id": "capex",
-            "confidence": "tagged"
-          }
-        ],
-        "gaps": [],
-        "context": [
-          {
-            "id": "rev-oct",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "capex",
-            "metric_id": "capex",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-sep",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "energy"
     },
     {
       "id": "industrial",
@@ -1083,13 +789,19 @@
       "period": "year ended December 31, 2025",
       "gaps": [
         "as_of is a fiscal label without a period-end date",
-        "operating_income: no tagged fact; 1 candidate sentences in context",
-        "goodwill_impairment: no tagged fact; 1 candidate sentences in context",
-        "operating_cash_flow: no tagged fact; 1 candidate sentences in context",
-        "company_revenue: no tagged fact; 5 candidate sentences in context",
-        "net_income: no tagged fact; 3 candidate sentences in context",
-        "cash: no tagged fact; 4 candidate sentences in context",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): dividends, gross_margin, guarantees, impairment, interest_revenue, purchase_commitments, revenue_guide, rpo_backlog"
+        "rpo_backlog: not reported in structured data",
+        "operating_income: not reported in structured data",
+        "purchase_commitments: not reported in structured data",
+        "goodwill_impairment: not reported in structured data",
+        "impairment: not reported in structured data",
+        "operating_cash_flow: not reported in structured data",
+        "company_revenue: not reported in structured data",
+        "guarantees: not reported in structured data",
+        "net_income: not reported in structured data",
+        "cash: not reported in structured data",
+        "dividends: not reported in structured data",
+        "interest_revenue: not reported in structured data",
+        "no companyfacts value; live value is sentence-derived (low confidence): gross_margin, revenue_guide"
       ],
       "absent": [
         "ocf-weather",
@@ -1101,10 +813,6 @@
         "fy"
       ],
       "live": [
-        {
-          "id": "gw-non",
-          "metric_id": "impairment"
-        },
         {
           "id": "see-guide",
           "metric_id": "revenue_guide"
@@ -1122,24 +830,8 @@
           "metric_id": "gross_margin"
         },
         {
-          "id": "div-fy",
-          "metric_id": "dividends"
-        },
-        {
-          "id": "interest",
-          "metric_id": "interest_revenue"
-        },
-        {
           "id": "unearned",
           "metric_id": "other"
-        },
-        {
-          "id": "backlog",
-          "metric_id": "rpo_backlog"
-        },
-        {
-          "id": "commit",
-          "metric_id": "purchase_commitments"
         },
         {
           "id": "deposits",
@@ -1156,10 +848,6 @@
         {
           "id": "inventor",
           "metric_id": "other"
-        },
-        {
-          "id": "indemnify",
-          "metric_id": "guarantees"
         },
         {
           "id": "sanctions",
@@ -1915,49 +1603,99 @@
       ],
       "context": [
         {
+          "id": "gw-non",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
           "id": "eps-pair",
           "metric_id": "net_income",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "cash-oct",
           "metric_id": "cash",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "cash-iso",
           "metric_id": "cash",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "cash-sep",
           "metric_id": "cash",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-other",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
         },
         {
           "id": "cash-see",
           "metric_id": "cash",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "div-fy",
+          "metric_id": "dividends",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-for",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-excl",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-article",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "interest",
+          "metric_id": "interest_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "backlog",
+          "metric_id": "rpo_backlog",
+          "reason": "no_structured_fact"
         },
         {
           "id": "oi",
           "metric_id": "operating_income",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "commit",
+          "metric_id": "purchase_commitments",
+          "reason": "no_structured_fact"
         },
         {
           "id": "eps",
           "metric_id": "net_income",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "eps-header",
           "metric_id": "net_income",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "indemnify",
+          "metric_id": "guarantees",
+          "reason": "no_structured_fact"
         },
         {
           "id": "sales-see",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "trade-sanctions",
@@ -1965,337 +1703,42 @@
           "reason": "no_amount"
         },
         {
+          "id": "backlog-old",
+          "metric_id": "rpo_backlog",
+          "reason": "no_structured_fact"
+        },
+        {
           "id": "ocf-2024",
           "metric_id": "operating_cash_flow",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "gw-real",
           "metric_id": "goodwill_impairment",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-tnr",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-plural",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-word",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-total",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/industrial.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "see-guide",
-            "metric_id": "revenue_guide",
-            "confidence": "low"
-          },
-          {
-            "id": "registers",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "ocf-lease",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "gm-blank",
-            "metric_id": "gross_margin",
-            "confidence": "low"
-          },
-          {
-            "id": "unearned",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:GoodwillImpairmentLoss:2025-01-01/2025-12-31",
-            "metric_id": "goodwill_impairment",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill:2025-01-01/2025-12-31",
-            "metric_id": "impairment",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:Goodwill:2025-12-31",
-            "metric_id": "goodwill",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:InventoryNet:2025-12-31",
-            "metric_id": "inventory",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:NetCashProvidedByUsedInOperatingActivities:2025-01-01/2025-12-31",
-            "metric_id": "operating_cash_flow",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:InterestIncomeExpenseNet:2025-01-01/2025-12-31",
-            "metric_id": "net_interest_income",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:InterestAndDividendIncomeOperating:2025-01-01/2025-12-31",
-            "metric_id": "interest_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:OperatingIncomeLoss:2025-01-01/2025-12-31",
-            "metric_id": "operating_income",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:NetIncomeLoss:2025-01-01/2025-12-31",
-            "metric_id": "net_income",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:ResearchAndDevelopmentExpense:2025-01-01/2025-12-31",
-            "metric_id": "rnd_expense",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:RevenueRemainingPerformanceObligation:2025-12-31",
-            "metric_id": "rpo_backlog",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:PurchaseObligation:2025-12-31",
-            "metric_id": "purchase_commitments",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:PaymentsToAcquirePropertyPlantAndEquipment:2025-01-01/2025-12-31",
-            "metric_id": "capex",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:LongTermDebtNoncurrent:2025-12-31",
-            "metric_id": "long_term_debt",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding:2025-01-01/2025-12-31",
-            "metric_id": "diluted_shares",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:GuaranteeObligationsMaximumExposure:2025-12-31",
-            "metric_id": "guarantees",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:PaymentsForRepurchaseOfCommonStock:2025-01-01/2025-12-31",
-            "metric_id": "share_repurchase",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:PaymentsOfDividends:2025-01-01/2025-12-31",
-            "metric_id": "dividends",
-            "confidence": "tagged"
-          },
-          {
-            "id": "deposits",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "deferred",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "ffo",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "inventor",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "sanctions",
-            "metric_id": "other",
-            "confidence": null
-          }
-        ],
-        "gaps": [
-          "as_of is a fiscal label without a period-end date",
-          "impairment: 5 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
-          "cash: 4 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
-          "dividends: 1 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
-          "interest_revenue: 1 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
-          "net_income: 1 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
-          "no tagged XBRL fact; live value is sentence-derived (low confidence): gross_margin, revenue_guide"
-        ],
-        "context": [
-          {
-            "id": "gw-non",
-            "metric_id": "impairment",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "eps-pair",
-            "metric_id": "net_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "cash-oct",
-            "metric_id": "cash",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "cash-iso",
-            "metric_id": "cash",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "cash-sep",
-            "metric_id": "cash",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "gw-other",
-            "metric_id": "impairment",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "cash-see",
-            "metric_id": "cash",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "div-fy",
-            "metric_id": "dividends",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "gw-for",
-            "metric_id": "impairment",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "gw-excl",
-            "metric_id": "impairment",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "gw-article",
-            "metric_id": "impairment",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "interest",
-            "metric_id": "interest_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "backlog",
-            "metric_id": "rpo_backlog",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "oi",
-            "metric_id": "operating_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "commit",
-            "metric_id": "purchase_commitments",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "eps",
-            "metric_id": "net_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "eps-header",
-            "metric_id": "net_income",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "indemnify",
-            "metric_id": "guarantees",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "sales-see",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "trade-sanctions",
-            "metric_id": "export_controls",
-            "reason": "no_amount"
-          },
-          {
-            "id": "backlog-old",
-            "metric_id": "rpo_backlog",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "ocf-2024",
-            "metric_id": "operating_cash_flow",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "gw-real",
-            "metric_id": "goodwill_impairment",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-tnr",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-plural",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-word",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-total",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "industrial"
     },
     {
       "id": "software",
@@ -2305,15 +1748,12 @@
       "currency": "USD",
       "period": "year ended December 31, 2025",
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): operating_segments, rpo_backlog"
+        "company_revenue: not reported in structured data",
+        "rpo_backlog: not reported in structured data",
+        "no companyfacts value; live value is sentence-derived (low confidence): operating_segments"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "rpo",
-          "metric_id": "rpo_backlog"
-        },
         {
           "id": "deferred",
           "metric_id": "other"
@@ -2407,69 +1847,20 @@
         {
           "id": "rev",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rpo",
+          "metric_id": "rpo_backlog",
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/software.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:OperatingIncomeLoss:2025-01-01/2025-12-31",
-            "metric_id": "operating_income",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:us-gaap:RevenueRemainingPerformanceObligation:2025-12-31",
-            "metric_id": "rpo_backlog",
-            "confidence": "tagged"
-          },
-          {
-            "id": "deferred",
-            "metric_id": "other",
-            "confidence": null
-          },
-          {
-            "id": "segs",
-            "metric_id": "operating_segments",
-            "confidence": "low"
-          }
-        ],
-        "gaps": [
-          "no tagged XBRL fact; live value is sentence-derived (low confidence): operating_segments"
-        ],
-        "context": [
-          {
-            "id": "rev",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rpo",
-            "metric_id": "rpo_backlog",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "software"
     },
     {
       "id": "fpi",
@@ -2479,7 +1870,8 @@
       "currency": "EUR",
       "period": "fiscal year ended 31 March 2026",
       "gaps": [
-        "company_revenue: no tagged fact; 2 candidate sentences in context"
+        "company_revenue: not reported in structured data",
+        "cash: not reported in structured data"
       ],
       "absent": [],
       "live": [],
@@ -2534,72 +1926,20 @@
         {
           "id": "rev",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         },
         {
           "id": "cash-ifrs",
           "metric_id": "cash",
-          "reason": "no_amount"
+          "reason": "no_structured_fact"
         },
         {
           "id": "rev-old",
           "metric_id": "company_revenue",
-          "reason": "no_tagged_fact"
+          "reason": "no_structured_fact"
         }
       ],
-      "xbrl": "xbrl/fpi.htm",
-      "tagged": {
-        "live": [
-          {
-            "id": "xbrl:ifrs-full:Revenue:2025-04-01/2026-03-31",
-            "metric_id": "company_revenue",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:ifrs-full:ImpairmentLossRecognisedInProfitOrLossGoodwill:2025-04-01/2026-03-31",
-            "metric_id": "goodwill_impairment",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:ifrs-full:Goodwill:2026-03-31",
-            "metric_id": "goodwill",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:ifrs-full:CashFlowsFromUsedInOperatingActivities:2025-04-01/2026-03-31",
-            "metric_id": "operating_cash_flow",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:ifrs-full:CashAndCashEquivalents:2026-03-31",
-            "metric_id": "cash",
-            "confidence": "tagged"
-          },
-          {
-            "id": "xbrl:ifrs-full:ProfitLoss:2025-04-01/2026-03-31",
-            "metric_id": "net_income",
-            "confidence": "tagged"
-          }
-        ],
-        "gaps": [],
-        "context": [
-          {
-            "id": "rev",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "cash-ifrs",
-            "metric_id": "cash",
-            "reason": "tagged_slot"
-          },
-          {
-            "id": "rev-old",
-            "metric_id": "company_revenue",
-            "reason": "tagged_slot"
-          }
-        ]
-      }
+      "companyfacts": "fpi"
     }
   ]
 }
