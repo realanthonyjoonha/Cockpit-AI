@@ -12,14 +12,18 @@ import {
   parseAsOf,
   sentenceHasAmount,
 } from '../server/contextpack.js';
-import { parseXbrlFacts, taggedSlots } from '../server/xbrlFacts.js';
+import { parseCompanyfacts, taggedSlots } from '../server/companyfacts.js';
 import { loadSectors } from '../../harness-stress/lib/sector-check.mjs';
 import { FACT_SETS, factsFor, loadReview, stable, taggedSnapshot } from '../../harness-stress/lib/review-check.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ont = path.join(REPO, 'ontology');
 const rules = loadContextpackRules(ont);
-const api = { rules, liveClaims, sentenceHasAmount, parseXbrlFacts, taggedSlots };
+const api = { rules, liveClaims, sentenceHasAmount, parseCompanyfacts, taggedSlots };
+
+function compactFacts(facts) {
+  return (facts || []).map((f) => [f.concept, f.value_text, f.period?.end, f.filed, f.form, f.unit]);
+}
 
 function num(n) {
   const f = Number(n);
@@ -49,7 +53,7 @@ function snapshot(claims, xbrl) {
 
 function tagged(claims, xbrl) {
   const parsed = factsFor(api, xbrl);
-  return { facts: parsed.facts, notes: parsed.notes, tagged: taggedSnapshot(api, claims, parsed.facts) };
+  return { facts: compactFacts(parsed.facts), notes: parsed.notes, tagged: taggedSnapshot(api, claims, parsed.facts) };
 }
 
 const fixture = loadSectors();
@@ -57,7 +61,7 @@ const review = loadReview();
 const reviewClaims = [...review.sentences, ...review.held_out]
   .map((s) => ({ id: s.id, text: s.text, as_of: review.as_of, grade: 'A', source_id: 'review' }));
 const bundles = [
-  ...fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims, xbrl: issuer.xbrl })),
+  ...fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims, xbrl: issuer.companyfacts || issuer.id })),
   ...Object.entries(FACT_SETS).map(([tax, xbrl]) => ({ id: `review-${tax}`, claims: reviewClaims, xbrl })),
 ];
 const js = Object.fromEntries(bundles.map((b) => [b.id, snapshot(b.claims, b.xbrl)]));

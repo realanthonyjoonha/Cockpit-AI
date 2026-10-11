@@ -1,14 +1,10 @@
 {
-  "version": "2",
-  "comment": "Concept to taxonomy id. Concepts are canonical prefix:local (us-gaap, ifrs-full), resolved from the filer's namespace, not its prefix text. Order inside a metric is priority: the first concept present for the winning period is the slot. period is duration or instant. unit is the kind of amount a fact or a sentence must carry for that slot. sentence_fill false: a sentence never fills the live slot (context + gap only). Headline totals are tagged-only. A metric with no concepts can only be filled by a sentence. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "version": "3",
+  "comment": "Companyfacts concept to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). Primary concepts are aliases (latest period end wins; same end uses list order). fallback is used only when no primary concept is present. sentence_fill is always false for structured metrics. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
   "namespaces": {
     "us-gaap": ["http://fasb.org/us-gaap/"],
     "ifrs-full": ["http://xbrl.ifrs.org/taxonomy/", "https://xbrl.ifrs.org/taxonomy/"],
-    "dei": ["http://xbrl.sec.gov/dei/"],
-    "srt": ["http://fasb.org/srt/"],
-    "ix": ["http://www.xbrl.org/2013/inlineXBRL", "http://www.xbrl.org/2008/inlineXBRL"],
-    "xbrli": ["http://www.xbrl.org/2003/instance"],
-    "iso4217": ["http://www.xbrl.org/2003/iso4217"]
+    "dei": ["http://xbrl.sec.gov/dei/"]
   },
   "metrics": {
     "company_revenue": {
@@ -17,17 +13,75 @@
       "unit": "currency",
       "concepts": [
         "us-gaap:Revenues",
-        "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
-        "us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax",
         "us-gaap:SalesRevenueNet",
         "us-gaap:RegulatedAndUnregulatedOperatingRevenue",
-        "us-gaap:PremiumsEarnedNet",
-        "us-gaap:OperatingLeaseLeaseIncome",
-        "us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer",
+        "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        "us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax",
         "ifrs-full:Revenue",
         "ifrs-full:RevenueFromContractsWithCustomers"
+      ],
+      "fallback": [
+        "us-gaap:PremiumsEarnedNet",
+        "us-gaap:OperatingLeaseLeaseIncome",
+        "us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer"
       ]
     },
+    "operating_income": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:OperatingIncomeLoss", "ifrs-full:ProfitLossFromOperatingActivities"]
+    },
+    "net_income": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:NetIncomeLoss", "us-gaap:ProfitLoss", "ifrs-full:ProfitLoss"]
+    },
+    "diluted_eps": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "per_share",
+      "concepts": [
+        "us-gaap:EarningsPerShareDiluted",
+        "us-gaap:IncomeLossFromContinuingOperationsPerDilutedShare",
+        "ifrs-full:DilutedEarningsLossPerShare",
+        "ifrs-full:BasicAndDilutedEarningsLossPerShare"
+      ]
+    },
+    "cash": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+        "ifrs-full:CashAndCashEquivalents"
+      ]
+    },
+    "operating_cash_flow": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+        "us-gaap:NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+        "ifrs-full:CashFlowsFromUsedInOperatingActivities"
+      ]
+    },
+    "total_debt": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:LongTermDebt",
+        "us-gaap:LongTermDebtAndCapitalLeaseObligations",
+        "us-gaap:LongTermDebtNoncurrent",
+        "ifrs-full:LongtermBorrowings",
+        "ifrs-full:Borrowings"
+      ]
+    },
+    "long_term_debt": { "alias_of": "total_debt" },
     "goodwill_impairment": {
       "sentence_fill": false,
       "period": "duration",
@@ -38,6 +92,7 @@
       ]
     },
     "impairment": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": [
@@ -59,73 +114,49 @@
       "concepts": ["us-gaap:Goodwill", "ifrs-full:Goodwill"]
     },
     "inventory": {
+      "sentence_fill": false,
       "period": "instant",
       "unit": "currency",
       "concepts": ["us-gaap:InventoryNet", "ifrs-full:Inventories"]
     },
-    "operating_cash_flow": {
-      "sentence_fill": false,
-      "period": "duration",
-      "unit": "currency",
-      "concepts": [
-        "us-gaap:NetCashProvidedByUsedInOperatingActivities",
-        "us-gaap:NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
-        "ifrs-full:CashFlowsFromUsedInOperatingActivities"
-      ]
-    },
-    "cash": {
-      "sentence_fill": false,
-      "period": "instant",
-      "unit": "currency",
-      "concepts": [
-        "us-gaap:CashAndCashEquivalentsAtCarryingValue",
-        "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
-        "ifrs-full:CashAndCashEquivalents"
-      ]
-    },
     "net_interest_income": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:InterestIncomeExpenseNet", "ifrs-full:InterestRevenueExpense"]
     },
     "interest_revenue": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:InterestAndDividendIncomeOperating"]
     },
     "credit_loss_provision": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:ProvisionForLoanLeaseAndOtherLosses", "us-gaap:ProvisionForLoanAndLeaseLosses"]
     },
-    "operating_income": {
-      "sentence_fill": false,
-      "period": "duration",
-      "unit": "currency",
-      "concepts": ["us-gaap:OperatingIncomeLoss", "ifrs-full:ProfitLossFromOperatingActivities"]
-    },
-    "net_income": {
-      "sentence_fill": false,
-      "period": "duration",
-      "unit": "currency",
-      "concepts": ["us-gaap:NetIncomeLoss", "ifrs-full:ProfitLoss"]
-    },
     "rnd_expense": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:ResearchAndDevelopmentExpense", "ifrs-full:ResearchAndDevelopmentExpense"]
     },
     "rpo_backlog": {
+      "sentence_fill": false,
       "period": "instant",
       "unit": "currency",
       "concepts": ["us-gaap:RevenueRemainingPerformanceObligation"]
     },
     "purchase_commitments": {
+      "sentence_fill": false,
       "period": "instant",
       "unit": "currency",
       "concepts": ["us-gaap:PurchaseObligation", "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount"]
     },
     "capex": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": [
@@ -133,27 +164,26 @@
         "ifrs-full:PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"
       ]
     },
-    "long_term_debt": {
-      "period": "instant",
-      "unit": "currency",
-      "concepts": ["us-gaap:LongTermDebtNoncurrent", "us-gaap:LongTermDebt"]
-    },
     "diluted_shares": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "shares",
       "concepts": ["us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding"]
     },
     "guarantees": {
+      "sentence_fill": false,
       "period": "instant",
       "unit": "currency",
       "concepts": ["us-gaap:GuaranteeObligationsMaximumExposure"]
     },
     "share_repurchase": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:PaymentsForRepurchaseOfCommonStock"]
     },
     "dividends": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:PaymentsOfDividends", "ifrs-full:DividendsPaidClassifiedAsFinancingActivities"]

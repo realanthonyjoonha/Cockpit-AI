@@ -1,0 +1,182 @@
+{
+  "id": "insurer",
+  "cik": "0001099219",
+  "entity": "MetLife, Inc.",
+  "sector": "insurer",
+  "form": "10-K",
+  "reporting": "us-gaap",
+  "currency": "USD",
+  "slots": {
+    "company_revenue": {
+      "value_text": "19154000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:Revenues",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "38228000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "operating_income": {
+      "value_text": "1604000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:OperatingIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "3235000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "net_income": {
+      "value_text": "736000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:NetIncomeLoss",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "1921000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "diluted_eps": {
+      "value_text": "1.09",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:EarningsPerShareDiluted",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD/shares",
+      "ytd": {
+        "value_text": "2.83",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "cash": {
+      "value_text": "19301000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "operating_cash_flow": {
+      "value_text": "4915000000",
+      "end": "2026-06-30",
+      "start": "2026-01-01",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "total_debt": {
+      "value_text": "18879000000",
+      "end": "2012-06-30",
+      "start": null,
+      "concept": "us-gaap:LongTermDebt",
+      "form": "10-Q",
+      "filed": "2012-08-07",
+      "unit": "USD"
+    },
+    "goodwill_impairment": {
+      "value_text": "0",
+      "end": "2018-12-31",
+      "start": "2018-01-01",
+      "concept": "us-gaap:GoodwillImpairmentLoss",
+      "form": "10-K",
+      "filed": "2019-02-22",
+      "unit": "USD"
+    },
+    "impairment": {
+      "value_text": "77000000",
+      "end": "2012-12-31",
+      "start": "2012-01-01",
+      "concept": "us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill",
+      "form": "10-K",
+      "filed": "2015-02-27",
+      "unit": "USD"
+    },
+    "goodwill": {
+      "value_text": "9536000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:Goodwill",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "credit_loss_provision": {
+      "value_text": "-8000000",
+      "end": "2021-06-30",
+      "start": "2021-01-01",
+      "concept": "us-gaap:ProvisionForLoanAndLeaseLosses",
+      "form": "10-Q",
+      "filed": "2021-08-06",
+      "unit": "USD"
+    },
+    "diluted_shares": {
+      "value_text": "646900000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "shares",
+      "ytd": {
+        "value_text": "651300000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
+    },
+    "guarantees": {
+      "value_text": "628000000",
+      "end": "2026-06-30",
+      "start": null,
+      "concept": "us-gaap:GuaranteeObligationsMaximumExposure",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "share_repurchase": {
+      "value_text": "1477000000",
+      "end": "2026-06-30",
+      "start": "2026-01-01",
+      "concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    }
+  },
+  "empty": [
+    "inventory",
+    "net_interest_income",
+    "interest_revenue",
+    "rnd_expense",
+    "rpo_backlog",
+    "purchase_commitments",
+    "capex",
+    "dividends"
+  ],
+  "gaps_contain": [
+    "inventory: not reported in structured data",
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "rnd_expense: not reported in structured data",
+    "rpo_backlog: not reported in structured data",
+    "purchase_commitments: not reported in structured data",
+    "capex: not reported in structured data",
+    "dividends: not reported in structured data"
+  ]
+}

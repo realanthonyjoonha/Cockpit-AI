@@ -1,0 +1,129 @@
+{
+  "id": "fpi",
+  "cik": "0001000184",
+  "entity": "SAP SE",
+  "sector": "foreign private issuer",
+  "form": "20-F",
+  "reporting": "ifrs-full",
+  "currency": "EUR",
+  "slots": {
+    "company_revenue": {
+      "value_text": "36800000000",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "ifrs-full:Revenue",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "operating_income": {
+      "value_text": "9617000000",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "ifrs-full:ProfitLossFromOperatingActivities",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "net_income": {
+      "value_text": "7326000000",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "ifrs-full:ProfitLoss",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "diluted_eps": {
+      "value_text": "6.1",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "ifrs-full:DilutedEarningsLossPerShare",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR/shares"
+    },
+    "cash": {
+      "value_text": "8220000000",
+      "end": "2025-12-31",
+      "start": null,
+      "concept": "ifrs-full:CashAndCashEquivalents",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "operating_cash_flow": {
+      "value_text": "9156000000",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "ifrs-full:CashFlowsFromUsedInOperatingActivities",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "total_debt": {
+      "value_text": "4550000000",
+      "end": "2025-12-31",
+      "start": null,
+      "concept": "ifrs-full:LongtermBorrowings",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "goodwill": {
+      "value_text": "29014000000",
+      "end": "2025-12-31",
+      "start": null,
+      "concept": "ifrs-full:Goodwill",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "rnd_expense": {
+      "value_text": "6633000000",
+      "end": "2025-12-31",
+      "start": "2025-01-01",
+      "concept": "ifrs-full:ResearchAndDevelopmentExpense",
+      "form": "20-F",
+      "filed": "2026-02-26",
+      "unit": "EUR"
+    },
+    "dividends": {
+      "value_text": "1790000000",
+      "end": "2019-12-31",
+      "start": "2019-01-01",
+      "concept": "ifrs-full:DividendsPaidClassifiedAsFinancingActivities",
+      "form": "20-F",
+      "filed": "2020-02-27",
+      "unit": "EUR"
+    }
+  },
+  "empty": [
+    "goodwill_impairment",
+    "impairment",
+    "inventory",
+    "net_interest_income",
+    "interest_revenue",
+    "credit_loss_provision",
+    "rpo_backlog",
+    "purchase_commitments",
+    "capex",
+    "diluted_shares",
+    "guarantees",
+    "share_repurchase"
+  ],
+  "gaps_contain": [
+    "goodwill_impairment: not reported in structured data",
+    "impairment: not reported in structured data",
+    "inventory: not reported in structured data",
+    "net_interest_income: not reported in structured data",
+    "interest_revenue: not reported in structured data",
+    "credit_loss_provision: not reported in structured data",
+    "rpo_backlog: not reported in structured data",
+    "purchase_commitments: not reported in structured data",
+    "capex: not reported in structured data",
+    "diluted_shares: not reported in structured data",
+    "guarantees: not reported in structured data",
+    "share_repurchase: not reported in structured data"
+  ]
+}
