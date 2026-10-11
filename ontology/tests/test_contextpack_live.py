@@ -409,8 +409,8 @@ class TestNoIssuerTokens(unittest.TestCase):
             self.assertIsNone(re.search(r"\bguid\b", needle, re.I), needle)
             self.assertIsNone(re.search(r"\binventor\b", needle, re.I), needle)
         ids = {rule["id"] for rule in rules["metrics"]}
-        for tag, mid in (load_xbrl().get("tags") or {}).items():
-            self.assertIn(mid, ids, tag)
+        for mid in (load_xbrl().get("metrics") or {}):
+            self.assertIn(mid, ids, mid)
 
 
 if __name__ == "__main__":
