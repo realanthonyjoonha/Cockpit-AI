@@ -77,7 +77,7 @@
       "id": "T10",
       "ask": "KEEP a business engine already quoted in the CONFIRMED house.",
       "full": "propose_keep_driver",
-      "core": null,
+      "core": "propose_keep_driver",
       "bash": null
     },
     {
@@ -96,16 +96,18 @@
     "commit_on_go",
     "get_risk_sor",
     "propose_add_risk",
-    "propose_risk_status"
+    "propose_risk_status",
+    "propose_keep_driver",
+    "get_driver_sor"
   ],
   "prompts": {
     "tool-full.md": {
-      "chars": 14440,
-      "tokens": 3357
+      "chars": 11886,
+      "tokens": 2708
     },
     "tool-core.md": {
-      "chars": 6075,
-      "tokens": 1451
+      "chars": 6694,
+      "tokens": 1558
     },
     "tool-bash.md": {
       "chars": 1341,

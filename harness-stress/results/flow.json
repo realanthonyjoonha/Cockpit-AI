@@ -38,7 +38,7 @@
           "role": "seed",
           "cumulative_tokens": 7506,
           "cumulative_chars": 26657,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": false,
@@ -149,7 +149,7 @@
           "role": "slice-1",
           "cumulative_tokens": 9656,
           "cumulative_chars": 37170,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -260,7 +260,7 @@
           "role": "slice-2",
           "cumulative_tokens": 11807,
           "cumulative_chars": 47683,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -371,7 +371,7 @@
           "role": "slice-3",
           "cumulative_tokens": 13958,
           "cumulative_chars": 58196,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -482,7 +482,7 @@
           "role": "slice-4",
           "cumulative_tokens": 16109,
           "cumulative_chars": 68709,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -593,7 +593,7 @@
           "role": "slice-5",
           "cumulative_tokens": 18260,
           "cumulative_chars": 79222,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -704,7 +704,7 @@
           "role": "slice-6",
           "cumulative_tokens": 20411,
           "cumulative_chars": 89735,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -815,7 +815,7 @@
           "role": "slice-7",
           "cumulative_tokens": 22562,
           "cumulative_chars": 100248,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -926,7 +926,7 @@
           "role": "slice-8",
           "cumulative_tokens": 24713,
           "cumulative_chars": 110761,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1037,7 +1037,7 @@
           "role": "synthesis",
           "cumulative_tokens": 25731,
           "cumulative_chars": 116051,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1165,7 +1165,7 @@
           "role": "seed",
           "cumulative_tokens": 7506,
           "cumulative_chars": 26657,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": false,
@@ -1276,7 +1276,7 @@
           "role": "slice-1",
           "cumulative_tokens": 14003,
           "cumulative_chars": 58670,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1387,7 +1387,7 @@
           "role": "slice-2",
           "cumulative_tokens": 20501,
           "cumulative_chars": 90683,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1498,7 +1498,7 @@
           "role": "slice-3",
           "cumulative_tokens": 26999,
           "cumulative_chars": 122696,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1609,7 +1609,7 @@
           "role": "slice-4",
           "cumulative_tokens": 33497,
           "cumulative_chars": 154709,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1720,7 +1720,7 @@
           "role": "slice-5",
           "cumulative_tokens": 39995,
           "cumulative_chars": 186722,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1831,7 +1831,7 @@
           "role": "slice-6",
           "cumulative_tokens": 46493,
           "cumulative_chars": 218735,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -1942,7 +1942,7 @@
           "role": "slice-7",
           "cumulative_tokens": 52991,
           "cumulative_chars": 250748,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -2053,7 +2053,7 @@
           "role": "slice-8",
           "cumulative_tokens": 59489,
           "cumulative_chars": 282761,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -2164,7 +2164,7 @@
           "role": "synthesis",
           "cumulative_tokens": 62553,
           "cumulative_chars": 298801,
-          "per_call_schema_tokens": 3063,
+          "per_call_schema_tokens": 2414,
           "budgets": {
             "8000": {
               "overflow": true,
@@ -2349,7 +2349,7 @@
         "role": "card-1",
         "cumulative_tokens": 7557,
         "cumulative_chars": 26800,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": false,
@@ -2460,7 +2460,7 @@
         "role": "card-2",
         "cumulative_tokens": 7692,
         "cumulative_chars": 27138,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": false,
@@ -2571,7 +2571,7 @@
         "role": "card-3",
         "cumulative_tokens": 7840,
         "cumulative_chars": 27521,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": false,
@@ -2682,7 +2682,7 @@
         "role": "card-4",
         "cumulative_tokens": 7999,
         "cumulative_chars": 27933,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": false,
@@ -2793,7 +2793,7 @@
         "role": "card-5",
         "cumulative_tokens": 8168,
         "cumulative_chars": 28376,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": true,
@@ -2904,7 +2904,7 @@
         "role": "card-6",
         "cumulative_tokens": 8346,
         "cumulative_chars": 28849,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": true,
@@ -3015,7 +3015,7 @@
         "role": "card-7",
         "cumulative_tokens": 8537,
         "cumulative_chars": 29354,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": true,
@@ -3126,7 +3126,7 @@
         "role": "card-8",
         "cumulative_tokens": 8738,
         "cumulative_chars": 29890,
-        "per_call_schema_tokens": 3063,
+        "per_call_schema_tokens": 2414,
         "budgets": {
           "8000": {
             "overflow": true,
@@ -3342,5 +3342,5 @@
       "canaries_in_32k_tail": 8
     }
   ],
-  "schema_tokens_added_each_call": 3063
+  "schema_tokens_added_each_call": 2414
 }
