@@ -272,14 +272,10 @@
       "currency": "USD",
       "period": "year ended December 31, 2025",
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+        "company_revenue: no tagged fact; 2 candidate sentences in context"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "prem-new",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "claims",
           "metric_id": "other"
@@ -338,7 +334,18 @@
           ]
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "prem-new",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "prem-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/insurer.htm",
       "tagged": {
         "live": [
@@ -382,14 +389,10 @@
       "period": "year ended December 31, 2025",
       "gaps": [
         "unmapped_concept: us-gaap:FundsFromOperations",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+        "company_revenue: no tagged fact; 2 candidate sentences in context"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "rent",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "realestate",
           "metric_id": "other"
@@ -470,7 +473,18 @@
           ]
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "rent",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rent-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/reit.htm",
       "tagged": {
         "live": [
@@ -525,14 +539,10 @@
       "currency": "USD",
       "period": "year ended December 31, 2025",
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+        "company_revenue: no tagged fact; 2 candidate sentences in context"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "oprev",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "regasset",
           "metric_id": "other"
@@ -591,7 +601,18 @@
           ]
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "oprev",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "oprev-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/utility.htm",
       "tagged": {
         "live": [
@@ -647,14 +668,11 @@
         "net sales"
       ],
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue, rnd_expense"
+        "company_revenue: no tagged fact; 2 candidate sentences in context",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): rnd_expense"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "collab",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "rnd",
           "metric_id": "rnd_expense"
@@ -713,7 +731,18 @@
           ]
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "collab",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "collab-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/biotech.htm",
       "tagged": {
         "live": [
@@ -771,14 +800,11 @@
       "currency": "USD",
       "period": "53 weeks ended January 28, 2026",
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue, inventory"
+        "company_revenue: no tagged fact; 2 candidate sentences in context",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): inventory"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "sales",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "inv",
           "metric_id": "inventory"
@@ -858,7 +884,18 @@
           ]
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "sales",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "sales-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/retail.htm",
       "tagged": {
         "live": [
@@ -906,16 +943,13 @@
       "currency": "USD",
       "period": "year ended October 1, 2025",
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): capex, company_revenue"
+        "company_revenue: no tagged fact; 2 candidate sentences in context",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): capex"
       ],
       "absent": [
         "barrels"
       ],
       "live": [
-        {
-          "id": "rev-oct",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "capex",
           "metric_id": "capex"
@@ -984,7 +1018,18 @@
           "units": []
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "rev-oct",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rev-sep",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/energy.htm",
       "tagged": {
         "live": [
@@ -1038,7 +1083,13 @@
       "period": "year ended December 31, 2025",
       "gaps": [
         "as_of is a fiscal label without a period-end date",
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): cash, company_revenue, dividends, goodwill_impairment, gross_margin, guarantees, impairment, interest_revenue, net_income, operating_cash_flow, operating_income, purchase_commitments, revenue_guide, rpo_backlog"
+        "operating_income: no tagged fact; 1 candidate sentences in context",
+        "goodwill_impairment: no tagged fact; 1 candidate sentences in context",
+        "operating_cash_flow: no tagged fact; 1 candidate sentences in context",
+        "company_revenue: no tagged fact; 5 candidate sentences in context",
+        "net_income: no tagged fact; 3 candidate sentences in context",
+        "cash: no tagged fact; 4 candidate sentences in context",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): dividends, gross_margin, guarantees, impairment, interest_revenue, purchase_commitments, revenue_guide, rpo_backlog"
       ],
       "absent": [
         "ocf-weather",
@@ -1053,14 +1104,6 @@
         {
           "id": "gw-non",
           "metric_id": "impairment"
-        },
-        {
-          "id": "eps-pair",
-          "metric_id": "net_income"
-        },
-        {
-          "id": "cash-oct",
-          "metric_id": "cash"
         },
         {
           "id": "see-guide",
@@ -1095,10 +1138,6 @@
           "metric_id": "rpo_backlog"
         },
         {
-          "id": "oi",
-          "metric_id": "operating_income"
-        },
-        {
           "id": "commit",
           "metric_id": "purchase_commitments"
         },
@@ -1123,20 +1162,8 @@
           "metric_id": "guarantees"
         },
         {
-          "id": "sales-see",
-          "metric_id": "company_revenue"
-        },
-        {
           "id": "sanctions",
           "metric_id": "other"
-        },
-        {
-          "id": "ocf-2024",
-          "metric_id": "operating_cash_flow"
-        },
-        {
-          "id": "gw-real",
-          "metric_id": "goodwill_impairment"
         }
       ],
       "claims": [
@@ -1888,9 +1915,84 @@
       ],
       "context": [
         {
+          "id": "eps-pair",
+          "metric_id": "net_income",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "cash-oct",
+          "metric_id": "cash",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "cash-iso",
+          "metric_id": "cash",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "cash-sep",
+          "metric_id": "cash",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "cash-see",
+          "metric_id": "cash",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "oi",
+          "metric_id": "operating_income",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "eps",
+          "metric_id": "net_income",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "eps-header",
+          "metric_id": "net_income",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "sales-see",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
           "id": "trade-sanctions",
           "metric_id": "export_controls",
           "reason": "no_amount"
+        },
+        {
+          "id": "ocf-2024",
+          "metric_id": "operating_cash_flow",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "gw-real",
+          "metric_id": "goodwill_impairment",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rev-tnr",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rev-plural",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rev-word",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rev-total",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
         }
       ],
       "xbrl": "xbrl/industrial.htm",
@@ -2203,14 +2305,11 @@
       "currency": "USD",
       "period": "year ended December 31, 2025",
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue, operating_segments, rpo_backlog"
+        "company_revenue: no tagged fact; 2 candidate sentences in context",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): operating_segments, rpo_backlog"
       ],
       "absent": [],
       "live": [
-        {
-          "id": "rev",
-          "metric_id": "company_revenue"
-        },
         {
           "id": "rpo",
           "metric_id": "rpo_backlog"
@@ -2304,7 +2403,18 @@
           "units": []
         }
       ],
-      "context": [],
+      "context": [
+        {
+          "id": "rev",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
+          "id": "rev-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        }
+      ],
       "xbrl": "xbrl/software.htm",
       "tagged": {
         "live": [
@@ -2369,19 +2479,14 @@
       "currency": "EUR",
       "period": "fiscal year ended 31 March 2026",
       "gaps": [
-        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+        "company_revenue: no tagged fact; 2 candidate sentences in context"
       ],
       "absent": [],
-      "live": [
-        {
-          "id": "rev",
-          "metric_id": "company_revenue"
-        }
-      ],
+      "live": [],
       "claims": [
         {
           "id": "rev",
-          "text": "Total revenues were € 1,200 in millions.",
+          "text": "Total revenues were \u20ac 1,200 in millions.",
           "as_of": "fiscal year ended 31 March 2026",
           "grade": "A",
           "classify": "company_revenue",
@@ -2398,7 +2503,7 @@
         },
         {
           "id": "rev-old",
-          "text": "Total revenues were € 1,050 million.",
+          "text": "Total revenues were \u20ac 1,050 million.",
           "as_of": "2026-3-15",
           "grade": "A",
           "classify": "company_revenue",
@@ -2427,9 +2532,19 @@
       ],
       "context": [
         {
+          "id": "rev",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
+        },
+        {
           "id": "cash-ifrs",
           "metric_id": "cash",
           "reason": "no_amount"
+        },
+        {
+          "id": "rev-old",
+          "metric_id": "company_revenue",
+          "reason": "no_tagged_fact"
         }
       ],
       "xbrl": "xbrl/fpi.htm",

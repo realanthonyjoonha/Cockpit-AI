@@ -96,7 +96,7 @@ function readAllowlistedMarkdownFile(filePath) {
 const { loadPack } = await import(path.join(ROOT, 'server', 'pack.js'));
 const { enforceCharBudget, OVERVIEW_BUDGET_CHARS } = await import(path.join(ROOT, 'server', 'contextpack.js'));
 const { readHouseMarkdown, auditAllowlistedHouse } = await import(path.join(ROOT, 'server', 'thinHouseSave.js'));
-const { buildHouseAssistContext } = await import(path.join(ROOT, 'server', 'assistContext.js'));
+const { buildHouseAssistContext, assistToolTrailer } = await import(path.join(ROOT, 'server', 'assistContext.js'));
 const { getLiveThinDeskProfiles } = await import(path.join(ROOT, 'server', 'thinDeskProfiles.js'));
 
 /**
@@ -375,9 +375,11 @@ server.tool(
     return {
       content: [{
         type: 'text',
-        text: ctx.clipboard_text
-          + '\n\n---\n'
-          + JSON.stringify({ chars: ctx.chars, house_exists: ctx.house_exists, compiled_at: ctx.compiled_at }),
+        text: ctx.clipboard_text + assistToolTrailer({
+          chars: ctx.chars,
+          house_exists: ctx.house_exists,
+          compiled_at: ctx.compiled_at,
+        }),
       }],
     };
   },

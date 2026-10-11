@@ -1,6 +1,6 @@
 {
   "version": "2",
-  "comment": "Concept to taxonomy id. Concepts are canonical prefix:local (us-gaap, ifrs-full), resolved from the filer's namespace, not its prefix text. Order inside a metric is priority: the first concept present for the winning period is the slot. period is duration or instant. unit is the kind of amount a fact or a sentence must carry for that slot. A metric with no concepts can only be filled by a sentence. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "comment": "Concept to taxonomy id. Concepts are canonical prefix:local (us-gaap, ifrs-full), resolved from the filer's namespace, not its prefix text. Order inside a metric is priority: the first concept present for the winning period is the slot. period is duration or instant. unit is the kind of amount a fact or a sentence must carry for that slot. sentence_fill false: a sentence never fills the live slot (context + gap only). Headline totals are tagged-only. A metric with no concepts can only be filled by a sentence. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
   "namespaces": {
     "us-gaap": ["http://fasb.org/us-gaap/"],
     "ifrs-full": ["http://xbrl.ifrs.org/taxonomy/", "https://xbrl.ifrs.org/taxonomy/"],
@@ -12,6 +12,7 @@
   },
   "metrics": {
     "company_revenue": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": [
@@ -28,6 +29,7 @@
       ]
     },
     "goodwill_impairment": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": [
@@ -51,6 +53,7 @@
       ]
     },
     "goodwill": {
+      "sentence_fill": false,
       "period": "instant",
       "unit": "currency",
       "concepts": ["us-gaap:Goodwill", "ifrs-full:Goodwill"]
@@ -61,6 +64,7 @@
       "concepts": ["us-gaap:InventoryNet", "ifrs-full:Inventories"]
     },
     "operating_cash_flow": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": [
@@ -70,6 +74,7 @@
       ]
     },
     "cash": {
+      "sentence_fill": false,
       "period": "instant",
       "unit": "currency",
       "concepts": [
@@ -94,11 +99,13 @@
       "concepts": ["us-gaap:ProvisionForLoanLeaseAndOtherLosses", "us-gaap:ProvisionForLoanAndLeaseLosses"]
     },
     "operating_income": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:OperatingIncomeLoss", "ifrs-full:ProfitLossFromOperatingActivities"]
     },
     "net_income": {
+      "sentence_fill": false,
       "period": "duration",
       "unit": "currency",
       "concepts": ["us-gaap:NetIncomeLoss", "ifrs-full:ProfitLoss"]
