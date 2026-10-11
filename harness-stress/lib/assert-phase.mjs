@@ -18,7 +18,7 @@ import {
   riskMetric,
   sentenceHasAmount,
 } from '../../memory-cockpit-v2/server/contextpack.js';
-import { parseCompanyfacts, structuredMetric, taggedSlots } from '../../memory-cockpit-v2/server/companyfacts.js';
+import { headlineGaps, parseCompanyfacts, structuredMetric, taggedSlots } from '../../memory-cockpit-v2/server/companyfacts.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -78,6 +78,7 @@ function makeApi(rules) {
     parseCompanyfacts,
     structuredMetric,
     taggedSlots,
+    headlineGaps,
   };
 }
 

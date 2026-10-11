@@ -14,7 +14,7 @@ import {
   riskMetric,
   sentenceHasAmount,
 } from '../server/contextpack.js';
-import { parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
+import { headlineGaps, parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
 import { checkCompanyfactsExact } from '../../harness-stress/lib/review-check.mjs';
 import {
   bannedNeedles,
@@ -87,7 +87,7 @@ const stems = bannedNeedles(rules);
 if (!stems.length) ok('no guid or inventor stems');
 else bad(`stems: ${stems.join(', ')}`);
 
-const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots };
+const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots, headlineGaps };
 const exactErrors = checkCompanyfactsExact(xApi);
 if (!exactErrors.length) ok('JS companyfacts fixtures match expected.json');
 else exactErrors.forEach((e) => bad(e));

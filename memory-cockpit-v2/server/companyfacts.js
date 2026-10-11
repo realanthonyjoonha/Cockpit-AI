@@ -7,14 +7,17 @@ import { fileURLToPath } from 'url';
 const DEFAULT_ONTOLOGY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ontology');
 const ALLOWED_FORMS = new Set(['10-K', '10-Q', '20-F', '40-F', '6-K', '10-KT']);
 const ANNUAL_FORMS = new Set(['10-K', '20-F', '40-F', '10-KT']);
+const INTERIM_FORMS = new Set(['10-Q', '6-K']);
 const QUARTER_FP = new Set(['Q1', 'Q2', 'Q3']);
 const ISO4217 = /^[A-Z]{3}$/;
 const TAXONOMIES = ['us-gaap', 'ifrs-full'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const STALE_DAYS = 730;
 
 export const MISSING_CACHE = 'companyfacts cache missing; headline slots empty';
 export const UNREADABLE = 'companyfacts cache unreadable';
 export const STRUCTURED_GAP = (mid) => `${mid}: not reported in structured data`;
+export const STALE_GAP = (mid, end) => `${mid}: stale: last reported ${end}`;
 
 let taxonomyCache = null;
 
@@ -255,9 +258,25 @@ function periodLabel(p) {
   return p.type === 'duration' ? `${p.start}/${p.end}` : String(p.end);
 }
 
-export function taggedSlots(facts, taxonomy = null) {
+function latestPeriodicEnd(facts) {
+  let latest = '';
+  for (const f of facts || []) {
+    if (!ALLOWED_FORMS.has(formFamily(f.form))) continue;
+    const end = f.period && f.period.end;
+    if (end && end > latest) latest = end;
+  }
+  return latest || null;
+}
+
+export function factIsStale(end, latest) {
+  return Boolean(end && latest && days(end, latest) > STALE_DAYS);
+}
+
+export function selectSlots(facts, taxonomy = null) {
   const tax = taxonomy || loadTaxonomy();
   const slots = {};
+  const stale = {};
+  const latestPeriodic = latestPeriodicEnd(facts || []);
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
     if (spec.alias_of) continue;
     const primary = spec.concepts || [];
@@ -296,10 +315,8 @@ export function taggedSlots(facts, taxonomy = null) {
     const latestEnd = winners.reduce((acc, [w]) => (w.period.end > acc ? w.period.end : acc), '');
     const atEnd = winners.filter(([w]) => w.period.end === latestEnd);
     const families = new Set(atEnd.map(([w]) => formFamily(w.form)));
-    const fps = new Set(atEnd.map(([w]) => String(w.fp || '').toUpperCase()));
     const onlyAnnual = [...families].every((f) => ANNUAL_FORMS.has(f));
-    const sixkQuarter = families.has('6-K') && [...fps].some((fp) => QUARTER_FP.has(fp));
-    const interim = (families.has('10-Q') || sixkQuarter) && !onlyAnnual;
+    const hasInterimForm = [...families].some((f) => INTERIM_FORMS.has(f));
 
     const kindOf = (w) => durationKind(
       days(w.period.start, w.period.end),
@@ -307,16 +324,24 @@ export function taggedSlots(facts, taxonomy = null) {
       w.form,
       atEnd.filter(([o]) => o !== w).map(([o]) => days(o.period.start, o.period.end)),
     );
+    const annualFormAnnual = atEnd.some(([w]) => ANNUAL_FORMS.has(formFamily(w.form)) && kindOf(w) === 'annual');
+    const interim = hasInterimForm && !onlyAnnual && !annualFormAnnual;
 
     const rank = ([w]) => {
       const kind = kindOf(w);
       const dur = interim ? ({ quarter: 2, ytd: 1 }[kind] || 0) : (kind === 'annual' ? 2 : 0);
       const cidx = concepts.indexOf(w.concept);
-      return [dur, -(cidx < 0 ? 99 : cidx), w.filed || '', w.accession || ''];
+      const n = days(w.period.start, w.period.end);
+      const span = interim ? -n : n;
+      return [-(cidx < 0 ? 99 : cidx), dur, span, w.filed || '', w.accession || ''];
     };
     const best = atEnd.reduce((acc, row) => (acc == null || cmpTuple(rank(row), rank(acc)) > 0 ? row : acc), null);
     const win = best[0];
     const restatedFrom = best[1];
+    if (factIsStale(win.period.end, latestPeriodic)) {
+      stale[mid] = win.period.end;
+      continue;
+    }
     let ytd = null;
     if (spec.period === 'duration' && kindOf(win) === 'quarter') {
       const ytdRows = atEnd
@@ -372,16 +397,23 @@ export function taggedSlots(facts, taxonomy = null) {
       } : null,
     };
   }
-  return slots;
+  return { slots, stale };
 }
 
-export function headlineGaps(slots, taxonomy = null) {
+export function taggedSlots(facts, taxonomy = null) {
+  return selectSlots(facts, taxonomy).slots;
+}
+
+export function headlineGaps(slots, taxonomy = null, facts = null) {
   const tax = taxonomy || loadTaxonomy();
+  const stale = facts != null ? selectSlots(facts, tax).stale : {};
   const gaps = [];
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
     if (spec.alias_of) continue;
     if (!((spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length))) continue;
-    if (!slots[mid]) gaps.push(STRUCTURED_GAP(mid));
+    if (slots[mid]) continue;
+    if (stale[mid]) gaps.push(STALE_GAP(mid, stale[mid]));
+    else gaps.push(STRUCTURED_GAP(mid));
   }
   return gaps;
 }

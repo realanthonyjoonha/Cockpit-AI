@@ -1,0 +1,40 @@
+{
+  "cik": 9,
+  "entityName": "Primary YTD beats fallback quarter at same end",
+  "facts": {
+    "us-gaap": {
+      "Revenues": {
+        "units": {
+          "USD": [
+            {
+              "start": "2025-01-01",
+              "end": "2025-06-30",
+              "val": 500000000,
+              "accn": "0000000009-25-000002",
+              "fy": 2025,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2025-08-01"
+            }
+          ]
+        }
+      },
+      "SalesRevenueNet": {
+        "units": {
+          "USD": [
+            {
+              "start": "2025-04-01",
+              "end": "2025-06-30",
+              "val": 80000000,
+              "accn": "0000000009-25-000002",
+              "fy": 2025,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2025-08-01"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

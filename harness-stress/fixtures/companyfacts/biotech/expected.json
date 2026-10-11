@@ -122,15 +122,6 @@
       "filed": "2026-08-06",
       "unit": "USD"
     },
-    "rnd_expense": {
-      "value_text": "1101000000",
-      "end": "2020-03-31",
-      "start": "2020-01-01",
-      "concept": "us-gaap:ResearchAndDevelopmentExpense",
-      "form": "10-Q",
-      "filed": "2020-05-06",
-      "unit": "USD"
-    },
     "capex": {
       "value_text": "257000000",
       "end": "2026-06-30",
@@ -180,7 +171,8 @@
     "credit_loss_provision",
     "rpo_backlog",
     "purchase_commitments",
-    "guarantees"
+    "guarantees",
+    "rnd_expense"
   ],
   "gaps_contain": [
     "goodwill_impairment: not reported in structured data",
@@ -189,6 +181,7 @@
     "credit_loss_provision: not reported in structured data",
     "rpo_backlog: not reported in structured data",
     "purchase_commitments: not reported in structured data",
-    "guarantees: not reported in structured data"
+    "guarantees: not reported in structured data",
+    "rnd_expense: stale: last reported 2020-03-31"
   ]
 }

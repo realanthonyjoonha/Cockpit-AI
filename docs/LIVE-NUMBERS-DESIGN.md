@@ -276,11 +276,13 @@ For each structured metric:
 3. **Same period** (`end` + `start` or instant `end`): pick the latest `filed`. Tie → latest `accn` (string compare is the accession order the SEC issues). The displaced value, if `value_text` differs, is `prior` with `restated: true`.
 4. **Current slot** among remaining period winners:
    - Latest `end` wins (most recent reported period).
-   - Same `end`, duration metric:
-    - If the winning form family is `10-Q` (or a 6-K with `fp` in Q1–Q3): prefer quarter over YTD over annual. Classify duration by `fp` and relative span at the same end (the shorter intra-year point is the quarter). Day buckets are a fallback only (quarter ≤ 130 days, including a 16-week / 111-day quarter). Never use JSON array order.
-    - If the winning form family is `10-K` / `10-KT` / `20-F` / `40-F` (or 6-K with `fp=FY`): prefer annual duration. No `ytd`.
-    - Then concept list order (earlier concept wins).
-    - Then later `filed` / `accn`.
+   - Same `end`, duration metric. Rank is concept-list order first, then duration preference, then span length, then later `filed` / `accn`. Array order never decides.
+    - A 6-K is an interim form even without `fp`. Classify its duration by relative span (then day buckets). Prefer quarter over YTD when the slot is interim.
+    - If any annual-form (`10-K` / `10-KT` / `20-F` / `40-F`) annual-duration point exists at that end, the slot is annual (10-K vs Q4 10-Q same end; 10-KT `fp=FY` with a quarter peer). The quarter point stays classified as a quarter; it does not win the annual slot.
+    - Otherwise if a `10-Q` or `6-K` is present: prefer quarter over YTD over annual. Classify duration by `fp` and relative span at the same end (the shorter intra-year point is the quarter). Day buckets are a fallback only (quarter ≤ 130 days, including a 16-week / 111-day quarter).
+    - Else prefer annual duration. No `ytd`.
+    - Same-end primary YTD beats a fallback-concept quarter because concept order is first.
+    - Span length is part of the rank so two same-end annuals (or two quarters) cannot tie on JSON array order.
 5. Instant metrics (cash, debt, goodwill): `end` only. No duration contest. Latest `end`, then latest `filed`.
 6. Units:
    - `currency`: unit is a 3-letter ISO code (`USD`, `EUR`, …). Store it on the slot. Do not convert.
@@ -289,6 +291,7 @@ For each structured metric:
    - Other units do not fill.
 7. Do not sum two concepts (no “current debt + noncurrent debt”). If the filer never reports a mapped total-debt concept, the slot is empty and the gap says so.
 8. A reported zero is a value. Absence is a gap.
+9. **Stale slot.** After the winner is chosen, compare its `end` to the filer's latest allowed periodic `end` (`10-K` / `10-Q` / `20-F` / `40-F` / `10-KT` / `6-K` across the facts). If the winner is older than ~2 fiscal years (`STALE_DAYS = 730`), emit no slot and a gap `{id}: stale: last reported {end}`. A last-10-K total that is only one quarter behind a later 10-Q (JPM `Revenues` 2025-12-31 vs 2026-06-30) stays. JPM `LongTermDebt` 2014 and `InterestAndDividendIncomeOperating` 2012 are stale.
 
 This is the opposite of the iXBRL round's “longer duration wins,” which made 10-Q YTD beat the quarter (PR #5 review). Restatements win by `filed`/`accn`, which is the opposite of “first definition kept.”
 
@@ -300,7 +303,7 @@ One shared file: `ontology/schema/taxonomy_xbrl.json`. Headline ids are short. T
 
 | id | period | unit | Ordered concepts |
 | --- | --- | --- | --- |
-| `company_revenue` | duration | currency | `us-gaap:Revenues`, `us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax`, `us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax`, `us-gaap:SalesRevenueNet`, `us-gaap:RegulatedAndUnregulatedOperatingRevenue`, `us-gaap:PremiumsEarnedNet`, `us-gaap:OperatingLeaseLeaseIncome`, `us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer`, `ifrs-full:Revenue`, `ifrs-full:RevenueFromContractsWithCustomers` |
+| `company_revenue` | duration | currency | **True totals only:** `us-gaap:Revenues`, `us-gaap:SalesRevenueNet`, `us-gaap:RegulatedAndUnregulatedOperatingRevenue`, `us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax`, `us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax`, `ifrs-full:Revenue`, `ifrs-full:RevenueFromContractsWithCustomers`; fallback true-total synonyms `us-gaap:PremiumsEarnedNet`, `us-gaap:RevenuesNetOfInterestExpense`. **Not** components (`OperatingLeaseLeaseIncome`, `InterestAndDividendIncomeOperating`, collaborative-arrangement slices). |
 | `operating_income` | duration | currency | `us-gaap:OperatingIncomeLoss`, `ifrs-full:ProfitLossFromOperatingActivities` |
 | `net_income` | duration | currency | `us-gaap:NetIncomeLoss`, `ifrs-full:ProfitLoss` |
 | `diluted_eps` | duration | per_share | `us-gaap:EarningsPerShareDiluted`, `us-gaap:IncomeLossFromContinuingOperationsPerDilutedShare`, `ifrs-full:DilutedEarningsLossPerShare`, `ifrs-full:BasicAndDilutedEarningsLossPerShare` |
@@ -331,6 +334,7 @@ These are not headline totals. They may still appear as live rows from classifie
 | --- | --- |
 | No cache | All structured slots empty. Gap `companyfacts cache missing; headline slots empty`. |
 | Cache present, concept absent | That slot empty. Gap `{id}: not reported in structured data`. |
+| Cache present, latest mapped fact older than ~2 fiscal years vs the filer's latest 10-K/10-Q/20-F/40-F/10-KT/6-K `end` | That slot empty. Gap `{id}: stale: last reported {end}`. Do not trim the fixture to hide the old tag. |
 | Cache present, only dimensional would have existed | N/A — companyfacts has no dimensions. |
 | Sentence names a structured metric | `context_claims` with reason `structured_slot` or `no_structured_fact`. Live value unchanged. |
 | Sentence names a phrase-only metric | Existing phrase rules. May be a live row. |
@@ -341,7 +345,9 @@ These are not headline totals. They may still appear as live rows from classifie
 | 53-week year | Duration ≥ 341 counts as annual. Period end is the filed `end`, not snapped to a calendar quarter. |
 | Unpadded / written dates on sentences | Existing `parse_as_of`. Not used to pick a companyfacts point. |
 
-**Forbidden fallbacks.** Guess a year-end month from sector. Convert EUR to USD. Sum two debt concepts. Fill a headline from “Revenue was $X”. Parse iXBRL HTML when the cache is missing. Call the SEC from `live_claims`.
+**True-total rule.** A `concepts` or `fallback` entry on a total slot may only be a synonym for that total (same economic line, different tag). Components, slices, and product/geography tags are unmapped. Documented in `taxonomy_xbrl.json` `comment`. Restoring `OperatingLeaseLeaseIncome` to `company_revenue` makes untrimmed JPM report $1.207B lease income; that is a failed map, not a fixture trim.
+
+**Forbidden fallbacks.** Guess a year-end month from sector. Convert EUR to USD. Sum two debt concepts. Fill a headline from “Revenue was $X”. Parse iXBRL HTML when the cache is missing. Call the SEC from `live_claims`. Trim a real extract so a component tag disappears.
 
 ## Compatibility with later phases
 
@@ -374,6 +380,13 @@ Ten sectors from the plan, plus a restatement case and a 10-Q YTD case. Extra na
 | `fpi` | Foreign private issuer | 20-F | ifrs-full | IFRS concepts; non-USD flagged |
 | `restate` | Restatement | 10-K + later 10-K/A or later accn | us-gaap | Same `end`; later `filed` wins; `prior` is the old val |
 | `qtd` | 10-Q YTD | 10-Q | us-gaap | Quarter duration is live; YTD is `ytd` |
+| `sixk-q` / `sixk-nofp` | 6-K | 6-K | ifrs-full | Quarter + YTD; without `fp`, classify by span |
+| `tenkt` / `tenkt-q` | 10-KT | 10-KT | us-gaap | Transition annual; with a quarter peer still annual |
+| `k-vs-q4` | 10-K vs Q4 10-Q | 10-K | us-gaap | Same end → annual slot is the 10-K |
+| `primary-ytd` | concept order | 10-Q | us-gaap | Primary YTD beats fallback quarter |
+| `span-tie` / `span-tie-rev` | rank | 10-K | us-gaap | Span length, not array order |
+| `true-total` | map | 10-K | us-gaap | Newer lease income must not steal `Revenues` |
+| `stale-slot` | staleness | 10-K | us-gaap | 2014 debt empty; gap `stale: last reported` |
 
 Each folder:
 
@@ -416,7 +429,7 @@ Proof is exit codes, not report prose.
 2. **Parity.** Same cache bytes → same normalized facts and same slots in both languages (`contextpack-parity.mjs` + `parity_live.py`).
 3. **Review sentences.** Every sentence in `review-sentences.json` (reviews 1–3, held-out, reviewer pairs), alone and together, leaves every structured slot’s `value_text` unchanged. An empty structured slot stays empty. No sentence creates `origin: "sentence"` on a structured `metric_id`.
 4. **Restatement.** `restate` expected: later `filed` wins; `prior` is the superseded val.
-5. **10-Q YTD.** `qtd` expected: live duration in 70–110 days; `ytd` present and different.
+5. **10-Q YTD.** `qtd` expected: live value is the quarter; `ytd` present and different. Do not assert a leftover 70–110 day band.
 6. **Date / grade (kept).** `--assert p0` still has `C-date-unpadded`, `C-date-iso`, `C-missing-grade`, `C-same-day-tie` on phrase-only `gross_margin` claims.
 7. **De-literal (kept).** `ask.py` must not contain `what is micron`. New router needles are not issuer names.
 8. **Issuer-token grep.** `taxonomy_xbrl.json` and `contextpack_metrics.json` contain none of the banned tokens.

@@ -1,6 +1,6 @@
 {
   "version": "3",
-  "comment": "Companyfacts concept to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). Primary and fallback are one ordered list for selection: latest period end wins first across both; same end uses this list order (primary, then fallback), then later filed/accn. sentence_fill is always false for structured metrics. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "comment": "Companyfacts concept to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). Primary and fallback are one ordered list for selection: latest period end wins first across both; same end uses this list order (primary, then fallback), then duration, span length, later filed/accn. Fallback lists may contain only true-total synonyms for that metric (Revenues, RevenueFromContractWithCustomer*, SalesRevenueNet, RevenuesNetOfInterestExpense, PremiumsEarnedNet). Components such as OperatingLeaseLeaseIncome, InterestAndDividendIncomeOperating, or collaborative-arrangement slices must not occupy a total slot. sentence_fill is always false for structured metrics. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
   "namespaces": {
     "us-gaap": ["http://fasb.org/us-gaap/"],
     "ifrs-full": ["http://xbrl.ifrs.org/taxonomy/", "https://xbrl.ifrs.org/taxonomy/"],
@@ -22,8 +22,7 @@
       ],
       "fallback": [
         "us-gaap:PremiumsEarnedNet",
-        "us-gaap:OperatingLeaseLeaseIncome",
-        "us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer"
+        "us-gaap:RevenuesNetOfInterestExpense"
       ]
     },
     "operating_income": {

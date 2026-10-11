@@ -49,7 +49,7 @@ def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[s
     status_gap = _status_gap(path)
     if status_gap and status_gap not in notes:
         notes.insert(0, status_gap)
-    notes.extend(headline_gaps(slots))
+    notes.extend(headline_gaps(slots, facts=kept))
     rel = str(path)
     try:
         rel = str(path.relative_to(wiki_root))
