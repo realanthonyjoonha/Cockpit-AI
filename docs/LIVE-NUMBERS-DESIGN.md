@@ -251,7 +251,7 @@ Glass is not edited. `memory-cockpit-v2/src/**` is not edited. `thin-desks.json`
 
 ### Fetch rules
 
-- Trigger: desk add, or an explicit refresh (`./ont facts-fetch TICKER` / equivalent script). Not on `retrieve`, `ask`, MCP snapshot, or every compile.
+- Trigger: desk add (`scripts/scaffold-new-desk.sh` → `./ont facts-fetch`), or an explicit refresh (`./ont facts-fetch TICKER` or `POST /api/{slug}/pipeline/refresh`). Phone and desktop share that glass pipeline. Not on `retrieve`, `ask`, MCP snapshot, book refresh, or every compile.
 - URL: `https://data.sec.gov/api/xbrl/companyfacts/CIK{cik10}.json` with a zero-padded 10-digit CIK.
 - `User-Agent` from `SEC_USER_AGENT` or pack `sec_user_agent`. Must contain a contact token (`@` or `http`). Fail closed if missing. No default that invents a private email.
 - Status 429 / 503: wait and retry once, then fail. Do not spin.

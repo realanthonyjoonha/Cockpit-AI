@@ -1,6 +1,7 @@
 """Load a desk's local companyfacts cache into pack.facts. No network."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,18 @@ def default_cache(wiki_root: Path, slug: str) -> Path:
     return wiki_root / "raw" / f"{slug}-research" / "sec" / "companyfacts.json"
 
 
+def _status_gap(cache: Path) -> str | None:
+    status = cache.with_name("companyfacts.status.json")
+    if not status.is_file():
+        return None
+    try:
+        data = json.loads(status.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    gap = data.get("gap") if isinstance(data, dict) else None
+    return str(gap) if gap else None
+
+
 def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[str, Any]:
     """Read the desk cache. Missing file → empty facts + gap. Never fetches."""
     override = cfg.get("companyfacts_path")
@@ -27,7 +40,8 @@ def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[s
     else:
         path = default_cache(wiki_root, slug)
     if not path.is_file():
-        return {"facts": [], "notes": [MISSING_CACHE], "files": [], "slots": {}}
+        notes = [_status_gap(path) or MISSING_CACHE]
+        return {"facts": [], "notes": notes, "files": [], "slots": {}}
     parsed = load_companyfacts_file(path, source_id=str(path.relative_to(wiki_root)) if wiki_root in path.parents else str(path))
     kept = mapped_facts(parsed["facts"])
     slots = tagged_slots(kept)
