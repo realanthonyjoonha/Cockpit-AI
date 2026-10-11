@@ -5,10 +5,12 @@
  * Always-loaded catalog (COCKPIT_MCP_TOOL_PROFILE unset): every live tool.
  * That is the default so a cheap model still sees propose_keep_driver.
  *
- * Lazy core (COCKPIT_MCP_TOOL_PROFILE=core): a closed set that includes every
- * write the desk loop uses, including propose_keep_driver and get_driver_sor.
- * Tools left off that list are not deleted. Unset the profile and call
- * tools/list to load them. That is the lazy-load path.
+ * Lazy core (COCKPIT_MCP_TOOL_PROFILE=core): a closed ten-tool stress set
+ * (the original eight plus propose_keep_driver and get_driver_sor). KEEP is
+ * on that list. It is not every write the desk loop uses: tripwire, driver
+ * log, full propose_house_view, list_house_proposals, and accept_* stay on
+ * the default catalog only. Tools left off core are not deleted. Unset the
+ * profile and call tools/list to load them. That is the lazy-load path.
  *
  * propose_add_metric and get_metric_sor are removed. They always refused, so
  * no capability is lost. A cached call gets an unknown-tool envelope whose
@@ -43,9 +45,9 @@ export function toolVisible(name) {
   return true;
 }
 
-/** User verb KEEP. A spoken GO does not match. */
+/** User verb KEEP anywhere on the line. A spoken GO does not match. */
 export function isKeepVerb(utterance) {
-  return /^keep\b/i.test(String(utterance || '').trim());
+  return /(?<![\w-])keep(?![\w-])/i.test(String(utterance || '').trim());
 }
 
 function namedTool(error) {
@@ -68,7 +70,7 @@ export function nextStep(toolName, error) {
     const missing = (/Tool ([a-z0-9_]+) not found/i.exec(e) || [])[1] || 'the tool';
     return `unset COCKPIT_MCP_TOOL_PROFILE and call tools/list to load ${missing}`;
   }
-  if (/^KEEP is not\b/.test(e) || /^keep\b/i.test(e.trim())) {
+  if (/KEEP is not\b/.test(e) || isKeepVerb(e)) {
     return 'call propose_keep_driver';
   }
   if (/kind=metrics|not wired/i.test(e)) {

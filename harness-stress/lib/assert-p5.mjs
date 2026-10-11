@@ -30,6 +30,12 @@ export async function assertP5() {
   if (!/COCKPIT_MCP_TOOL_PROFILE/.test(catalog) || !/lazy-load path/i.test(catalog)) {
     errors.push('lazy-load path is not documented');
   }
+  if (/includes every write the desk loop uses/.test(catalog)) {
+    errors.push('core profile header overclaims the closed set');
+  }
+  if (!/not every write the desk loop uses/.test(catalog)) {
+    errors.push('core profile header does not name the omitted desk-loop writes');
+  }
   for (const name of REMOVED_TOOLS) {
     if (!catalog.includes(name)) errors.push(`removed tool ${name} has no documented path`);
   }

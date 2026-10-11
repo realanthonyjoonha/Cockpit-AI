@@ -59,6 +59,10 @@ function envelopeErrors(tools) {
 export async function catalogGate() {
   const errors = [];
   if (isKeepVerb('KEEP') !== true || isKeepVerb('GO') !== false) errors.push('KEEP verb detector');
+  if (isKeepVerb('please KEEP the subscription line') !== true) errors.push('KEEP anywhere-word-boundary');
+  if (isKeepVerb('keepers') !== false || isKeepVerb('auto-keep') !== false) errors.push('KEEP hyphen/stem false-positive');
+  const pleaseKeep = failureBody('commit_on_go', 'please KEEP the subscription line');
+  if (!/propose_keep_driver/.test(pleaseKeep.next)) errors.push(`KEEP mid-line next ${pleaseKeep.next}`);
   const keep = failureBody('commit_on_go', 'KEEP is not a drivers GO. No 09 write.');
   if (keep.ok !== false || keep.retryable !== false || !/propose_keep_driver/.test(keep.next)) {
     errors.push(`KEEP envelope ${JSON.stringify(keep)}`);
