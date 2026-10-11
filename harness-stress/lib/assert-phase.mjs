@@ -21,7 +21,7 @@ import {
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { sectorBudgetErrors } from './assert-p1.mjs';
 import { sectorGoErrors } from './assert-p2.mjs';
-import { parseCompanyfacts, structuredMetric, taggedSlots } from '../../memory-cockpit-v2/server/companyfacts.js';
+import { headlineGaps, parseCompanyfacts, structuredMetric, taggedSlots } from '../../memory-cockpit-v2/server/companyfacts.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -81,6 +81,7 @@ function makeApi(rules) {
     parseCompanyfacts,
     structuredMetric,
     taggedSlots,
+    headlineGaps,
   };
 }
 
