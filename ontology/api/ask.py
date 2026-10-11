@@ -154,36 +154,32 @@ def answer(focus: str, question: str) -> str:
             lines.append(f"- **{s.get('label')}:** {s.get('text')}")
         return "\n".join(lines)
 
-    # Contract / backlog / SCA-style claims (works for MU SCAs and NBIS MSFT/Meta/RPO)
+    # Contract / backlog / remaining-performance claims. Generic words only.
     if _match(
         q,
         "sca",
         "strategic customer",
         "backlog",
         "take-or-pay",
-        "100b",
-        "$100",
         "rpo",
-        "microsoft",
-        "meta agreement",
         "committed revenue",
         "contingent",
     ):
         contract_re = re.compile(
-            r"100\s*B|\$100|strategic customer|\bSCAs?\b|minimum revenue|"
-            r"Microsoft|Meta|RPO|backlog|take-or-pay|tranche|upfront|"
-            r"17,?392|33,?585|deferred revenue|commitment",
+            r"strategic customer|\bSCAs?\b|minimum revenue|"
+            r"\bRPO\b|backlog|take-or-pay|tranche|upfront|"
+            r"deferred revenue|commitment",
             re.I,
         )
 
         def _contract_score(c: dict) -> int:
             t = c.get("text") or ""
             score = 0
-            if re.search(r"Microsoft|take-or-pay|tranche", t, re.I):
+            if re.search(r"take-or-pay|tranche", t, re.I):
                 score += 50
-            if re.search(r"Meta|RPO|backlog", t, re.I):
+            if re.search(r"\bRPO\b|backlog", t, re.I):
                 score += 40
-            if re.search(r"100\s*B|\$100|strategic customer|\bSCAs?\b", t, re.I):
+            if re.search(r"strategic customer|\bSCAs?\b", t, re.I):
                 score += 50
             if re.search(r"commitment|upfront|deferred", t, re.I):
                 score += 10
@@ -220,7 +216,7 @@ def answer(focus: str, question: str) -> str:
                 if sid:
                     break
             if sid:
-                for query in ("take-or-pay", "Microsoft", "RPO", "SCA", "strategic customer"):
+                for query in ("take-or-pay", "RPO", "SCA", "strategic customer", "backlog"):
                     deep = get_source(focus, sid, mode="search", query=query)
                     if deep.get("hit_count"):
                         lines.append("")

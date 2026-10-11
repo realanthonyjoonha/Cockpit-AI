@@ -106,6 +106,14 @@ export function checkSectors(fixture, api) {
       }
     }
   });
+  if (!api.riskMetric) {
+    errors.push('riskMetric missing from checker api');
+  } else {
+    for (const row of fixture.risk_metric || []) {
+      const mapped = api.riskMetric(row.name, api.rules);
+      if (mapped !== row.metric_id) errors.push(`risk ${row.name} ${mapped} != ${row.metric_id}`);
+    }
+  }
   return errors;
 }
 
@@ -177,7 +185,9 @@ export function checkDemo(api) {
   if (classifyMetric('42.4 thousand employees', rules) !== 'headcount') errors.push('thousand employees');
   if (parseAmounts('42.4 thousand employees').length !== 0) errors.push('headcount became currency');
   if (classifyMetric('The inventor was paid $1 million', rules) != null) errors.push('inventor stem');
-  if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) != null) errors.push('data-center special case');
+  if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) !== 'company_revenue') {
+    errors.push('data-center special case');
+  }
 
   const bare = live([
     claim('bare', 'Net sales were $10 million', '2026-08-01', ''),
@@ -200,6 +210,78 @@ export function checkDemo(api) {
   if (leaked[0]?.value !== 12) errors.push('sentence scale leaked');
   const bps = parseAmounts('spread was 50 basis points');
   if (bps.some((a) => a.unit === 'percent')) errors.push('basis points entered the percent bucket');
+  if (parseAsOf('53 weeks ended January 28, 2026').sort_key !== '2026-01-28') errors.push('53-week date snapped');
+  if (parseAsOf('fiscal year ended 31 March 2026').sort_key !== '2026-03-31') errors.push('31 March key');
+  if (parseAsOf('2026-10-01T23:30:00-10:00').sort_key !== '2026-10-01') errors.push('ISO -10:00 shifted the day');
+  if (parseAsOf('FY2026').sort_key != null) errors.push('FY2026 invented a day');
+
+  const crowd = live([
+    claim('gw-real', 'Goodwill impairment was $4 million.', '2024-06-01'),
+    claim('gw-other', 'Impairment of intangible assets other than goodwill was $4 million.', '2026-06-01'),
+  ]);
+  const crowdMap = Object.fromEntries(crowd.map((c) => [c.id, c.metric_id]));
+  if (crowdMap['gw-real'] !== 'goodwill_impairment') errors.push(`gw-real ${crowdMap['gw-real']}`);
+  if (crowdMap['gw-other'] !== 'impairment') errors.push(`gw-other ${crowdMap['gw-other']}`);
+
+  const ocf = live([
+    claim('ocf-2024', 'Net cash provided by operating activities was $500 million.', '2024-12-31'),
+    claim('ocf-weather', 'Operating activities may be affected by weather.', '2026-06-01'),
+    claim('ocf-qual', 'Net cash provided by operating activities may be affected by weather.', '2026-07-01'),
+  ]);
+  if (ocf.length !== 1 || ocf[0].id !== 'ocf-2024' || ocf[0].metric_id !== 'operating_cash_flow') {
+    errors.push(`operating cash flow live ${JSON.stringify(ocf.map((c) => [c.id, c.metric_id]))}`);
+  }
+
+  const classifyRows = [
+    ['Revenue was $10 billion.', 'company_revenue'],
+    ['Revenues were $10 billion.', 'company_revenue'],
+    ['Total net revenue was $10 billion.', 'company_revenue'],
+    ['Total revenue was $10 billion.', 'company_revenue'],
+    ['Net sales were $10 million. See guidance in Note 2.', 'company_revenue'],
+    ['The board sanctions the capital plan of $5 billion.', null],
+    ['The company does indemnify customers for $5 million.', 'guarantees'],
+    ['The inventor was paid $1 million', null],
+    ['The guid is stored in the filing.', null],
+    ['The guidelines were updated.', null],
+    ['Cash was $222 million. See guidance.', 'cash'],
+    ['Total deposits were $88,000 million.', null],
+    ['Deferred revenue was $4,050 million.', null],
+    ['Production was 12 million barrels of oil equivalent per day.', null],
+    ['Funds from operations were $620 million.', null],
+    ['Outlook for next quarter revenue is $100 million', 'revenue_guide'],
+    ['Goodwill impairment was $4 million.', 'goodwill_impairment'],
+    ['Impairment of intangible assets other than goodwill was $4 million.', 'impairment'],
+  ];
+  for (const [text, mid] of classifyRows) {
+    const got = classifyMetric(text, rules);
+    if (got !== mid) errors.push(`classify ${JSON.stringify(text)} ${got} != ${mid}`);
+  }
+
+  const ni = parseAmounts('Net income was $12, or $0.12 per share, in millions except per share.');
+  const scaled = ni.find((a) => a.value === 12000000 && a.scale === 'million');
+  const perShare = ni.find((a) => a.unit === 'currency' && a.value === 0.12 && a.scale == null);
+  if (!scaled || !perShare) errors.push(`per-share scale ${JSON.stringify(ni)}`);
+  const bpsDollar = parseAmounts('$12 bps');
+  if (!(bpsDollar.length === 1 && bpsDollar[0].unit === 'bps' && bpsDollar[0].value === 12 && bpsDollar[0].currency == null)) {
+    errors.push(`$12 bps ${JSON.stringify(bpsDollar)}`);
+  }
+  if (parseAmounts('$12')[0]?.unit !== 'currency') errors.push('$12 alone is not currency');
+
+  const blank = live([
+    claim('bare', 'Gross margin was 40 percent.', '2026-08-01', ''),
+    claim('cee', 'Gross margin was 41 percent.', '2026-08-01', 'C'),
+  ]);
+  if (blank[0]?.id !== 'bare') errors.push(`blank grade versus C ${blank[0]?.id}`);
+
+  const risk = api.riskMetric;
+  if (!risk) errors.push('riskMetric missing');
+  else {
+    if (risk('Operating margin pressure', rules) != null) errors.push('operating margin mapped to gross margin');
+    if (risk('Customer lawsuit', rules) != null) errors.push('customer lawsuit mapped to concentration');
+    if (risk('Gross margin', rules) !== 'gross_margin') errors.push('gross margin tripwire');
+    if (risk('The board sanctions the capital plan', rules) != null) errors.push('board sanctions tripwire');
+    if (risk('Indemnify', rules) !== 'guarantees') errors.push('indemnify tripwire');
+  }
   return errors;
 }
 

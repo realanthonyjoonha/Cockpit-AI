@@ -35,7 +35,9 @@ const SYM_PREFIX = new RegExp(`(?<cur>${SYM})\\s*(?<num>${NUM})(?:\\s*(?<scale>$
 const CODE_PREFIX = new RegExp(`\\b(?<cur>${CODE})\\b\\s*(?<num>${NUM})(?:\\s*(?<scale>${SCALE}))?\\b`, 'g');
 const CODE_SUFFIX = new RegExp(`(?<num>${NUM})\\s*\\b(?<cur>${CODE})\\b(?:\\s*(?<scale>${SCALE}))?\\b`, 'g');
 const PCT = new RegExp(`(?<num>${NUM})\\s*(?:%|[Pp]ercent\\b|[Pp][Cc][Tt]\\b)`, 'g');
-const BPS = new RegExp(`(?<num>${NUM})\\s*(?:[Bb]asis\\s+[Pp]oints|[Bb][Pp][Ss])\\b`, 'g');
+const BPS = new RegExp(`(?:(?:(?<cur>${SYM})|(?:\\b(?<code>${CODE})\\b))\\s*)?(?<num>${NUM})\\s*(?:[Bb]asis\\s+[Pp]oints|[Bb][Pp][Ss])\\b`, 'g');
+const PER_SHARE_AFTER = /^\s*,?\s*(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|a\s+share)\b/i;
+const PER_SHARE_BEFORE = /\b(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|earnings\s+per\s+share|eps)\b\s*(?:of|was|were|:)?\s*$/i;
 const SENTENCE_SCALE = /\bin\s+([Tt]housands|[Mm]illions|[Bb]illions|[Tt]rillions)\b/;
 const SENTENCE_SPLIT = /(?<=[.!?])\s+|\n+/g;
 
@@ -196,6 +198,7 @@ function ruleMatches(rule, text) {
   if (anys.length && anys.some((a) => phraseIn(text, a))) positive = true;
   if (!positive) return false;
   if (rule.requires_count && !/\d/.test(text)) return false;
+  if (rule.requires_figure && !hasFigure(text)) return false;
   return true;
 }
 
@@ -319,10 +322,21 @@ function amountsIn(fragment, base) {
   for (const re of [SYM_PREFIX, CODE_PREFIX, CODE_SUFFIX]) {
     eachMatch(re, fragment, (m) => {
       const row = currencyRow(m, base);
-      if (row) rows.push(row);
+      if (!row) return;
+      if (bpsSpans.some(([s, e]) => !(row.end <= s || row.start >= e))) return;
+      rows.push(row);
     });
   }
   return keepSpans(rows);
+}
+
+function perShareAmount(frag, start, end, base) {
+  const localStart = start - base;
+  const localEnd = end - base;
+  const after = frag.slice(localEnd, localEnd + 48);
+  const before = frag.slice(Math.max(0, localStart - 64), localStart);
+  if (PER_SHARE_AFTER.test(after)) return true;
+  return PER_SHARE_BEFORE.test(before);
 }
 
 function sentenceSpans(text) {
@@ -347,7 +361,8 @@ export function parseAmounts(text) {
     const sent = SENTENCE_SCALE.exec(frag);
     const sentScale = sent ? SENTENCE_SCALE_VALUE[sent[1].toLowerCase()] : null;
     for (const row of amountsIn(frag, start)) {
-      if (row.unit === 'currency' && row.scale == null && sentScale) {
+      const perShare = perShareAmount(frag, row.start, row.end, start);
+      if (row.unit === 'currency' && row.scale == null && sentScale && !perShare) {
         row.value = row.display * sentScale[1];
         row.scale = sentScale[0];
       }
@@ -412,6 +427,14 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null) {
   indexed.sort((x, y) => compareClaimsNewestFirst(x.row, y.row, x.i, y.i));
   if (Array.isArray(gapsOut)) gapsOut.push(...gaps);
   return indexed.map((item) => item.row);
+}
+
+export function riskMetric(name, rules) {
+  const t = String(name || '').toLowerCase();
+  for (const row of (rules && rules.risk_metric) || []) {
+    if (phraseIn(t, String(row[0]))) return String(row[1]);
+  }
+  return null;
 }
 
 export function claimGaps(claims, rules, residualCap = 8) {

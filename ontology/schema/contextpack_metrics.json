@@ -19,7 +19,13 @@
   "metrics": [
     {
       "id": "goodwill_impairment",
-      "all": ["goodwill", "impairment"]
+      "all": ["goodwill", "impairment"],
+      "none": [
+        "other than goodwill",
+        "excluding goodwill",
+        "except goodwill",
+        "exclusive of goodwill"
+      ]
     },
     {
       "id": "impairment",
@@ -38,13 +44,15 @@
     {
       "id": "operating_cash_flow",
       "any": [
-        "operating activities",
+        "net cash provided by operating activities",
+        "net cash used in operating activities",
         "operating cash flow",
         "operating cash flows",
         "cash flows from operating",
         "cash flow from operating",
         "operating cash"
-      ]
+      ],
+      "requires_figure": true
     },
     {
       "id": "cash",
@@ -70,7 +78,9 @@
         "cash were",
         "cash balance",
         "cash flow",
-        "cash flows"
+        "cash flows",
+        "see guidance",
+        "see outlook"
       ]
     },
     {
@@ -166,7 +176,10 @@
         "indemnity",
         "indemnities",
         "indemnification",
-        "indemnifications"
+        "indemnifications",
+        "indemnify",
+        "indemnifies",
+        "indemnified"
       ]
     },
     {
@@ -191,8 +204,12 @@
         "export controls",
         "export restriction",
         "export restrictions",
-        "sanction",
-        "sanctions",
+        "economic sanctions",
+        "trade sanctions",
+        "export sanctions",
+        "subject to sanctions",
+        "sanctions program",
+        "sanctions regime",
         "embargo",
         "embargoes"
       ]
@@ -200,6 +217,8 @@
     {
       "id": "company_revenue",
       "any": [
+        "total net revenue",
+        "total net revenues",
         "net sales",
         "total revenue",
         "total revenues",
@@ -209,12 +228,12 @@
         "rental revenue",
         "rental revenues",
         "collaboration revenue",
-        "collaboration revenues"
+        "collaboration revenues",
+        "revenues",
+        "revenue"
       ],
       "regex": "\\b(?:consolidated(?: net)? revenues?|company revenue|(?:q[1-4]|fy\\d{4}|fiscal year \\d{4})(?:\\s+fy\\d{4})?\\s+revenues? (?:was|were|of))\\b",
       "none": [
-        "guidance",
-        "outlook",
         "deferred",
         "largest customer",
         "customer concentration",
@@ -250,11 +269,11 @@
     ["cash flows", "operating_cash_flow"],
     ["operating cash", "operating_cash_flow"],
     ["cash", "cash"],
+    ["gross margins", "gross_margin"],
     ["gross margin", "gross_margin"],
-    ["margin", "gross_margin"],
-    ["margins", "gross_margin"],
+    ["customer concentration", "concentration"],
+    ["largest customer", "concentration"],
     ["concentration", "concentration"],
-    ["customer", "concentration"],
     ["purchase commitments", "purchase_commitments"],
     ["purchase commitment", "purchase_commitments"],
     ["purchase obligations", "purchase_commitments"],
@@ -265,13 +284,18 @@
     ["debt", "long_term_debt"],
     ["convertible", "long_term_debt"],
     ["leverage", "long_term_debt"],
+    ["export sanctions", "export_controls"],
+    ["trade sanctions", "export_controls"],
+    ["economic sanctions", "export_controls"],
+    ["subject to sanctions", "export_controls"],
     ["export control", "export_controls"],
     ["export", "export_controls"],
-    ["sanction", "export_controls"],
-    ["sanctions", "export_controls"],
     ["embargo", "export_controls"],
     ["indemnification", "guarantees"],
     ["indemnity", "guarantees"],
+    ["indemnifies", "guarantees"],
+    ["indemnified", "guarantees"],
+    ["indemnify", "guarantees"],
     ["guarantee", "guarantees"],
     ["guarantees", "guarantees"],
     ["guaranty", "guarantees"],
