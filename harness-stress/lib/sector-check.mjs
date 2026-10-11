@@ -304,6 +304,7 @@ export function bannedNeedles(rules) {
       for (const n of group || []) needles.push(String(n));
     }
     if (rule.regex) needles.push(String(rule.regex));
+    for (const n of rule.patterns || []) needles.push(String(n));
   }
   for (const row of rules.risk_metric || []) needles.push(String(row[0]));
   return needles.filter((n) => /\bguid\b/i.test(n) || /\binventor\b/i.test(n));

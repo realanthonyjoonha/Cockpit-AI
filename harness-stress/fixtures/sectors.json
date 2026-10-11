@@ -10,7 +10,13 @@
     {"name": "Largest customer", "metric_id": "concentration"},
     {"name": "Trade sanctions", "metric_id": "export_controls"},
     {"name": "Export sanctions", "metric_id": "export_controls"},
-    {"name": "Indemnify", "metric_id": "guarantees"}
+    {"name": "Indemnify", "metric_id": "guarantees"},
+    {"name": "Operating leverage in the software model", "metric_id": null},
+    {"name": "Water supply interruption", "metric_id": null},
+    {"name": "Regulatory commitment to the rate case", "metric_id": null},
+    {"name": "Bad debt on the card book", "metric_id": null},
+    {"name": "Crude exports", "metric_id": "export_controls"},
+    {"name": "Net interest margin compression", "metric_id": null}
   ],
   "issuers": [
     {
@@ -415,14 +421,18 @@
         {"id": "oi", "metric_id": "operating_income"},
         {"id": "commit", "metric_id": "purchase_commitments"},
         {"id": "gw-real", "metric_id": "goodwill_impairment"},
-        {"id": "gw-other", "metric_id": "impairment"},
+        {"id": "gw-non", "metric_id": "impairment"},
         {"id": "ocf-2024", "metric_id": "operating_cash_flow"},
         {"id": "sales-see", "metric_id": "company_revenue"},
-        {"id": "outlook", "metric_id": "revenue_guide"},
+        {"id": "see-guide", "metric_id": "revenue_guide"},
+        {"id": "interest", "metric_id": "interest_revenue"},
         {"id": "trade-sanctions", "metric_id": "export_controls"},
         {"id": "sanctions", "metric_id": "other"},
         {"id": "indemnify", "metric_id": "guarantees"},
-        {"id": "eps", "metric_id": "net_income"},
+        {"id": "eps-pair", "metric_id": "net_income"},
+        {"id": "unearned", "metric_id": "other"},
+        {"id": "ocf-lease", "metric_id": "other"},
+        {"id": "registers", "metric_id": "other"},
         {"id": "inventor", "metric_id": "other"},
         {"id": "cash-oct", "metric_id": "cash"},
         {"id": "gm-blank", "metric_id": "gross_margin"},
@@ -784,6 +794,119 @@
           "sort_key": "2025-12-31",
           "precision": "day",
           "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 620000000}]
+        },
+        {
+          "id": "gw-non",
+          "text": "Impairment of non-goodwill intangible assets was $4 million.",
+          "as_of": "2026-12-01",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-12-01",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4000000}]
+        },
+        {
+          "id": "gw-article",
+          "text": "Impairment of intangible assets other than the goodwill was $3 million.",
+          "as_of": "2026-03-01",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-03-01",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 3000000}]
+        },
+        {
+          "id": "gw-excl",
+          "text": "Impairment excluding the goodwill balance was $2 million.",
+          "as_of": "2026-03-02",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-03-02",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 2000000}]
+        },
+        {
+          "id": "gw-for",
+          "text": "Impairment of assets other than for goodwill was $1 million.",
+          "as_of": "2026-03-03",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-03-03",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1000000}]
+        },
+        {
+          "id": "unearned",
+          "text": "Unearned revenue was $40 million.",
+          "as_of": "2026-01-15",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-01-15",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 40000000}]
+        },
+        {
+          "id": "interest",
+          "text": "Interest revenue was $8 billion.",
+          "as_of": "2026-02-01",
+          "grade": "A",
+          "classify": "interest_revenue",
+          "sort_key": "2026-02-01",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 8000000000}]
+        },
+        {
+          "id": "see-guide",
+          "text": "See guidance: revenue of $12 billion.",
+          "as_of": "2026-09-01",
+          "grade": "A",
+          "classify": "revenue_guide",
+          "sort_key": "2026-09-01",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 12000000000}]
+        },
+        {
+          "id": "ocf-lease",
+          "text": "Cash flow from operating leases was $90 million.",
+          "as_of": "2026-08-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-08-01",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 90000000}]
+        },
+        {
+          "id": "registers",
+          "text": "Operating cash in the registers was $4 million.",
+          "as_of": "2026-08-02",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-08-02",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4000000}]
+        },
+        {
+          "id": "eps-header",
+          "text": "in millions, except per share data, net income was $0.12.",
+          "as_of": "2025-07-01",
+          "grade": "A",
+          "classify": "net_income",
+          "sort_key": "2025-07-01",
+          "precision": "day",
+          "units": [{"unit": "currency", "currency": "USD", "scale": null, "value": 0.12}]
+        },
+        {
+          "id": "eps-pair",
+          "text": "In millions, except per share data, net income was $400 and diluted earnings per share were $1.25.",
+          "as_of": "2026-11-01",
+          "grade": "A",
+          "classify": "net_income",
+          "sort_key": "2026-11-01",
+          "precision": "day",
+          "units": [
+            {"unit": "currency", "currency": "USD", "scale": "million", "value": 400000000},
+            {"unit": "currency", "currency": "USD", "scale": null, "value": 1.25}
+          ]
         }
       ]
     },

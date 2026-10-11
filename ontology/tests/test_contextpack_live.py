@@ -209,6 +209,17 @@ class TestClassify(unittest.TestCase):
             ("Operating activities may be affected by weather.", None),
             ("Net cash provided by operating activities may be affected by weather.", None),
             ("Net cash provided by operating activities was $500 million.", "operating_cash_flow"),
+            ("Impairment of non-goodwill intangible assets was $4 million.", "impairment"),
+            ("Impairment of intangible assets other than the goodwill was $4 million.", "impairment"),
+            ("Impairment excluding the goodwill balance was $4 million.", "impairment"),
+            ("Impairment of assets other than for goodwill was $4 million.", "impairment"),
+            ("Unearned revenue was $40 million.", None),
+            ("Interest revenue was $8 billion.", "interest_revenue"),
+            ("Other revenue was $3 million.", None),
+            ("See guidance: revenue of $12 billion.", "revenue_guide"),
+            ("Revenue guidance is $12 billion.", "revenue_guide"),
+            ("Cash flow from operating leases was $90 million.", None),
+            ("Operating cash in the registers was $4 million.", None),
         ]
         for text, mid in pairs:
             self.assertEqual(classify_metric(text, r), mid, text)
@@ -221,6 +232,25 @@ class TestClassify(unittest.TestCase):
         self.assertEqual(bps[0]["value"], 12)
         self.assertIsNone(bps[0]["currency"])
         self.assertEqual(parse_amounts("$12")[0]["unit"], "currency")
+        lone = parse_amounts("in millions, except per share data, net income was $0.12.")
+        self.assertEqual(len(lone), 1)
+        self.assertEqual(lone[0]["value"], 0.12)
+        self.assertIsNone(lone[0]["scale"])
+        pair = parse_amounts(
+            "In millions, except per share data, net income was $400 and diluted earnings per share were $1.25."
+        )
+        self.assertTrue(any(a["value"] == 400_000_000 and a["scale"] == "million" for a in pair), pair)
+        self.assertTrue(any(a["value"] == 1.25 and a["scale"] is None for a in pair), pair)
+        slash = parse_amounts("$0.12/share, in millions.")
+        self.assertEqual(len(slash), 1)
+        self.assertEqual(slash[0]["value"], 0.12)
+        self.assertIsNone(slash[0]["scale"])
+        for label in ("12 basis points", "€12 bps"):
+            row = parse_amounts(label)
+            self.assertEqual(len(row), 1, label)
+            self.assertEqual(row[0]["unit"], "bps", label)
+            self.assertEqual(row[0]["value"], 12, label)
+            self.assertIsNone(row[0]["currency"], label)
         self.assertEqual(parse_as_of("2026-9-30")["sort_key"], "2026-09-30")
         self.assertEqual(parse_as_of("2026-10-01")["sort_key"], "2026-10-01")
         self.assertEqual(parse_as_of("53 weeks ended January 28, 2026")["sort_key"], "2026-01-28")
@@ -241,6 +271,24 @@ class TestClassify(unittest.TestCase):
             _claim("ocf-weather", "Operating activities may be affected by weather.", "2026-06-01"),
         ], r)
         self.assertEqual([c["id"] for c in ocf], ["ocf-2024"])
+        kept, _ = live_claims([
+            _claim("a", "Goodwill impairment was $9 million.", "2024-06-01"),
+            _claim("b", "Impairment of non-goodwill intangible assets was $4 million.", "2026-12-01"),
+        ], r)
+        self.assertEqual({c["id"]: c["metric_id"] for c in kept}, {
+            "a": "goodwill_impairment",
+            "b": "impairment",
+        })
+        top, _ = live_claims([
+            _claim("total", "Total revenue was $20 billion.", "2024-01-01"),
+            _claim("unearned", "Unearned revenue was $40 million.", "2026-06-01"),
+            _claim("interest", "Interest revenue was $8 billion.", "2026-02-01"),
+        ], r)
+        self.assertEqual({c["id"]: c["metric_id"] for c in top}, {
+            "total": "company_revenue",
+            "unearned": "other",
+            "interest": "interest_revenue",
+        })
         blank, _ = live_claims([
             _claim("bare", "Gross margin was 40 percent.", "2026-08-01", ""),
             _claim("cee", "Gross margin was 41 percent.", "2026-08-01", "C"),
@@ -258,6 +306,12 @@ class TestClassify(unittest.TestCase):
             ("Largest customer", "concentration"),
             ("Trade sanctions", "export_controls"),
             ("Indemnify", "guarantees"),
+            ("Operating leverage in the software model", None),
+            ("Water supply interruption", None),
+            ("Regulatory commitment to the rate case", None),
+            ("Bad debt on the card book", None),
+            ("Crude exports", "export_controls"),
+            ("Net interest margin compression", None),
         ]
         for name, mid in risks:
             self.assertEqual(_risk_metric(name, r), mid, name)
@@ -309,8 +363,6 @@ class TestSectors(unittest.TestCase):
             for cid in issuer.get("absent") or []:
                 self.assertNotIn(cid, got)
             self.assertEqual(claim_gaps(issuer["claims"], rules), issuer.get("gaps") or [], issuer["id"])
-        for row in data.get("risk_metric") or []:
-            self.assertEqual(_risk_metric(row["name"], rules), row["metric_id"], row["name"])
             for claim in issuer["claims"]:
                 classified = classify_claim(claim, rules)
                 self.assertEqual(classified["metric_id"], claim["classify"], f"{issuer['id']}/{claim['id']}")
@@ -328,6 +380,8 @@ class TestSectors(unittest.TestCase):
                         and _close(a["value"], unit["value"])
                         for a in amounts
                     ), f"{issuer['id']}/{claim['id']} {amounts}")
+        for row in data.get("risk_metric") or []:
+            self.assertEqual(_risk_metric(row["name"], rules), row["metric_id"], row["name"])
 
 
 class TestNoIssuerTokens(unittest.TestCase):
@@ -349,6 +403,7 @@ class TestNoIssuerTokens(unittest.TestCase):
                 needles.extend(group)
             if rule.get("regex"):
                 needles.append(rule["regex"])
+            needles.extend(rule.get("patterns") or [])
         needles.extend(row[0] for row in rules["risk_metric"])
         for needle in needles:
             self.assertIsNone(re.search(r"\bguid\b", needle, re.I), needle)

@@ -1,0 +1,1462 @@
+{
+  "comment": "Templates for the paraphrase property. The expander wraps each positive and negative across the ten sectors. review rows are the verbatim sentences from both PR #5 review comments, then the same sentences wrapped per sector. No issuer names.",
+  "sectors": [
+    "bank",
+    "insurer",
+    "reit",
+    "utility",
+    "biotech",
+    "retail",
+    "energy",
+    "industrial",
+    "software",
+    "foreign private issuer"
+  ],
+  "wrap": "In the {sector} filing, {text}",
+  "groups": [
+    {
+      "id": "goodwill_impairment",
+      "metric": "goodwill_impairment",
+      "positive": [
+        "Goodwill impairment was $4 million.",
+        "Goodwill impairment was $9 million.",
+        "Recorded goodwill impairment of $4 million.",
+        "The goodwill impairment totaled $4 million.",
+        "Impairment of goodwill was $4 million.",
+        "Impairment of the goodwill was $4 million.",
+        "Impairment of its goodwill was $4 million.",
+        "Impairment of a goodwill asset was $4 million.",
+        "An impairment charge related to goodwill was $4 million.",
+        "Impairment charges attributable to the goodwill were $4 million.",
+        "Impairment charge attributable to its goodwill was $4 million.",
+        "Goodwill was impaired by $4 million.",
+        "The goodwill were impaired by $4 million."
+      ],
+      "negative": [
+        {
+          "text": "Impairment of non-goodwill intangible assets was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment of non goodwill intangible assets was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Non-goodwill impairment was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Non goodwill impairment was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "A non-goodwill impairment charge was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment of intangible assets other than goodwill was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment of intangible assets other than the goodwill was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment excluding the goodwill balance was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment excluding goodwill was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment of assets other than for goodwill was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment exclusive of goodwill was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment exclusive of the goodwill was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Except goodwill, impairment of intangibles was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Except the goodwill, impairment of intangibles was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Other than goodwill, impairment of intangibles was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Other than the goodwill, an impairment was recorded of $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Impairment of intangibles, other than for goodwill, was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Excluding goodwill, impairment of intangibles was $4 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "Excluding the goodwill balance, impairment was $4 million.",
+          "metric": "impairment"
+        }
+      ]
+    },
+    {
+      "id": "impairment",
+      "metric": "impairment",
+      "positive": [
+        "Inventory impairment of $9 million.",
+        "Impairment of intangible assets was $4 million.",
+        "An impairment of $4 million was recorded.",
+        "Impairments were $4 million."
+      ],
+      "negative": [
+        {
+          "text": "A goodwill balance of $5 billion.",
+          "metric": "goodwill"
+        },
+        {
+          "text": "Inventory was $9 million.",
+          "metric": "inventory"
+        },
+        {
+          "text": "The inventor was paid $1 million",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "goodwill",
+      "metric": "goodwill",
+      "positive": [
+        "A goodwill balance of $5 billion.",
+        "Goodwill was $5 billion."
+      ],
+      "negative": [
+        {
+          "text": "Goodwill impairment was $4 million.",
+          "metric": "goodwill_impairment"
+        },
+        {
+          "text": "The non-goodwill intangible balance was $5 billion.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "inventory",
+      "metric": "inventory",
+      "positive": [
+        "Inventory was $9 million.",
+        "Inventories were $9 million."
+      ],
+      "negative": [
+        {
+          "text": "Inventory impairment of $9 million.",
+          "metric": "impairment"
+        },
+        {
+          "text": "The inventor was paid $1 million",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "operating_cash_flow",
+      "metric": "operating_cash_flow",
+      "positive": [
+        "Net cash provided by operating activities was $500 million.",
+        "Net cash used in operating activities was $40 million.",
+        "Operating cash flow was $500 million.",
+        "Operating cash flows were $500 million.",
+        "Cash flows from operating activities were $500 million.",
+        "Cash flow from operating activities was $500 million."
+      ],
+      "negative": [
+        {
+          "text": "Cash flow from operating leases was $90 million.",
+          "metric": null
+        },
+        {
+          "text": "Operating cash in the registers was $4 million.",
+          "metric": null
+        },
+        {
+          "text": "Operating activities may be affected by weather.",
+          "metric": null
+        },
+        {
+          "text": "Net cash provided by operating activities may be affected by weather.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "cash",
+      "metric": "cash",
+      "positive": [
+        "Cash was $222 million.",
+        "Cash and cash equivalents were $90 million.",
+        "Cash balance was $10 million.",
+        "Cash was $222 million. See guidance."
+      ],
+      "negative": [
+        {
+          "text": "Cash flow from operating activities was $500 million.",
+          "metric": "operating_cash_flow"
+        },
+        {
+          "text": "Operating cash in the registers was $4 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "revenue_guide",
+      "metric": "revenue_guide",
+      "positive": [
+        "Revenue guidance is $12 billion.",
+        "Revenues guidance is $12 billion.",
+        "Sales guidance is $12 billion.",
+        "Net sales guidance is $12 billion.",
+        "See guidance: revenue of $12 billion.",
+        "See guidance: net sales of $12 billion.",
+        "Guidance for revenue is $12 billion.",
+        "Guidance for next year revenue is $12 billion.",
+        "Outlook for next quarter revenue is $100 million",
+        "Outlook for revenue is $12 billion.",
+        "The outlook for full year net sales is $12 billion."
+      ],
+      "negative": [
+        {
+          "text": "Net sales were $10 million. See guidance in Note 2.",
+          "metric": "company_revenue"
+        },
+        {
+          "text": "Revenue was $10 billion. See outlook in the notes.",
+          "metric": "company_revenue"
+        },
+        {
+          "text": "Cash was $222 million. See guidance.",
+          "metric": "cash"
+        },
+        {
+          "text": "The guidelines were updated.",
+          "metric": null
+        },
+        {
+          "text": "The guid is stored in the filing.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "concentration",
+      "metric": "concentration",
+      "positive": [
+        "The largest customer accounted for 20 percent of sales.",
+        "Customer concentration was 40 percent.",
+        "No customer accounted for more than 10 percent."
+      ],
+      "negative": [
+        {
+          "text": "Customer lawsuit cost $5 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "net_interest_income",
+      "metric": "net_interest_income",
+      "positive": [
+        "Net interest income was $4,200 million.",
+        "Net interest income was $4 million."
+      ],
+      "negative": [
+        {
+          "text": "Interest revenue was $8 billion.",
+          "metric": "interest_revenue"
+        },
+        {
+          "text": "Net interest margin was 3 percent.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "credit_loss_provision",
+      "metric": "credit_loss_provision",
+      "positive": [
+        "Provision for credit losses was $310 million.",
+        "Credit losses were $310 million."
+      ],
+      "negative": [
+        {
+          "text": "Bad debt on the card book was $4 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "gross_margin",
+      "metric": "gross_margin",
+      "positive": [
+        "Gross margin was 40 percent.",
+        "Gross margins were 41 percent."
+      ],
+      "negative": [
+        {
+          "text": "Operating margin was 12 percent.",
+          "metric": null
+        },
+        {
+          "text": "Net interest margin was 3 percent.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "operating_income",
+      "metric": "operating_income",
+      "positive": [
+        "Operating income was $2,150 million.",
+        "Operating profit was $2,150 million.",
+        "Operating loss was $20 million.",
+        "Operating losses were $20 million."
+      ],
+      "negative": [
+        {
+          "text": "Operating cash flow was $500 million.",
+          "metric": "operating_cash_flow"
+        },
+        {
+          "text": "Operating revenue was $10 million.",
+          "metric": "company_revenue"
+        }
+      ]
+    },
+    {
+      "id": "net_income",
+      "metric": "net_income",
+      "positive": [
+        "Net income was $12 million.",
+        "Net loss was $12 million.",
+        "Net losses were $12 million.",
+        "Net earnings were $12 million."
+      ],
+      "negative": [
+        {
+          "text": "Net interest income was $4 million.",
+          "metric": "net_interest_income"
+        },
+        {
+          "text": "Net sales were $10 million.",
+          "metric": "company_revenue"
+        }
+      ]
+    },
+    {
+      "id": "rnd_expense",
+      "metric": "rnd_expense",
+      "positive": [
+        "Research and development expense was $80 million.",
+        "R&D expense was $80 million."
+      ],
+      "negative": [
+        {
+          "text": "The inventor was paid $1 million",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "rpo_backlog",
+      "metric": "rpo_backlog",
+      "positive": [
+        "Remaining performance obligations were $11 million.",
+        "Remaining performance obligation was $11 million.",
+        "RPO was $11 million.",
+        "Backlog was $9 million.",
+        "Backlogs were $9 million."
+      ],
+      "negative": [
+        {
+          "text": "The regulatory commitment is to keep the rate base intact.",
+          "metric": null
+        },
+        {
+          "text": "Purchase commitments were $5 million.",
+          "metric": "purchase_commitments"
+        }
+      ]
+    },
+    {
+      "id": "purchase_commitments",
+      "metric": "purchase_commitments",
+      "positive": [
+        "Purchase commitments were $5 million.",
+        "Purchase commitment was $5 million.",
+        "Purchase obligations were $5 million.",
+        "Supply commitments were $5 million.",
+        "A capacity agreement of $5 million.",
+        "Long-term supply of $5 million."
+      ],
+      "negative": [
+        {
+          "text": "Water supply interruption cost $5 million.",
+          "metric": null
+        },
+        {
+          "text": "Regulatory commitment to the rate case cost $5 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "capex",
+      "metric": "capex",
+      "positive": [
+        "Capital expenditures were $3,400 million.",
+        "Capital expenditure was $3 million.",
+        "Purchases of property were $3 million.",
+        "Capex was $3 million."
+      ],
+      "negative": [
+        {
+          "text": "Operating expenses were $3 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "long_term_debt",
+      "metric": "long_term_debt",
+      "positive": [
+        "Long-term debt was $8 million.",
+        "Long term debt was $8 million.",
+        "Notes payable were $8 million.",
+        "Convertible notes were $8 million."
+      ],
+      "negative": [
+        {
+          "text": "Bad debt on the card book was $4 million.",
+          "metric": null
+        },
+        {
+          "text": "Operating leverage in the software model was described.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "diluted_shares",
+      "metric": "diluted_shares",
+      "positive": [
+        "Diluted shares were 100 million.",
+        "Weighted-average shares were 100 million.",
+        "Share count was 100 million."
+      ],
+      "negative": [
+        {
+          "text": "Basic shares were 100 million.",
+          "metric": null
+        },
+        {
+          "text": "Diluted earnings per share were $1.25.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "guarantees",
+      "metric": "guarantees",
+      "positive": [
+        "The company does indemnify customers for $5 million.",
+        "Indemnification obligations were $5 million.",
+        "Guarantees were $5 million.",
+        "The guaranty was $5 million."
+      ],
+      "negative": [
+        {
+          "text": "The board sanctions the capital plan of $5 billion.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "share_repurchase",
+      "metric": "share_repurchase",
+      "positive": [
+        "Share repurchases were $5 million.",
+        "The buyback was $5 million."
+      ],
+      "negative": [
+        {
+          "text": "Dividends were $2 million.",
+          "metric": "dividends"
+        },
+        {
+          "text": "Share count was 100 million.",
+          "metric": "diluted_shares"
+        }
+      ]
+    },
+    {
+      "id": "dividends",
+      "metric": "dividends",
+      "positive": [
+        "Dividends were $2 million.",
+        "The dividend was $2 million."
+      ],
+      "negative": [
+        {
+          "text": "The buyback was $5 million.",
+          "metric": "share_repurchase"
+        }
+      ]
+    },
+    {
+      "id": "export_controls",
+      "metric": "export_controls",
+      "positive": [
+        "Export controls limited $5 million of sales.",
+        "The company is subject to sanctions.",
+        "Trade sanctions applied to the filing.",
+        "An embargo covered the shipment."
+      ],
+      "negative": [
+        {
+          "text": "The board sanctions the capital plan of $5 billion.",
+          "metric": null
+        },
+        {
+          "text": "Crude exports were $5 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "interest_revenue",
+      "metric": "interest_revenue",
+      "positive": [
+        "Interest revenue was $8 billion.",
+        "Interest revenues were $8 billion."
+      ],
+      "negative": [
+        {
+          "text": "Unearned revenue was $40 million.",
+          "metric": null
+        },
+        {
+          "text": "Total revenue was $20 billion.",
+          "metric": "company_revenue"
+        }
+      ]
+    },
+    {
+      "id": "company_revenue",
+      "metric": "company_revenue",
+      "positive": [
+        "Revenue was $10 billion.",
+        "Revenues were $10 billion.",
+        "Total revenue was $10 billion.",
+        "Total revenues were $10 billion.",
+        "Total net revenue was $10 billion.",
+        "Total net revenues were $10 billion.",
+        "Net revenue was $10 million.",
+        "Net revenues were $10 million.",
+        "Net sales were $10 million.",
+        "Operating revenue was $10 million.",
+        "Operating revenues were $10 million.",
+        "Premiums earned were $9,500 million.",
+        "Rental revenue was $1,240 million.",
+        "Rental revenues were $1,240 million.",
+        "Collaboration revenue was $50 million.",
+        "Consolidated revenue was $10 million.",
+        "Consolidated net revenue was $10 million.",
+        "Company revenue was $10 million.",
+        "Q1 revenue was $10 million.",
+        "FY2026 revenue was $10 million.",
+        "Fiscal year 2026 revenue was $10 million.",
+        "Total revenue was $20 billion."
+      ],
+      "negative": [
+        {
+          "text": "Unearned revenue was $40 million.",
+          "metric": null
+        },
+        {
+          "text": "Deferred revenue was $4,050 million.",
+          "metric": null
+        },
+        {
+          "text": "Other revenue was $3 million.",
+          "metric": null
+        },
+        {
+          "text": "Finance revenue was $3 million.",
+          "metric": null
+        },
+        {
+          "text": "Financing revenue was $3 million.",
+          "metric": null
+        },
+        {
+          "text": "Non-operating revenue was $3 million.",
+          "metric": null
+        },
+        {
+          "text": "Nonoperating revenue was $3 million.",
+          "metric": null
+        },
+        {
+          "text": "Interest revenue was $8 billion.",
+          "metric": "interest_revenue"
+        },
+        {
+          "text": "Total deposits were $88,000 million.",
+          "metric": null
+        },
+        {
+          "text": "Production was 12 million barrels of oil equivalent per day.",
+          "metric": null
+        },
+        {
+          "text": "Funds from operations were $620 million.",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "headcount",
+      "metric": "headcount",
+      "positive": [
+        "Number of employees was 12000.",
+        "Headcount was 12 thousand employees."
+      ],
+      "negative": [
+        {
+          "text": "Number of employees rose.",
+          "metric": null
+        },
+        {
+          "text": "The inventor was paid $1 million",
+          "metric": null
+        }
+      ]
+    },
+    {
+      "id": "operating_segments",
+      "metric": "operating_segments",
+      "positive": [
+        "The company has 3 operating segments.",
+        "There are 4 reportable segments."
+      ],
+      "negative": [
+        {
+          "text": "The company has operating segments.",
+          "metric": null
+        },
+        {
+          "text": "The filing mentions 3 segments.",
+          "metric": null
+        }
+      ]
+    }
+  ],
+  "review": [
+    {
+      "id": "r1-other-than-gw",
+      "kind": "classify",
+      "text": "Impairment of intangible assets other than goodwill was $4 million.",
+      "metric": "impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-gw",
+      "kind": "classify",
+      "text": "Goodwill impairment was $4 million.",
+      "metric": "goodwill_impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-excl-gw",
+      "kind": "classify",
+      "text": "Excluding goodwill, impairment of intangibles was $4 million.",
+      "metric": "impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-rev",
+      "kind": "classify",
+      "text": "Revenue was $10 billion.",
+      "metric": "company_revenue",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-revs",
+      "kind": "classify",
+      "text": "Revenues were $10 billion.",
+      "metric": "company_revenue",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-tnr",
+      "kind": "classify",
+      "text": "Total net revenue was $10 billion.",
+      "metric": "company_revenue",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-total",
+      "kind": "classify",
+      "text": "Total revenue was $10 billion.",
+      "metric": "company_revenue",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-sales-see",
+      "kind": "classify",
+      "text": "Net sales were $10 million. See guidance in Note 2.",
+      "metric": "company_revenue",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-outlook",
+      "kind": "classify",
+      "text": "Outlook for next quarter revenue is $100 million",
+      "metric": "revenue_guide",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-cash-see",
+      "kind": "classify",
+      "text": "Cash was $222 million. See guidance.",
+      "metric": "cash",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-sanctions",
+      "kind": "classify",
+      "text": "The board sanctions the capital plan of $5 billion.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-indemnify",
+      "kind": "classify",
+      "text": "The company does indemnify customers for $5 million.",
+      "metric": "guarantees",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-inventor",
+      "kind": "classify",
+      "text": "The inventor was paid $1 million",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-guid",
+      "kind": "classify",
+      "text": "The guid is stored in the filing.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-guidelines",
+      "kind": "classify",
+      "text": "The guidelines were updated.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-deposits",
+      "kind": "classify",
+      "text": "Total deposits were $88,000 million.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-deferred",
+      "kind": "classify",
+      "text": "Deferred revenue was $4,050 million.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-barrels",
+      "kind": "classify",
+      "text": "Production was 12 million barrels of oil equivalent per day.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-ffo",
+      "kind": "classify",
+      "text": "Funds from operations were $620 million.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-weather",
+      "kind": "classify",
+      "text": "Operating activities may be affected by weather.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-ocf-qual",
+      "kind": "classify",
+      "text": "Net cash provided by operating activities may be affected by weather.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-ocf",
+      "kind": "classify",
+      "text": "Net cash provided by operating activities was $500 million.",
+      "metric": "operating_cash_flow",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-eps-pair",
+      "kind": "amounts",
+      "text": "Net income was $12, or $0.12 per share, in millions except per share.",
+      "metric": "net_income",
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": "million",
+          "value": 12000000
+        },
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 0.12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r1-bps",
+      "kind": "amounts",
+      "text": "$12 bps",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "bps",
+          "currency": null,
+          "scale": null,
+          "value": 12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r1-usd",
+      "kind": "amounts",
+      "text": "$12",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r1-margin",
+      "kind": "risk",
+      "name": "Operating margin pressure",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-lawsuit",
+      "kind": "risk",
+      "name": "Customer lawsuit",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-board",
+      "kind": "risk",
+      "name": "The board sanctions the capital plan",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r1-gm",
+      "kind": "risk",
+      "name": "Gross margin",
+      "metric": "gross_margin",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-gms",
+      "kind": "risk",
+      "name": "Gross margins",
+      "metric": "gross_margin",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-cust",
+      "kind": "risk",
+      "name": "Customer concentration",
+      "metric": "concentration",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-largest",
+      "kind": "risk",
+      "name": "Largest customer",
+      "metric": "concentration",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-trade",
+      "kind": "risk",
+      "name": "Trade sanctions",
+      "metric": "export_controls",
+      "across_sectors": true
+    },
+    {
+      "id": "r1-indemnify-risk",
+      "kind": "risk",
+      "name": "Indemnify",
+      "metric": "guarantees",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-nongw",
+      "kind": "classify",
+      "text": "Impairment of non-goodwill intangible assets was $4 million.",
+      "metric": "impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-article",
+      "kind": "classify",
+      "text": "Impairment of intangible assets other than the goodwill was $4 million.",
+      "metric": "impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-excl-bal",
+      "kind": "classify",
+      "text": "Impairment excluding the goodwill balance was $4 million.",
+      "metric": "impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-other-for",
+      "kind": "classify",
+      "text": "Impairment of assets other than for goodwill was $4 million.",
+      "metric": "impairment",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-unearned",
+      "kind": "classify",
+      "text": "Unearned revenue was $40 million.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-interest",
+      "kind": "classify",
+      "text": "Interest revenue was $8 billion.",
+      "metric": "interest_revenue",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-see-guide",
+      "kind": "classify",
+      "text": "See guidance: revenue of $12 billion.",
+      "metric": "revenue_guide",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-rev-guide",
+      "kind": "classify",
+      "text": "Revenue guidance is $12 billion.",
+      "metric": "revenue_guide",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-lease",
+      "kind": "classify",
+      "text": "Cash flow from operating leases was $90 million.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-registers",
+      "kind": "classify",
+      "text": "Operating cash in the registers was $4 million.",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-eps-header",
+      "kind": "amounts",
+      "text": "in millions, except per share data, net income was $0.12.",
+      "metric": "net_income",
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 0.12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-eps-both",
+      "kind": "amounts",
+      "text": "In millions, except per share data, net income was $400 and diluted earnings per share were $1.25.",
+      "metric": "net_income",
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": "million",
+          "value": 400000000
+        },
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 1.25
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-slash",
+      "kind": "amounts",
+      "text": "$0.12/share, in millions.",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 0.12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-bps-words",
+      "kind": "amounts",
+      "text": "12 basis points",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "bps",
+          "currency": null,
+          "scale": null,
+          "value": 12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-eur-bps",
+      "kind": "amounts",
+      "text": "\u20ac12 bps",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "bps",
+          "currency": null,
+          "scale": null,
+          "value": 12
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-leverage",
+      "kind": "risk",
+      "name": "Operating leverage in the software model",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-water",
+      "kind": "risk",
+      "name": "Water supply interruption",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-rate",
+      "kind": "risk",
+      "name": "Regulatory commitment to the rate case",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-bad-debt",
+      "kind": "risk",
+      "name": "Bad debt on the card book",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-exports",
+      "kind": "risk",
+      "name": "Crude exports",
+      "metric": "export_controls",
+      "across_sectors": true
+    },
+    {
+      "id": "r2-nim",
+      "kind": "risk",
+      "name": "Net interest margin compression",
+      "metric": null,
+      "across_sectors": true
+    },
+    {
+      "id": "r2-eps-word",
+      "kind": "amounts",
+      "text": "Diluted EPS was $1.25, in millions.",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 1.25
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-eps-of",
+      "kind": "amounts",
+      "text": "EPS of $1.25, in millions.",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 1.25
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-thousands",
+      "kind": "amounts",
+      "text": "in thousands, except per share data, earnings per share were $0.40.",
+      "metric": null,
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 0.4
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-per-diluted",
+      "kind": "amounts",
+      "text": "Net income was $9 per diluted share, in millions.",
+      "metric": "net_income",
+      "amounts": [
+        {
+          "unit": "currency",
+          "currency": "USD",
+          "scale": null,
+          "value": 9
+        }
+      ],
+      "across_sectors": true
+    },
+    {
+      "id": "r2-live-gw",
+      "kind": "live",
+      "across_sectors": true,
+      "claims": [
+        {
+          "id": "a",
+          "text": "Goodwill impairment was $9 million.",
+          "as_of": "2024-06-01",
+          "grade": "A"
+        },
+        {
+          "id": "b",
+          "text": "Impairment of non-goodwill intangible assets was $4 million.",
+          "as_of": "2026-12-01",
+          "grade": "A"
+        }
+      ],
+      "live": {
+        "a": "goodwill_impairment",
+        "b": "impairment"
+      }
+    },
+    {
+      "id": "r2-live-rev",
+      "kind": "live",
+      "across_sectors": true,
+      "claims": [
+        {
+          "id": "total",
+          "text": "Total revenue was $20 billion.",
+          "as_of": "2024-01-01",
+          "grade": "A"
+        },
+        {
+          "id": "unearned",
+          "text": "Unearned revenue was $40 million.",
+          "as_of": "2026-06-01",
+          "grade": "A"
+        },
+        {
+          "id": "interest",
+          "text": "Interest revenue was $8 billion.",
+          "as_of": "2026-02-01",
+          "grade": "A"
+        }
+      ],
+      "live": {
+        "total": "company_revenue",
+        "unearned": "other",
+        "interest": "interest_revenue"
+      }
+    },
+    {
+      "id": "r1-live-ocf",
+      "kind": "live",
+      "across_sectors": true,
+      "claims": [
+        {
+          "id": "ocf",
+          "text": "Net cash provided by operating activities was $500 million.",
+          "as_of": "2024-12-31",
+          "grade": "A"
+        },
+        {
+          "id": "lease",
+          "text": "Cash flow from operating leases was $90 million.",
+          "as_of": "2026-08-01",
+          "grade": "A"
+        },
+        {
+          "id": "weather",
+          "text": "Operating activities may be affected by weather.",
+          "as_of": "2026-06-01",
+          "grade": "A"
+        }
+      ],
+      "live": {
+        "ocf": "operating_cash_flow",
+        "lease": "other"
+      },
+      "absent": [
+        "weather"
+      ]
+    },
+    {
+      "id": "r1-grade-tie",
+      "kind": "live",
+      "across_sectors": true,
+      "winner": "bare",
+      "claims": [
+        {
+          "id": "bare",
+          "text": "Gross margin was 40 percent.",
+          "as_of": "2026-08-01",
+          "grade": ""
+        },
+        {
+          "id": "cee",
+          "text": "Gross margin was 41 percent.",
+          "as_of": "2026-08-01",
+          "grade": "C"
+        }
+      ],
+      "live": {
+        "bare": "gross_margin"
+      }
+    },
+    {
+      "id": "r2-xbrl-gw",
+      "kind": "concept",
+      "across_sectors": true,
+      "concept": "GoodwillImpairmentLoss",
+      "text": "Impairment of non-goodwill intangible assets was $4 million.",
+      "metric": "goodwill_impairment"
+    },
+    {
+      "id": "r2-xbrl-rev",
+      "kind": "concept",
+      "across_sectors": true,
+      "concept": "Revenue",
+      "text": "Unearned revenue was $40 million.",
+      "metric": "company_revenue"
+    },
+    {
+      "id": "r1-xbrl-miss",
+      "kind": "concept",
+      "across_sectors": true,
+      "concept": "us-gaap:NotARealTag",
+      "text": "Total revenues were $10 million.",
+      "metric": "company_revenue"
+    },
+    {
+      "id": "r1-sep",
+      "kind": "date",
+      "text": "2026-9-30",
+      "sort_key": "2026-09-30",
+      "precision": "day"
+    },
+    {
+      "id": "r1-oct",
+      "kind": "date",
+      "text": "2026-10-01",
+      "sort_key": "2026-10-01",
+      "precision": "day"
+    },
+    {
+      "id": "r1-53w",
+      "kind": "date",
+      "text": "53 weeks ended January 28, 2026",
+      "sort_key": "2026-01-28",
+      "precision": "day"
+    },
+    {
+      "id": "r1-fy-end",
+      "kind": "date",
+      "text": "fiscal year ended 31 March 2026",
+      "sort_key": "2026-03-31",
+      "precision": "day"
+    },
+    {
+      "id": "r1-fy",
+      "kind": "date",
+      "text": "FY2026",
+      "sort_key": null,
+      "precision": "fiscal_label"
+    },
+    {
+      "id": "r1-iso",
+      "kind": "date",
+      "text": "2026-10-01T23:30:00-10:00",
+      "sort_key": "2026-10-01",
+      "precision": "day"
+    },
+    {
+      "id": "r1-52w",
+      "kind": "date",
+      "text": "52 weeks ended August 29, 2026",
+      "sort_key": "2026-08-29",
+      "precision": "day"
+    }
+  ],
+  "must_include": [
+    "Impairment of intangible assets other than goodwill was $4 million.",
+    "Goodwill impairment was $4 million.",
+    "Excluding goodwill, impairment of intangibles was $4 million.",
+    "Revenue was $10 billion.",
+    "Revenues were $10 billion.",
+    "Total net revenue was $10 billion.",
+    "Total revenue was $10 billion.",
+    "Net sales were $10 million. See guidance in Note 2.",
+    "Outlook for next quarter revenue is $100 million",
+    "Cash was $222 million. See guidance.",
+    "The board sanctions the capital plan of $5 billion.",
+    "The company does indemnify customers for $5 million.",
+    "The inventor was paid $1 million",
+    "The guid is stored in the filing.",
+    "The guidelines were updated.",
+    "Total deposits were $88,000 million.",
+    "Deferred revenue was $4,050 million.",
+    "Production was 12 million barrels of oil equivalent per day.",
+    "Funds from operations were $620 million.",
+    "Operating activities may be affected by weather.",
+    "Net cash provided by operating activities may be affected by weather.",
+    "Net cash provided by operating activities was $500 million.",
+    "Net income was $12, or $0.12 per share, in millions except per share.",
+    "$12 bps",
+    "$12",
+    "Operating margin pressure",
+    "Customer lawsuit",
+    "The board sanctions the capital plan",
+    "Gross margin",
+    "Gross margins",
+    "Customer concentration",
+    "Largest customer",
+    "Trade sanctions",
+    "Indemnify",
+    "Impairment of non-goodwill intangible assets was $4 million.",
+    "Impairment of intangible assets other than the goodwill was $4 million.",
+    "Impairment excluding the goodwill balance was $4 million.",
+    "Impairment of assets other than for goodwill was $4 million.",
+    "Unearned revenue was $40 million.",
+    "Interest revenue was $8 billion.",
+    "See guidance: revenue of $12 billion.",
+    "Revenue guidance is $12 billion.",
+    "Cash flow from operating leases was $90 million.",
+    "Operating cash in the registers was $4 million.",
+    "in millions, except per share data, net income was $0.12.",
+    "In millions, except per share data, net income was $400 and diluted earnings per share were $1.25.",
+    "$0.12/share, in millions.",
+    "12 basis points",
+    "\u20ac12 bps",
+    "Operating leverage in the software model",
+    "Water supply interruption",
+    "Regulatory commitment to the rate case",
+    "Bad debt on the card book",
+    "Crude exports",
+    "Net interest margin compression",
+    "Diluted EPS was $1.25, in millions.",
+    "EPS of $1.25, in millions.",
+    "in thousands, except per share data, earnings per share were $0.40.",
+    "Net income was $9 per diluted share, in millions.",
+    "Goodwill impairment was $9 million.",
+    "Impairment of non-goodwill intangible assets was $4 million.",
+    "Total revenue was $20 billion.",
+    "Unearned revenue was $40 million.",
+    "Interest revenue was $8 billion.",
+    "Net cash provided by operating activities was $500 million.",
+    "Cash flow from operating leases was $90 million.",
+    "Operating activities may be affected by weather.",
+    "Gross margin was 40 percent.",
+    "Gross margin was 41 percent.",
+    "Impairment of non-goodwill intangible assets was $4 million.",
+    "Unearned revenue was $40 million.",
+    "Total revenues were $10 million.",
+    "2026-9-30",
+    "2026-10-01",
+    "53 weeks ended January 28, 2026",
+    "fiscal year ended 31 March 2026",
+    "FY2026",
+    "2026-10-01T23:30:00-10:00",
+    "52 weeks ended August 29, 2026"
+  ]
+}
