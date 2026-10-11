@@ -8,13 +8,14 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { VAULT_DIR, isInsideVault } from './vault.js';
-import { registerCloseout } from '../scripts/register-closeout.mjs';
+import { registerCloseout, risksDrafted } from '../scripts/register-closeout.mjs';
 import {
   getHouseProposal,
   acceptHouseProposal,
 } from './houseProposals.js';
 import {
-  listRiskProposals,
+  pendingRiskRecords,
+  projectAddRiskMarkdown,
   acceptRiskProposal,
   readRisksSource,
   saveRisksSource,
@@ -211,8 +212,32 @@ export function goCommitHouse(opts = {}) {
   };
 }
 
+function registerNotStamped(slug, drafted, extra = {}) {
+  const session = readSession(slug);
+  const n = drafted?.n ?? 0;
+  const tables = drafted?.tables ?? 0;
+  return {
+    ok: false,
+    available: true,
+    kind: 'register',
+    slug,
+    error: `08 is thin (### Rn ${n}, tripwire tables ${tables}; need ≥4). File was not stamped.`,
+    stamped: false,
+    header_accepted: false,
+    session_phase: session.phase,
+    applied: extra.applied || [],
+    skipped: extra.skipped || [],
+    stopped: extra.stopped || null,
+    next_steps: [
+      'Re-draft so four distinct risks each have a tripwire table, then GO again. The file was not stamped.',
+    ],
+    decision_support_only: true,
+  };
+}
+
 /**
  * Apply pending risk chips + mark 08 ACCEPTED. House live file must already be CONFIRMED.
+ * Stamp only when the written file would pass registerCloseout. The bar is not lowered.
  * @param {{ slug: string, houseFile?: string, risksSourceRel: string, utterance: string, proposalIds?: string[], ticker?: string, compile?: boolean }} opts
  */
 export function goCommitRegister(opts = {}) {
@@ -228,20 +253,21 @@ export function goCommitRegister(opts = {}) {
   }
 
   const { text: eight } = readRisksSource(risksSourceRel);
-  const heads = eight.match(/### R\d+/g) || [];
   const listed = Array.isArray(opts.proposalIds || opts.proposal_ids)
     ? (opts.proposalIds || opts.proposal_ids).map(String)
     : null;
-  const pending = listRiskProposals(slug, { status: 'pending' }).proposals
+  const pending = pendingRiskRecords(slug)
     .filter((p) => !listed || listed.includes(p.id));
-
-  if (heads.length < 4 && pending.length < 4) {
-    throw new Error('08 is thin and there are not enough pending add_risk chips. Dump full 08, propose, then GO.');
+  const projected = projectAddRiskMarkdown(eight, pending);
+  const projectedDraft = risksDrafted(projected);
+  if (!projectedDraft.ok) {
+    return registerNotStamped(slug, projectedDraft);
   }
 
   const snapshot = snapshotRel(risksSourceRel, slug, 'register');
   const applied = [];
   const skipped = [];
+  let stopped = null;
   for (const p of pending) {
     try {
       const out = acceptRiskProposal({
@@ -257,13 +283,57 @@ export function goCommitRegister(opts = {}) {
         skipped.push({ id: p.id, error: 'already in SoR' });
         continue;
       }
-      throw e;
+      stopped = { id: p.id, error: msg };
+      break;
     }
   }
 
   const after = readRisksSource(risksSourceRel);
+  const postDraft = risksDrafted(after.text);
+  if (!postDraft.ok) {
+    return registerNotStamped(slug, postDraft, { applied, skipped, stopped });
+  }
+  if (stopped) {
+    return {
+      ok: false,
+      available: true,
+      kind: 'register',
+      slug,
+      error: `File was not stamped. ${stopped.error}`,
+      stamped: false,
+      header_accepted: false,
+      applied,
+      skipped,
+      stopped,
+      next_steps: [
+        'Re-draft the failed chip, then GO again. The file was not stamped.',
+      ],
+      decision_support_only: true,
+    };
+  }
+
   const marked = markRegisterAcceptedHeader(after.text);
   if (marked.changed) saveRisksSource(risksSourceRel, marked.text);
+
+  const register = registerCloseout(slug, { vault: VAULT_DIR });
+  if (!register.pass) {
+    return {
+      ok: false,
+      available: true,
+      kind: 'register',
+      slug,
+      error: `File was not stamped. ${register.reason}`,
+      stamped: false,
+      header_accepted: false,
+      applied,
+      skipped,
+      stopped,
+      next_steps: [
+        'Re-draft the register, then GO again. The file was not stamped.',
+      ],
+      decision_support_only: true,
+    };
+  }
 
   const compile = opts.compile === false
     ? { ran: false, reason: 'compile false' }

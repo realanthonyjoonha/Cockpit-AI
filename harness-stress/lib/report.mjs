@@ -347,7 +347,8 @@ export function writeReport(dir, outPath) {
 
   const reg = call(tools, 'register-go');
   const drv = call(tools, 'drivers-go');
-  if (reg?.ok_field === true && drv?.ok_field === false && /not closed/i.test(drv?.error || '')) {
+  const openAfterOk = reg?.ok_field === true && drv?.ok_field === false && /not closed|thin/i.test(drv?.error || '');
+  if (openAfterOk) {
     findings.push({
       id: 'F18',
       severity: 'P1',
@@ -364,15 +365,18 @@ export function writeReport(dir, outPath) {
     });
   }
 
-  if (tools?.bash_bypass) {
+  const bashCaught = tools?.bash_bypass?.appended === true
+    && tools.bash_bypass.audit_mismatch === true
+    && tools.bash_bypass.house_closeout_pass === false;
+  if (tools?.bash_bypass && !bashCaught && tools.bash_bypass.appended) {
     findings.push({
       id: 'F15',
       severity: 'P1',
       area: 'tools',
-      verdict: tools.bash_bypass.appended ? 'confirmed' : 'refuted',
+      verdict: 'confirmed',
       hypothesis: 'Predefined tools are what make writes safe. Bash-capable hosts can ignore them.',
       title: 'In the sandbox, a shell append changed the fixture house with no GO utterance',
-      summary: `propose_house_view with FORMING was refused (error=${call(tools, 'propose-forming')?.error}). propose with intent save_draft was refused (error=${call(tools, 'propose-save-draft')?.error}). A one-line shell append on the sandbox house file set appended=${tools.bash_bypass.appended}, exit=${tools.bash_bypass.exit}, bytes ${tools.bash_bypass.bytes_before} → ${tools.bash_bypass.bytes_after}. The product tree was not the target. product_desks_unchanged=${tools.product_desks_unchanged}.`,
+      summary: `propose_house_view with FORMING was refused (error=${call(tools, 'propose-forming')?.error}). propose with intent save_draft was refused (error=${call(tools, 'propose-save-draft')?.error}). A one-line shell append on the sandbox house file set appended=${tools.bash_bypass.appended}, exit=${tools.bash_bypass.exit}, bytes ${tools.bash_bypass.bytes_before} → ${tools.bash_bypass.bytes_after}. audit_mismatch=${tools.bash_bypass.audit_mismatch}. house_closeout_pass=${tools.bash_bypass.house_closeout_pass}. The product tree was not the target. product_desks_unchanged=${tools.product_desks_unchanged}.`,
       repro: [
         'node harness-stress/run.mjs',
         'The probe builds /tmp/cockpit-tool-sandbox-<pid>, appends inside that vault, then deletes the sandbox.',
@@ -507,6 +511,16 @@ export function writeReport(dir, outPath) {
   }
   if (phase2.length) {
     lines.push(`- Phase-2 repros not reproduced on this run: ${phase2.join('; ')}.`);
+  }
+  const phase3 = [];
+  if (reg && drv && !openAfterOk) {
+    phase3.push(`F18 register ok=${reg.ok_field} and drivers is not rejected for a thin register (drivers ok=${drv.ok_field})`);
+  }
+  if (bashCaught) {
+    phase3.push(`F15 a shell append still changes bytes (${tools.bash_bypass.bytes_before} → ${tools.bash_bypass.bytes_after}) and is not a GO: audit mismatch, house-closeout fails`);
+  }
+  if (phase3.length) {
+    lines.push(`- Phase-3 repros not reproduced on this run: ${phase3.join('; ')}.`);
   }
   if (date?.winner === 'sep') {
     lines.push(`- Padded ISO dates do keep the newer claim (C-date-iso winner=${isoWinner}). The failure is the unpadded form, which still sorts as a string.`);

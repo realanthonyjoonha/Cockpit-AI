@@ -18,6 +18,7 @@ import {
   parseAsOf,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { sectorBudgetErrors } from './assert-p1.mjs';
+import { sectorGoErrors } from './assert-p2.mjs';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -106,6 +107,7 @@ export function assertSectors() {
     errors.push('thin-desks.json desks is not empty');
   }
   errors.push(...sectorBudgetErrors());
+  errors.push(...sectorGoErrors());
   return errors;
 }
 
