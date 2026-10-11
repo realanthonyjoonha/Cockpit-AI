@@ -84,15 +84,18 @@ Use **parallel subagents** (or equivalent concurrent tool batches) — **one age
 Each slice agent must:
 
 1. Prefer **primary** sources (SEC / IR). Web search ≤ ~6 per slice; filings open/read first.  
-2. Write vault notes under `raw/{slug}-research/` (or return structured notes for orchestrator to file).  
+2. Write the raw note under `raw/{slug}-research/` and the card `raw/{slug}-research/slices/0N.md`. Return the card path, not the raw note.  
 3. Emit graded claim candidates:  
    `- <fact> (YYYY-MM-DD) [A|B|C] [[source-slug]]`  
 4. List **GAPs** and residual questions.  
 5. **No** house CONFIRM language; **no** buy/sell/PT/sizing.  
 6. **No** invented % or WATCH titles without primary support.
 
+The card is what the next step reads. One file per slice, `raw/{slug}-research/slices/0N.md`, at most 1,500 tokens: graded bullets, a `[[source-slug]]` on every number, and GAPs. Run `node memory-cockpit-v2/scripts/slice-card-check.mjs` on that file. The checker refuses an over-cap card, a number with no source slug, and buy/sell/target/sizing language. It does not call a model.
+
 Orchestrator:
 
+- Do not paste the raw slice into the next turn. Read the card files. End the turn with the facts already written on the cards and the card paths. Do not invent facts for that ending. A card is not a GO.  
 - Launch slices **in parallel** (do not serial-skim 1→7 unless forced by tool limits).  
 - After all return: reconcile contradictions, dedupe claims, file `wiki/sources/*` distillations, merge into `wiki/entities/{slug}.md`.  
 - **Then** draft risk register (section A `### Rn —` + Status/Grade + tripwire tables, before `## B)`). Prefer **6+** risks when evidence supports; default new elevated to **WATCH** only with mechanism + monitors.  

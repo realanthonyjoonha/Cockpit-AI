@@ -236,8 +236,12 @@ export function writeReport(dir, outPath) {
     });
   }
 
-  if (flow?.trajectories) {
-    const deep = flow.trajectories.find((t) => t.slice_token_target === 6000) || flow.trajectories[flow.trajectories.length - 1];
+  const deepFlow = flow?.trajectories
+    ? (flow.trajectories.find((t) => t.slice_token_target === 6000) || flow.trajectories[flow.trajectories.length - 1])
+    : null;
+  const cardKept = flow?.card_trajectory?.last_32k?.canaries_kept;
+  const rawKept = deepFlow?.steps?.[deepFlow.steps.length - 1]?.budgets?.['32000']?.canaries_kept;
+  if (flow?.trajectories && cardKept !== 8) {
     findings.push({
       id: 'F11',
       severity: 'P1',
@@ -245,15 +249,16 @@ export function writeReport(dir, outPath) {
       verdict: 'confirmed',
       hypothesis: 'Long DEEP runs depend on the host window. Cockpit does not summarize between slices.',
       title: 'A new-desk trajectory overflows tight host budgets and a tail-keep drops the seeded facts',
-      summary: `cockpit-new-desk.md is ${flow.command_tokens} tokens. AGENTS.md is ${flow.agents_tokens} tokens. With ~${deep?.slice_token_target}-token slice notes, the transcript ends at ${deep?.final_tokens} tokens. First overflowing step by budget: ${JSON.stringify(deep?.overflow_step)}. On that deep trajectory the 32k tail-keep at the last step retains ${deep?.steps?.[deep.steps.length - 1]?.budgets?.['32000']?.canaries_kept} of 8 seeded facts. The 128k window still holds ${deep?.steps?.[deep.steps.length - 1]?.budgets?.['128000']?.canaries_kept} of 8, so this particular 8-slice transcript fits a 128k host and does not fit a 32k host. Twelve repeated pack snapshots cost ${flow.repeated_pack_calls?.at(-1)?.tokens} tokens and still fit in 32k; the waste is duplicate payload, and the canaries survive. Cockpit does not write a slice summary back into the running prompt. The simulator's compaction is a tail-keep, which is what a host does when it has no summary step.`,
-      repro: ['node harness-stress/run.mjs', 'See flow.json trajectories and repeated_pack_calls.'],
+      summary: `cockpit-new-desk.md is ${flow.command_tokens} tokens. AGENTS.md is ${flow.agents_tokens} tokens. With ~${deepFlow?.slice_token_target}-token slice notes, the transcript ends at ${deepFlow?.final_tokens} tokens. First overflowing step by budget: ${JSON.stringify(deepFlow?.overflow_step)}. On that deep trajectory the 32k tail-keep at the last step retains ${rawKept} of 8 seeded facts. The card trajectory keeps ${cardKept ?? 'n/a'} of 8. The 128k window still holds ${deepFlow?.steps?.[deepFlow.steps.length - 1]?.budgets?.['128000']?.canaries_kept} of 8. Twelve repeated pack snapshots cost ${flow.repeated_pack_calls?.at(-1)?.tokens} tokens. A raw-note tail-keep drops the head. Slice cards are the memory; the checker does not call a model.`,
+      repro: ['node harness-stress/run.mjs', 'See flow.json trajectories, card_trajectory, and repeated_pack_calls.'],
       evidence: {
         command_tokens: flow.command_tokens,
         agents_tokens: flow.agents_tokens,
-        overflow_step: deep?.overflow_step,
-        final_tokens: deep?.final_tokens,
-        step0_32k: deep?.steps?.[0]?.budgets?.['32000'],
-        last_32k: deep?.steps?.[deep.steps.length - 1]?.budgets?.['32000'],
+        overflow_step: deepFlow?.overflow_step,
+        final_tokens: deepFlow?.final_tokens,
+        step0_32k: deepFlow?.steps?.[0]?.budgets?.['32000'],
+        last_32k: deepFlow?.steps?.[deepFlow.steps.length - 1]?.budgets?.['32000'],
+        card_last_32k: flow.card_trajectory?.last_32k,
         repeated_pack_tail: flow.repeated_pack_calls?.filter((r) => [1, 6, 12].includes(r.call)),
         schema_tokens_each_call: flow.schema_tokens_added_each_call,
       },
@@ -522,6 +527,13 @@ export function writeReport(dir, outPath) {
   if (phase3.length) {
     lines.push(`- Phase-3 repros not reproduced on this run: ${phase3.join('; ')}.`);
   }
+  const phase4 = [];
+  if (cardKept === 8) {
+    phase4.push(`F11 slice cards keep 8 of 8 seeded facts in a 32k tail (raw notes still keep ${rawKept}; that control is the old trajectory)`);
+  }
+  if (phase4.length) {
+    lines.push(`- Phase-4 repros not reproduced on this run: ${phase4.join('; ')}.`);
+  }
   if (date?.winner === 'sep') {
     lines.push(`- Padded ISO dates do keep the newer claim (C-date-iso winner=${isoWinner}). The failure is the unpadded form, which still sorts as a string.`);
   } else {
@@ -529,7 +541,9 @@ export function writeReport(dir, outPath) {
   }
   lines.push(`- Same-day ties keep the earlier array element (C-same-day-tie winner=${jsCase(ctx, 'C-same-day-tie')?.winner}). That matches a stable sort. It is an arbitrary pick when two filings share a date, and it is visible in the case.`);
   if (date?.winner === 'oct' && stolen?.metric_id === 'cash') {
-    lines.push('- Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. The host trajectory of the new-desk command plus eight slice notes is still a tail-keep, which is F11.');
+    lines.push(cardKept === 8
+      ? '- Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. Slice cards keep the eight seeded facts in a 32k tail. The raw-note trajectory remains the control.'
+      : '- Unpadded dates and a cash sentence that also says "guidance" no longer pick the wrong live claim. The host trajectory of the new-desk command plus eight slice notes is still a tail-keep, which is F11.');
   } else {
     lines.push('- The audit\'s "okay" rating is fair for a short pack that already uses padded dates and the exact rule phrases. It understates what happens when dates are unpadded, when "guidance" appears in an unrelated sentence, or when the host trajectory is the new-desk command plus eight slice notes.');
   }

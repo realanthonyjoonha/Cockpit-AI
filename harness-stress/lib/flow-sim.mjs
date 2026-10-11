@@ -1,11 +1,16 @@
 /**
  * Replay a /cockpit-new-desk shaped trajectory and measure context growth.
- * Host compaction is simulated. Cockpit itself has no summarize step in this path.
+ * Host tail-keep is simulated. Cockpit does not call a summary model.
+ * The card trajectory writes a structured extract and repeats the seed at the end.
+ * There is no index of dropped spans to recover later.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { countCardTokens, SLICE_CARD_TOKEN_CAP } from '../../memory-cockpit-v2/scripts/slice-card-check.mjs';
 import { countTokens } from './tokens.mjs';
+
+export const COMMAND_TOKEN_BASELINE = 4184;
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -52,6 +57,40 @@ function canaryHits(text) {
   hits.kept = Object.values(hits).filter(Boolean).length;
   hits.total = Object.keys(CANARIES).length;
   return hits;
+}
+
+function budgetSnapshot(transcript) {
+  const tokens = countTokens(transcript);
+  const budgets = {};
+  for (const b of BUDGETS) {
+    const kept = tokens <= b ? transcript : tailByTokens(transcript, b);
+    const hits = canaryHits(kept);
+    budgets[String(b)] = {
+      overflow: tokens > b,
+      tokens_after_tail_keep: countTokens(kept),
+      canaries_kept: hits.kept,
+      canaries: hits,
+    };
+  }
+  return { tokens, chars: transcript.length, budgets };
+}
+
+function overflowSteps(rows) {
+  const overflowStep = {};
+  for (const b of BUDGETS) {
+    const hit = rows.find((r) => r.budgets[String(b)].overflow);
+    overflowStep[String(b)] = hit ? hit.step : null;
+  }
+  return overflowStep;
+}
+
+function sliceCard(index, key, value) {
+  const n = String(index).padStart(2, '0');
+  return [
+    `# Slice ${n}`,
+    `- ${key} recorded as ${value} (2026-01-${n}) [A] [[slice-${n}]]`,
+    'GAP: none on this fixture card.',
+  ].join('\n');
 }
 
 function read(rel) {
@@ -160,14 +199,87 @@ export function flowSim(schemaTokens = 0) {
     });
   }
 
+  const entries = Object.entries(CANARIES);
+  const cardPaths = [];
+  const cardMeta = [];
+  let cardTranscript = overhead;
+  const cardRows = [];
+  const fillerMark = 'Process note on filing mechanics';
+  for (let i = 1; i <= entries.length; i++) {
+    const [key, value] = entries[i - 1];
+    const card = sliceCard(i, key, value);
+    const rel = `raw/demo-research/slices/${String(i).padStart(2, '0')}.md`;
+    cardPaths.push(rel);
+    const note = [
+      card,
+      '',
+      'Card paths:',
+      ...cardPaths.map((p) => `- ${p}`),
+      '',
+      seed.trimEnd(),
+    ].join('\n');
+    if (note.includes(fillerMark)) throw new Error('card note pasted raw filler');
+    cardTranscript += `\n\n${note}`;
+    const snap = budgetSnapshot(cardTranscript);
+    cardMeta.push({
+      path: rel,
+      tokens: countCardTokens(card),
+      has_source_slug: note.includes(`[[slice-${String(i).padStart(2, '0')}]]`),
+      ends_with_seed: note.endsWith(seed.trimEnd()),
+    });
+    cardRows.push({
+      step: i,
+      role: `card-${i}`,
+      cumulative_tokens: snap.tokens,
+      cumulative_chars: snap.chars,
+      per_call_schema_tokens: schemaTokens,
+      budgets: snap.budgets,
+    });
+  }
+  const cardLast = cardRows[cardRows.length - 1];
+  let headChars = 20_000;
+  while (countTokens(filler(headChars, 'drop')) < 40_000 && headChars < 200_000) headChars += 2_000;
+  const discardedHead = filler(headChars, 'drop');
+  const forced = `${discardedHead}\n\n${cardTranscript}`;
+  const forcedTail = tailByTokens(forced, 32_000);
+  const forcedHits = canaryHits(forcedTail);
+
+  const cardTrajectory = {
+    kind: 'slice-cards',
+    slice_token_target: 6000,
+    token_cap: SLICE_CARD_TOKEN_CAP,
+    reads_cards_not_raw_notes: !cardTranscript.includes(fillerMark),
+    seed_at_end: cardMeta.every((c) => c.ends_with_seed),
+    recoverable_elision: false,
+    implementation_notes_is_compactor: false,
+    pasted_raw_notes: cardTranscript.includes(fillerMark),
+    max_card_tokens: Math.max(...cardMeta.map((c) => c.tokens)),
+    cards: cardMeta,
+    overhead_tokens: countTokens(overhead),
+    final_tokens: cardLast.cumulative_tokens,
+    overflow_step: overflowSteps(cardRows),
+    steps: cardRows,
+    last_32k: cardLast.budgets['32000'],
+    forced_head_tail_32k: {
+      head_tokens: countTokens(discardedHead),
+      canaries_kept: forcedHits.kept,
+      canaries: forcedHits,
+      tokens_after_tail_keep: countTokens(forcedTail),
+    },
+  };
+
   return {
     canaries: CANARIES,
     command_tokens: countTokens(command),
     command_chars: command.length,
+    command_token_baseline: COMMAND_TOKEN_BASELINE,
+    command_token_delta: countTokens(command) - COMMAND_TOKEN_BASELINE,
     agents_tokens: countTokens(agents),
     command_files_mentioning_summarize_or_window: summarizeHits,
     implementation_notes_is_prose_anchor: notes.includes('resume anchor'),
+    implementation_notes_is_compactor: false,
     trajectories,
+    card_trajectory: cardTrajectory,
     repeated_pack_calls: dupRows,
     schema_tokens_added_each_call: schemaTokens,
   };
