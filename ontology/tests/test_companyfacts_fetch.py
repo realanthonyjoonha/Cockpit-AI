@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -125,6 +126,45 @@ class RefreshDesk(unittest.TestCase):
             loaded = load_companyfacts({}, wiki, "aapl")
             self.assertEqual(loaded["facts"], [])
             self.assertEqual(loaded["notes"], ["companyfacts fetch failed: HTTP 503"])
+
+    def test_failed_refresh_gap_surfaces_when_old_cache_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            wiki = _wiki(tmp)
+            dest = fetch.cache_path(wiki, "aapl")
+            dest.parent.mkdir(parents=True)
+            dest.write_text(json.dumps(FACTS_DOC), encoding="utf-8")
+            fetch.write_status(dest, {
+                "ok": False,
+                "gap": "companyfacts fetch failed: HTTP 429",
+            })
+            loaded = load_companyfacts({}, wiki, "aapl")
+            self.assertIn("companyfacts fetch failed: HTTP 429", loaded["notes"])
+            self.assertTrue(dest.is_file())
+
+    def test_pad_cik_float_strings(self):
+        self.assertEqual(fetch.pad_cik(320193.0), "0000320193")
+        self.assertEqual(fetch.pad_cik("320193.0"), "0000320193")
+        self.assertEqual(fetch.pad_cik(320193), "0000320193")
+
+    def test_pack_sec_user_agent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ont = Path(tmp)
+            (ont / "packs").mkdir()
+            (ont / "packs" / "AAPL.json").write_text(
+                json.dumps({"sec_user_agent": "Cockpit-AI pack@example.com"}),
+                encoding="utf-8",
+            )
+            self.assertEqual(fetch.pack_user_agent("AAPL", ont), "Cockpit-AI pack@example.com")
+            old_a = os.environ.pop("SEC_USER_AGENT", None)
+            old_b = os.environ.pop("COCKPIT_SEC_UA", None)
+            try:
+                ua = fetch.user_agent(None, ticker="AAPL", ont_root=ont)
+                self.assertIn("@", ua)
+            finally:
+                if old_a is not None:
+                    os.environ["SEC_USER_AGENT"] = old_a
+                if old_b is not None:
+                    os.environ["COCKPIT_SEC_UA"] = old_b
 
     def test_parser_modules_do_not_import_fetch(self):
         text = (ROOT / "api" / "companyfacts.py").read_text(encoding="utf-8")

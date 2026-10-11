@@ -89,6 +89,9 @@ export function inspectPackStale({ ticker, vaultDir, ontRoot, storeDir }) {
   add(resolveUnder(vaultDir, house), 'house');
   add(path.join(vaultDir, 'wiki', 'entities', `${slug}.md`), 'entity');
   if (cfg.risks_source) add(resolveUnder(vaultDir, cfg.risks_source), 'risks_source');
+  const factsRel = cfg.companyfacts_path || path.join('raw', `${slug}-research`, 'sec', 'companyfacts.json');
+  add(resolveUnder(vaultDir, factsRel), 'companyfacts');
+  add(resolveUnder(vaultDir, path.join(path.dirname(factsRel), 'companyfacts.status.json')), 'companyfacts_status');
 
   for (const g of cfg.source_globs || []) {
     for (const f of expandGlob(vaultDir, g)) add(f, 'glob');

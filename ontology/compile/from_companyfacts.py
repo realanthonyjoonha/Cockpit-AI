@@ -46,6 +46,9 @@ def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[s
     kept = mapped_facts(parsed["facts"])
     slots = tagged_slots(kept)
     notes = list(parsed.get("notes") or [])
+    status_gap = _status_gap(path)
+    if status_gap and status_gap not in notes:
+        notes.insert(0, status_gap)
     notes.extend(headline_gaps(slots))
     rel = str(path)
     try:

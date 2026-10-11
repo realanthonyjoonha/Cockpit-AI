@@ -5,8 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const DEFAULT_ONTOLOGY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ontology');
-const ALLOWED_FORMS = new Set(['10-K', '10-Q', '20-F', '40-F', '6-K']);
-const ANNUAL_FORMS = new Set(['10-K', '20-F', '40-F']);
+const ALLOWED_FORMS = new Set(['10-K', '10-Q', '20-F', '40-F', '6-K', '10-KT']);
+const ANNUAL_FORMS = new Set(['10-K', '20-F', '40-F', '10-KT']);
+const QUARTER_FP = new Set(['Q1', 'Q2', 'Q3']);
 const ISO4217 = /^[A-Z]{3}$/;
 const TAXONOMIES = ['us-gaap', 'ifrs-full'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -28,9 +29,13 @@ export function loadTaxonomy(ontologyRoot) {
   return taxonomyCache;
 }
 
-export function sentenceFillAllowed(metricId, taxonomy = null) {
+export function canonicalMetric(metricId, taxonomy = null) {
   const spec = ((taxonomy || loadTaxonomy()).metrics || {})[metricId] || {};
-  if (spec.alias_of) return sentenceFillAllowed(spec.alias_of, taxonomy);
+  return spec.alias_of ? String(spec.alias_of) : metricId;
+}
+
+export function sentenceFillAllowed(metricId, taxonomy = null) {
+  const spec = ((taxonomy || loadTaxonomy()).metrics || {})[canonicalMetric(metricId, taxonomy)] || {};
   if ((spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length)) return false;
   return spec.sentence_fill !== false;
 }
@@ -64,10 +69,21 @@ export function valueText(val) {
   if (val == null || typeof val === 'boolean') return null;
   const f = Number(val);
   if (!Number.isFinite(f)) return null;
-  if (Math.abs(f) < 2 ** 53 && Number.isInteger(f)) return String(f);
-  let s = f.toFixed(12).replace(/\.?0+$/, '');
-  if (s === '-0' || s === '') s = '0';
-  return s;
+  if (typeof val === 'string') {
+    const t = val.trim();
+    if (/^-?\d+$/.test(t)) {
+      const neg = t.startsWith('-');
+      const body = t.replace(/^-/, '').replace(/^0+(?=\d)/, '') || '0';
+      return `${neg && body !== '0' ? '-' : ''}${body}`;
+    }
+    if (/^-?\d+\.\d+$/.test(t)) {
+      const s = t.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+      return s === '-0' ? '0' : s;
+    }
+  }
+  if (Math.abs(f) < 2 ** 53 && Number.isInteger(f)) return `${Math.trunc(f)}`;
+  const s = f.toFixed(12).replace(/0+$/, '').replace(/\.$/, '');
+  return (s === '-0' || s === '') ? '0' : s;
 }
 
 export function toNumber(text) {
@@ -99,10 +115,25 @@ function days(start, end) {
   return Math.round((b - a) / 86400000);
 }
 
-export function durationKind(n) {
+export function durationKind(n, fp, form, peerDays) {
+  const family = formFamily(form);
+  const fpU = String(fp || '').toUpperCase();
+  const peers = (peerDays || []).map((p) => Number(p)).filter((p) => Number.isFinite(p));
+  const longer = peers.some((p) => p > n + 14);
+  const shorter = peers.some((p) => p < n - 14);
+  if (longer && n <= 200) return 'quarter';
+  if (shorter && n <= 340) return 'ytd';
+  if (ANNUAL_FORMS.has(family) || fpU === 'FY') {
+    if (n >= 300 || fpU === 'FY') return 'annual';
+  }
+  if (QUARTER_FP.has(fpU)) {
+    if (n <= 130) return 'quarter';
+    if (n <= 340) return 'ytd';
+    return 'annual';
+  }
   if (n >= 341) return 'annual';
-  if (n >= 70 && n <= 110) return 'quarter';
-  if (n >= 111 && n <= 340) return 'ytd';
+  if (n >= 70 && n <= 130) return 'quarter';
+  if (n >= 131 && n <= 340) return 'ytd';
   return 'other';
 }
 
@@ -184,12 +215,25 @@ export function parseCompanyfacts(doc, opts = {}) {
   return { facts: out, notes, entity: doc.entityName || null, cik: doc.cik ?? null };
 }
 
+export function cacheStatusGap(cacheFile) {
+  try {
+    const status = JSON.parse(readFileSync(path.join(path.dirname(cacheFile), 'companyfacts.status.json'), 'utf8'));
+    return status && status.gap ? String(status.gap) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function loadCompanyfactsFile(filePath, opts = {}) {
   try {
     const doc = JSON.parse(readFileSync(filePath, 'utf8'));
-    return parseCompanyfacts(doc, { sourceId: opts.sourceId || filePath });
+    const parsed = parseCompanyfacts(doc, { sourceId: opts.sourceId || filePath });
+    const gap = cacheStatusGap(filePath);
+    if (gap && !parsed.notes.includes(gap)) parsed.notes.unshift(gap);
+    return parsed;
   } catch {
-    return { facts: [], notes: [UNREADABLE], entity: null, cik: null };
+    const gap = cacheStatusGap(filePath);
+    return { facts: [], notes: [gap || UNREADABLE], entity: null, cik: null };
   }
 }
 
@@ -218,14 +262,13 @@ export function taggedSlots(facts, taxonomy = null) {
     if (spec.alias_of) continue;
     const primary = spec.concepts || [];
     const fallback = spec.fallback || [];
-    if (!primary.length && !fallback.length) continue;
+    const concepts = [...primary, ...fallback.filter((c) => !primary.includes(c))];
+    if (!concepts.length) continue;
     const pool = (facts || []).filter((f) => !f.dimensional
       && f.period && f.period.type === spec.period
       && f.period.end
       && unitOk(String(f.unit || ''), String(spec.unit)));
-    const primCands = pool.filter((f) => primary.includes(f.concept));
-    const cands = primCands.length ? primCands : pool.filter((f) => fallback.includes(f.concept));
-    const concepts = primCands.length ? primary : fallback;
+    const cands = pool.filter((f) => concepts.includes(f.concept));
     if (!cands.length) continue;
 
     const groups = new Map();
@@ -253,23 +296,32 @@ export function taggedSlots(facts, taxonomy = null) {
     const latestEnd = winners.reduce((acc, [w]) => (w.period.end > acc ? w.period.end : acc), '');
     const atEnd = winners.filter(([w]) => w.period.end === latestEnd);
     const families = new Set(atEnd.map(([w]) => formFamily(w.form)));
+    const fps = new Set(atEnd.map(([w]) => String(w.fp || '').toUpperCase()));
     const onlyAnnual = [...families].every((f) => ANNUAL_FORMS.has(f));
-    const interim = families.has('10-Q') && !onlyAnnual;
+    const sixkQuarter = families.has('6-K') && [...fps].some((fp) => QUARTER_FP.has(fp));
+    const interim = (families.has('10-Q') || sixkQuarter) && !onlyAnnual;
+
+    const kindOf = (w) => durationKind(
+      days(w.period.start, w.period.end),
+      w.fp,
+      w.form,
+      atEnd.filter(([o]) => o !== w).map(([o]) => days(o.period.start, o.period.end)),
+    );
 
     const rank = ([w]) => {
-      const kind = durationKind(days(w.period.start, w.period.end));
+      const kind = kindOf(w);
       const dur = interim ? ({ quarter: 2, ytd: 1 }[kind] || 0) : (kind === 'annual' ? 2 : 0);
       const cidx = concepts.indexOf(w.concept);
-      return [dur, w.filed || '', w.accession || '', -(cidx < 0 ? 99 : cidx), Number(w.order || 0)];
+      return [dur, -(cidx < 0 ? 99 : cidx), w.filed || '', w.accession || ''];
     };
     const best = atEnd.reduce((acc, row) => (acc == null || cmpTuple(rank(row), rank(acc)) > 0 ? row : acc), null);
     const win = best[0];
     const restatedFrom = best[1];
     let ytd = null;
-    if (spec.period === 'duration' && durationKind(days(win.period.start, win.period.end)) === 'quarter') {
+    if (spec.period === 'duration' && kindOf(win) === 'quarter') {
       const ytdRows = atEnd
         .map(([w]) => w)
-        .filter((w) => w.concept === win.concept && durationKind(days(w.period.start, w.period.end)) === 'ytd');
+        .filter((w) => w.concept === win.concept && kindOf(w) === 'ytd');
       if (ytdRows.length) {
         ytd = ytdRows.reduce((acc, w) => (acc == null || cmpTuple([w.filed || '', w.accession || ''], [acc.filed || '', acc.accession || '']) > 0 ? w : acc), null);
       }

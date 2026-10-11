@@ -42,6 +42,8 @@ class ValueText(unittest.TestCase):
         self.assertEqual(value_text(7.7), "7.7")
         self.assertEqual(value_text(-8.45), "-8.45")
         self.assertEqual(value_text(1), "1")
+        self.assertNotIn("e", value_text(1e-7) or "")
+        self.assertNotIn("E", value_text(1e-7) or "")
 
 
 class FixturesMatchExpected(unittest.TestCase):
@@ -146,6 +148,22 @@ class ReviewSentencesNeverFill(unittest.TestCase):
         parsed = parse_companyfacts("not-json")
         self.assertEqual(parsed["facts"], [])
         self.assertTrue(any("unreadable" in n for n in parsed["notes"]))
+
+    def test_long_term_debt_alias_uses_total_debt_gap(self):
+        from api.companyfacts import canonical_metric, headline_gaps
+        self.assertEqual(canonical_metric("long_term_debt"), "total_debt")
+        gaps = headline_gaps({})
+        self.assertIn("total_debt: not reported in structured data", gaps)
+        self.assertNotIn("long_term_debt: not reported in structured data", gaps)
+        gout = []
+        live, _ = live_claims(
+            [{"id": "d", "text": "Long-term debt was $5 billion.", "as_of": "2025-12-31", "grade": "A"}],
+            self.rules,
+            facts=[],
+            gaps_out=gout,
+        )
+        self.assertFalse(any(r.get("metric_id") == "long_term_debt" for r in live))
+        self.assertIn("total_debt: not reported in structured data", gout)
 
 
 if __name__ == "__main__":
