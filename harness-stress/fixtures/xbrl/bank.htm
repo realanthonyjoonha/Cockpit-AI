@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Harness fixture. Round numbers. Fake CIK. Not a real filing. -->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:ix="http://www.xbrl.org/2013/inlineXBRL" xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:xbrldi="http://xbrl.org/2006/xbrldi" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:us-gaap="http://fasb.org/us-gaap/2024" xmlns:ifrs-full="https://xbrl.ifrs.org/taxonomy/2024-03-27/ifrs-full" xmlns:srt="http://fasb.org/srt/2024" xmlns:fix="http://example.com/fixture/2025" xmlns:dei="http://xbrl.sec.gov/dei/2024" xmlns:ixt="http://www.xbrl.org/inlineXBRL/transformation/2020-02-12" xmlns:ixt-sec="http://www.sec.gov/inlineXBRL/transformation/2015-08-31" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<head><title>10-K fixture bank</title></head>
+<body>
+<div style="display:none"><ix:header><ix:hidden><ix:nonNumeric name="dei:DocumentType" contextRef="FY25">10-K</ix:nonNumeric></ix:hidden><ix:resources>
+<xbrli:context id="FY25"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000900001</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-12-31</xbrli:endDate></xbrli:period></xbrli:context>
+<xbrli:context id="FY24"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000900001</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2024-01-01</xbrli:startDate><xbrli:endDate>2024-12-31</xbrli:endDate></xbrli:period></xbrli:context>
+<xbrli:context id="I25"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000900001</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2025-12-31</xbrli:instant></xbrli:period></xbrli:context>
+<xbrli:context id="I24"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000900001</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2024-12-31</xbrli:instant></xbrli:period></xbrli:context>
+<xbrli:context id="FY25seg"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000900001</xbrli:identifier><xbrli:segment><xbrldi:explicitMember dimension="srt:SegmentsAxis">fix:ConsumerBankingMember</xbrldi:explicitMember></xbrli:segment></xbrli:entity><xbrli:period><xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-12-31</xbrli:endDate></xbrli:period></xbrli:context>
+<xbrli:unit id="usd"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit>
+<xbrli:unit id="usdPerShare"><xbrli:divide><xbrli:unitNumerator><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unitNumerator><xbrli:unitDenominator><xbrli:measure>xbrli:shares</xbrli:measure></xbrli:unitDenominator></xbrli:divide></xbrli:unit>
+<xbrli:unit id="shares"><xbrli:measure>xbrli:shares</xbrli:measure></xbrli:unit>
+<xbrli:unit id="boe"><xbrli:measure>fix:Boe</xbrli:measure></xbrli:unit>
+</ix:resources></ix:header></div>
+<p>Consolidated statements (in millions, except per share data)</p>
+<table>
+<tr><td>Revenues</td><td>$&#160;<ix:nonFraction name="us-gaap:Revenues" contextRef="FY25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">9,000</ix:nonFraction></td></tr>
+<tr><td>Revenues</td><td>$&#160;<ix:nonFraction name="us-gaap:Revenues" contextRef="FY24" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">8,400</ix:nonFraction></td></tr>
+<tr><td>RevenueFromContractWithCustomerExcludingAssessedTax</td><td>$&#160;<ix:nonFraction name="us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax" contextRef="FY25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">1,500</ix:nonFraction></td></tr>
+<tr><td>InterestIncomeExpenseNet</td><td>$&#160;<ix:nonFraction name="us-gaap:InterestIncomeExpenseNet" contextRef="FY25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">4,200</ix:nonFraction></td></tr>
+<tr><td>InterestIncomeExpenseNet</td><td>$&#160;<ix:nonFraction name="us-gaap:InterestIncomeExpenseNet" contextRef="FY24" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">3,900</ix:nonFraction></td></tr>
+<tr><td>InterestIncomeExpenseNet</td><td>$&#160;<ix:nonFraction name="us-gaap:InterestIncomeExpenseNet" contextRef="FY25seg" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">2,500</ix:nonFraction></td></tr>
+<tr><td>ProvisionForLoanLeaseAndOtherLosses</td><td>$&#160;<ix:nonFraction name="us-gaap:ProvisionForLoanLeaseAndOtherLosses" contextRef="FY25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">310</ix:nonFraction></td></tr>
+<tr><td>CashAndCashEquivalentsAtCarryingValue</td><td>$&#160;<ix:nonFraction name="us-gaap:CashAndCashEquivalentsAtCarryingValue" contextRef="I25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">5,000</ix:nonFraction></td></tr>
+<tr><td>CashAndCashEquivalentsAtCarryingValue</td><td>$&#160;<ix:nonFraction name="us-gaap:CashAndCashEquivalentsAtCarryingValue" contextRef="I24" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">4,000</ix:nonFraction></td></tr>
+<tr><td>Deposits</td><td>$&#160;<ix:nonFraction name="us-gaap:Deposits" contextRef="I25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">88,000</ix:nonFraction></td></tr>
+<tr><td>Goodwill</td><td>$&#160;<ix:nonFraction name="us-gaap:Goodwill" contextRef="I25" unitRef="usd" decimals="-6" scale="6" format="ixt:num-dot-decimal">2,000</ix:nonFraction></td></tr>
+<tr><td>EarningsPerShareDiluted</td><td>$&#160;<ix:nonFraction name="us-gaap:EarningsPerShareDiluted" contextRef="FY25" unitRef="usdPerShare" decimals="2" format="ixt:num-dot-decimal">5.10</ix:nonFraction></td></tr>
+</table>
+</body>
+</html>

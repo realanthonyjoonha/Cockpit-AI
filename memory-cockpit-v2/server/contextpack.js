@@ -1,10 +1,16 @@
 // contextpack.js — JS mirror of ontology/api/contextpack.py (same JSON rules).
 // No writes. Decision-support only. ASCII needles. No ticker branch. No model call.
+// A tagged XBRL fact owns its metric slot. A sentence fills only an untagged
+// metric, only with an amount of that slot's kind, and is marked low confidence.
 import { readFileSync } from 'fs';
 import path from 'path';
+import { conceptIndex, loadTaxonomy, taggedSlots } from './xbrlFacts.js';
 
 const GRADE_W = { A: 3, B: 2, C: 1 };
 export const FISCAL_GAP = 'as_of is a fiscal label without a period-end date';
+export const SENTENCE_GAP = 'no tagged XBRL fact; live value is sentence-derived (low confidence): ';
+export const CONTEXT_CAP = 8;
+const COUNT = /\b(?!(?:19|20)\d{2}\b)\d[\d,]*(?:\.\d+)?\b/;
 
 const MONTHS = {
   january: 1, jan: 1,
@@ -65,26 +71,14 @@ const SENTENCE_SCALE_VALUE = {
 const SYMBOL_CODE = { '$': 'USD', us$: 'USD', '€': 'EUR', '£': 'GBP', '¥': 'JPY' };
 const CODE_SET = new Set(CODE.split('|'));
 
-let ontologyRootCache = null;
-let xbrlCache = null;
-
 export function loadContextpackRules(ontologyRoot) {
-  ontologyRootCache = ontologyRoot;
-  xbrlCache = null;
+  loadTaxonomy(ontologyRoot);
   const p = path.join(ontologyRoot, 'schema', 'contextpack_metrics.json');
   return JSON.parse(readFileSync(p, 'utf8'));
 }
 
 function loadXbrl() {
-  if (xbrlCache) return xbrlCache;
-  if (!ontologyRootCache) return { tags: {} };
-  try {
-    const p = path.join(ontologyRootCache, 'schema', 'taxonomy_xbrl.json');
-    xbrlCache = JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
-    xbrlCache = { tags: {} };
-  }
-  return xbrlCache;
+  return loadTaxonomy();
 }
 
 export function gradeWeight(grade) {
@@ -175,11 +169,12 @@ function metricIds(rules) {
 function resolveConcept(concept, rules, xbrl) {
   const ids = metricIds(rules);
   if (ids.has(concept)) return concept;
-  const tags = (xbrl && xbrl.tags) || {};
-  if (tags[concept] && ids.has(String(tags[concept]))) return String(tags[concept]);
+  const idx = conceptIndex(xbrl);
+  const has = (k) => Object.prototype.hasOwnProperty.call(idx, k);
+  if (has(concept) && ids.has(idx[concept])) return idx[concept];
   if (concept.includes(':')) {
     const local = concept.split(':').pop();
-    if (tags[local] && ids.has(String(tags[local]))) return String(tags[local]);
+    if (has(local) && ids.has(idx[local])) return idx[local];
   }
   return null;
 }
@@ -469,34 +464,78 @@ export function compareClaimsNewestFirst(a, b, ia = 0, ib = 0) {
   return ia - ib;
 }
 
-export function liveClaims(claims, rules, residualCap = 8, gapsOut = null) {
+export function sentenceHasAmount(metricId, text, taxonomy = null) {
+  const tax = taxonomy || loadTaxonomy();
+  const spec = (tax.metrics || {})[metricId];
+  const kind = (spec && spec.unit) || 'currency_or_percent';
+  if (kind === 'count' || kind === 'shares') return COUNT.test(String(text || ''));
+  const units = new Set(parseAmounts(text || '').map((a) => a.unit));
+  if (kind === 'currency') return units.has('currency');
+  if (kind === 'percent') return units.has('percent');
+  return units.has('currency') || units.has('percent');
+}
+
+function contextRow(c, mid, reason) {
+  return {
+    id: c.id,
+    metric_id: mid,
+    text: c.text,
+    as_of: c.as_of,
+    grade: c.grade,
+    source_id: c.source_id,
+    reason,
+  };
+}
+
+export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts = {}) {
+  const tax = loadTaxonomy();
+  const slots = taggedSlots((opts && opts.facts) || [], tax);
   const buckets = {};
   const residual = [];
+  const context = [];
   const gaps = [];
   const seen = new Set();
+  const newer = new Map();
+  const base = Object.keys(slots).length;
   const addGap = (msg) => {
     if (!seen.has(msg)) {
       seen.add(msg);
       gaps.push(msg);
     }
   };
-  (claims || []).forEach((c, i) => {
+  (claims || []).forEach((c, j) => {
+    const i = base + j;
     const text = c.text || '';
     const classified = classifyClaim(c, rules);
     for (const note of classified.notes || []) addGap(note);
     if (parseAsOf(c.as_of).precision === 'fiscal_label') addGap(FISCAL_GAP);
     const mid = classified.metric_id;
     if (mid) {
-      if (!buckets[mid]) buckets[mid] = [];
-      buckets[mid].push({ c, i });
+      if (Object.prototype.hasOwnProperty.call(slots, mid)) {
+        context.push({ i, row: contextRow(c, mid, 'tagged_slot') });
+        const slotKey = parseAsOf(slots[mid].as_of).sort_key || '';
+        const ownKey = parseAsOf(c.as_of).sort_key || '';
+        if (ownKey > slotKey) newer.set(mid, (newer.get(mid) || 0) + 1);
+      } else if (!sentenceHasAmount(mid, text, tax)) {
+        context.push({ i, row: contextRow(c, mid, 'no_amount') });
+      } else {
+        if (!buckets[mid]) buckets[mid] = [];
+        buckets[mid].push({ c, i });
+      }
     } else if (hasFigure(text)) {
       residual.push({ c, i });
     }
   });
+  for (const [mid, n] of newer) {
+    addGap(`${mid}: ${n} newer sentence(s) not used; live value is the tagged ${slots[mid].as_of} fact`);
+  }
   const indexed = [];
+  Object.values(slots).forEach((row, k) => indexed.push({ i: k, row: { ...row } }));
+  const filled = Object.keys(buckets);
+  if (filled.length) addGap(SENTENCE_GAP + [...filled].sort().join(', '));
   for (const [mid, group] of Object.entries(buckets)) {
     const ordered = [...group].sort((x, y) => compareClaimsNewestFirst(x.c, y.c, x.i, y.i));
-    indexed.push({ i: ordered[0].i, row: { ...ordered[0].c, metric_id: mid } });
+    indexed.push({ i: ordered[0].i, row: { ...ordered[0].c, metric_id: mid, origin: 'sentence', confidence: 'low' } });
   }
   if (residual.length > residualCap) {
     addGap(`${residual.length - residualCap} unclassified numbered claims omitted`);
@@ -507,7 +546,40 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null) {
     .forEach((item) => indexed.push({ i: item.i, row: { ...item.c, metric_id: 'other' } }));
   indexed.sort((x, y) => compareClaimsNewestFirst(x.row, y.row, x.i, y.i));
   if (Array.isArray(gapsOut)) gapsOut.push(...gaps);
+  if (opts && Array.isArray(opts.contextOut)) {
+    context.sort((x, y) => compareClaimsNewestFirst(x.row, y.row, x.i, y.i));
+    opts.contextOut.push(...context.map((item) => item.row));
+  }
   return indexed.map((item) => item.row);
+}
+
+export function packClaim(c) {
+  const row = {
+    id: c.id,
+    metric_id: c.metric_id,
+    text: c.text,
+    as_of: c.as_of,
+    grade: c.grade,
+    source_id: c.source_id,
+  };
+  if (c.origin) {
+    row.origin = c.origin;
+    row.confidence = c.confidence;
+  }
+  if (c.origin === 'xbrl') {
+    for (const key of ['concept', 'value', 'unit', 'decimals', 'period', 'prior']) row[key] = c[key];
+  }
+  return row;
+}
+
+export function contextClaim(c) {
+  return {
+    id: c.id,
+    metric_id: c.metric_id,
+    text: String(c.text || '').slice(0, 240),
+    as_of: c.as_of,
+    reason: c.reason,
+  };
 }
 
 export function riskMetric(name, rules) {
@@ -518,15 +590,19 @@ export function riskMetric(name, rules) {
   return null;
 }
 
-export function claimGaps(claims, rules, residualCap = 8) {
+export function claimGaps(claims, rules, residualCap = 8, facts = null) {
   const gaps = [];
-  liveClaims(claims, rules, residualCap, gaps);
+  liveClaims(claims, rules, residualCap, gaps, { facts: facts || [] });
   return gaps;
 }
 
 export function assembleAgentPack(store, rules) {
   const gaps = [];
-  const live = liveClaims(store.claims || [], rules, 8, gaps);
+  const context = [];
+  const live = liveClaims(store.claims || [], rules, 8, gaps, {
+    facts: Array.isArray(store.facts) ? store.facts : [],
+    contextOut: context,
+  });
   const pinRisks = (store.risks || []).filter((r) => {
     const st = String(r.status || '').toUpperCase();
     return st === 'WATCH' || st === 'FIRED';
@@ -550,14 +626,8 @@ export function assembleAgentPack(store, rules) {
         summary: r.summary || '',
       })),
     },
-    claims: live.map((c) => ({
-      id: c.id,
-      metric_id: c.metric_id,
-      text: c.text,
-      as_of: c.as_of,
-      grade: c.grade,
-      source_id: c.source_id,
-    })),
+    claims: live.map(packClaim),
+    context_claims: context.slice(0, CONTEXT_CAP).map(contextClaim),
     store_claims: (store.claims || []).length,
     gaps: merged,
     decision_support_only: true,
@@ -573,7 +643,7 @@ const PACK_KEYS = new Set([
   'schema', 'intent', 'focus', 'compiled_at', 'house_prior', 'object', 'claims',
   'risk_summary', 'risks', 'series_snapshot', 'catalysts', 'sources', 'related',
   'gaps', 'provenance', 'pin', 'superseded_count', 'stale_tripwires', 'store_claims',
-  'decision_support_only', 'budget', 'available', 'ticker', 'slug', 'pack_path',
+  'context_claims', 'decision_support_only', 'budget', 'available', 'ticker', 'slug', 'pack_path',
   'contextpack', 'sor_ahead_of_pack', 'note',
 ]);
 
@@ -775,6 +845,7 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
   trimmed = true;
   const steps = [
     () => clearList(pack, 'related'),
+    () => clearList(pack, 'context_claims'),
     () => clipClaimTexts(pack, 480, 'other'),
     () => clipClaimTexts(pack, 480, null),
     () => clipObject(pack, 300),

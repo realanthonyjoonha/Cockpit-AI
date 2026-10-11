@@ -17,8 +17,10 @@ import {
   parseAmounts,
   parseAsOf,
   riskMetric,
+  sentenceHasAmount,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { sectorBudgetErrors } from './assert-p1.mjs';
+import { parseXbrlFacts, taggedSlots } from '../../memory-cockpit-v2/server/xbrlFacts.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -26,6 +28,15 @@ import {
   checkSectors,
   loadSectors,
 } from './sector-check.mjs';
+import {
+  FACT_SETS,
+  checkReview,
+  checkTaggedSectors,
+  factsFor,
+  loadReview,
+  stable,
+  taggedSnapshot,
+} from './review-check.mjs';
 import { checkParaphrases, expandParaphrases, loadParaphraseSpec } from './paraphrase.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +64,31 @@ function num(n) {
   return f;
 }
 
+function makeApi(rules) {
+  return {
+    rules,
+    liveClaims,
+    classifyClaim,
+    classifyMetric,
+    parseAsOf,
+    parseAmounts,
+    claimGaps,
+    riskMetric,
+    sentenceHasAmount,
+    parseXbrlFacts,
+    taggedSlots,
+  };
+}
+
+function jsTagged(api, claims, xbrl) {
+  const parsed = factsFor(api, xbrl);
+  return {
+    facts: parsed.facts,
+    notes: parsed.notes,
+    tagged: taggedSnapshot(api, claims, parsed.facts),
+  };
+}
+
 function jsFull(claims, rules) {
   const live = liveClaims(claims, rules);
   return {
@@ -77,29 +113,40 @@ export function assertSectors() {
   const errors = [];
   const ont = path.join(REPO, 'ontology');
   const rules = loadContextpackRules(ont);
-  const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric };
+  const api = makeApi(rules);
   errors.push(...checkSectors(loadSectors(), api));
+  errors.push(...checkTaggedSectors(loadSectors(), api));
+  const review = checkReview(api);
+  if (review.errors.length) errors.push(...review.errors.slice(0, 40), `review ${review.errors.length} problem(s)`);
+  else console.log(`review sentences=${review.sentences} pairs=${review.pairs} tagged slots held`);
   const rulesText = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
   const xbrlText = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
   for (const hit of bannedWordHits(rulesText)) errors.push(`metrics JSON contains ${hit}`);
   for (const hit of bannedWordHits(xbrlText)) errors.push(`XBRL map contains ${hit}`);
   for (const stem of bannedNeedles(rules)) errors.push(`needle stem ${stem}`);
   const fixture = loadSectors();
-  const py = pySnapshot(fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims })));
+  const reviewSpec = loadReview();
+  const reviewRows = [...(reviewSpec.sentences || []), ...(reviewSpec.held_out || [])]
+    .map((s) => ({ id: s.id, text: s.text, as_of: reviewSpec.as_of, grade: 'A', source_id: 'review' }));
+  const bundles = [
+    ...fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims, xbrl: issuer.xbrl })),
+    ...Object.entries(FACT_SETS).map(([tax, xbrl]) => ({ id: `review-${tax}`, claims: reviewRows, xbrl })),
+  ];
+  const py = pySnapshot(bundles);
   if (py.error) errors.push(py.error);
   else {
     const pyById = Object.fromEntries((py.bundles || []).map((b) => [b.id, b]));
-    for (const issuer of fixture.issuers) {
-      const js = jsFull(issuer.claims, rules);
-      const row = pyById[issuer.id];
+    for (const bundle of bundles) {
+      const row = pyById[bundle.id];
       if (!row) {
-        errors.push(`${issuer.id} missing from python`);
+        errors.push(`${bundle.id} missing from python`);
         continue;
       }
       delete row.id;
-      const { winner: _w, ...jsRest } = js;
-      if (JSON.stringify(jsRest) !== JSON.stringify(row)) {
-        errors.push(`${issuer.id} js/py snapshot mismatch`);
+      const { winner: _w, ...jsRest } = jsFull(bundle.claims, rules);
+      Object.assign(jsRest, jsTagged(api, bundle.claims, bundle.xbrl));
+      for (const key of Object.keys(jsRest)) {
+        if (stable(jsRest[key]) !== stable(row[key])) errors.push(`${bundle.id} js/py ${key} mismatch`);
       }
     }
   }
@@ -115,7 +162,7 @@ export function assertP0() {
   const errors = assertSectors();
   const ont = path.join(REPO, 'ontology');
   const rules = loadContextpackRules(ont);
-  const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric };
+  const api = makeApi(rules);
   errors.push(...checkDemo(api));
 
   const claim = (id, text, asOf, grade = 'A') => ({ id, text, as_of: asOf, grade, source_id: 'fixture' });

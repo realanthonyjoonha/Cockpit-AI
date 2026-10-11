@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Same fixture in, same winners out of the JS and Python live pickers. */
+/** Same fixture in, same winners out of the JS and Python live pickers, sentences and tagged XBRL facts. */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,12 +10,16 @@ import {
   loadContextpackRules,
   parseAmounts,
   parseAsOf,
+  sentenceHasAmount,
 } from '../server/contextpack.js';
+import { parseXbrlFacts, taggedSlots } from '../server/xbrlFacts.js';
 import { loadSectors } from '../../harness-stress/lib/sector-check.mjs';
+import { FACT_SETS, factsFor, loadReview, stable, taggedSnapshot } from '../../harness-stress/lib/review-check.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ont = path.join(REPO, 'ontology');
 const rules = loadContextpackRules(ont);
+const api = { rules, liveClaims, sentenceHasAmount, parseXbrlFacts, taggedSlots };
 
 function num(n) {
   const f = Number(n);
@@ -23,7 +27,7 @@ function num(n) {
   return f;
 }
 
-function snapshot(claims) {
+function snapshot(claims, xbrl) {
   const live = liveClaims(claims, rules);
   return {
     live: Object.fromEntries(live.map((c) => [c.id, c.metric_id])),
@@ -39,12 +43,24 @@ function snapshot(claims) {
       value: num(a.value),
     }))])),
     classify: Object.fromEntries(claims.map((c) => [c.id, classifyClaim(c, rules).metric_id])),
+    ...(xbrl ? tagged(claims, xbrl) : {}),
   };
 }
 
+function tagged(claims, xbrl) {
+  const parsed = factsFor(api, xbrl);
+  return { facts: parsed.facts, notes: parsed.notes, tagged: taggedSnapshot(api, claims, parsed.facts) };
+}
+
 const fixture = loadSectors();
-const bundles = fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims }));
-const js = Object.fromEntries(bundles.map((b) => [b.id, snapshot(b.claims)]));
+const review = loadReview();
+const reviewClaims = [...review.sentences, ...review.held_out]
+  .map((s) => ({ id: s.id, text: s.text, as_of: review.as_of, grade: 'A', source_id: 'review' }));
+const bundles = [
+  ...fixture.issuers.map((issuer) => ({ id: issuer.id, claims: issuer.claims, xbrl: issuer.xbrl })),
+  ...Object.entries(FACT_SETS).map(([tax, xbrl]) => ({ id: `review-${tax}`, claims: reviewClaims, xbrl })),
+];
+const js = Object.fromEntries(bundles.map((b) => [b.id, snapshot(b.claims, b.xbrl)]));
 const proc = spawnSync('python3', [path.join(REPO, 'harness-stress/lib/parity_live.py')], {
   input: JSON.stringify({ bundles }),
   encoding: 'utf8',
@@ -56,17 +72,17 @@ if (proc.status !== 0) {
 }
 const py = Object.fromEntries(JSON.parse(proc.stdout).bundles.map((b) => [b.id, b]));
 let fail = 0;
-for (const issuer of fixture.issuers) {
-  const a = js[issuer.id];
-  const b = py[issuer.id];
+for (const { id } of bundles) {
+  const a = js[id];
+  const b = py[id];
   delete b.id;
-  if (JSON.stringify(a) !== JSON.stringify(b)) {
+  if (stable(a) !== stable(b)) {
     fail += 1;
-    console.error(`✗ ${issuer.id}`);
-    console.error('  js', JSON.stringify(a));
-    console.error('  py', JSON.stringify(b));
+    console.error(`✗ ${id}`);
+    console.error('  js', stable(a).slice(0, 2000));
+    console.error('  py', stable(b).slice(0, 2000));
   } else {
-    console.log('  ✓', issuer.id);
+    console.log('  ✓', id, a.facts ? `(${a.facts.length} facts, ${Object.keys(a.tagged.slots).length} tagged slots)` : '');
   }
 }
 console.log(fail ? `\n${fail} parity mismatches` : '\ncontextpack parity OK');
