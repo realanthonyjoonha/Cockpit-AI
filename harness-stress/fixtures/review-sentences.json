@@ -125,6 +125,7 @@
       "older": { "text": "Impairment of intangible assets other than goodwill was $4 million.", "as_of": "2024-12-31" },
       "newer": { "text": "Goodwill is tested for impairment at least annually and when a triggering event occurs.", "as_of": "2025-12-31" },
       "metric_id": "impairment",
+      "companyfacts": "biotech",
       "sentence_only": "older"
     },
     {
