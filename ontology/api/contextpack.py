@@ -68,14 +68,24 @@ _BPS = re.compile(
     rf"(?:(?:(?P<cur>{_SYM})|(?:\b(?P<code>{_CODE})\b))\s*)?(?P<num>{_NUM})\s*(?:[Bb]asis\s+[Pp]oints|[Bb][Pp][Ss])\b"
 )
 _PER_SHARE_AFTER = re.compile(
-    r"^\s*,?\s*(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|a\s+share)\b",
+    r"^(?:\s*/\s*shares?\b|\s*,?\s*(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|a\s+share)\b)",
     re.I,
 )
-_PER_SHARE_BEFORE = re.compile(
-    r"\b(?:per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|earnings\s+per\s+share|eps)\b\s*(?:of|was|were|:)?\s*$",
+_PER_SHARE_CUE = re.compile(
+    r"\b(?:diluted\s+earnings\s+per\s+shares?|basic\s+earnings\s+per\s+shares?|"
+    r"earnings\s+per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|"
+    r"per\s+(?:diluted\s+|basic\s+|common\s+)?shares?|eps)\b",
     re.I,
 )
-_SENTENCE_SCALE = re.compile(r"\bin\s+([Tt]housands|[Mm]illions|[Bb]illions|[Tt]rillions)\b")
+_PER_SHARE_LEGEND = re.compile(r"\bexcept\s+per[-\s]+shares?\b", re.I)
+_EXCLUSION_BEFORE = re.compile(
+    r"(?:other than|excluding|except|exclusive of)\b(?:\s+\w+){0,6}\s+$",
+    re.I,
+)
+_SENTENCE_SCALE = re.compile(
+    r"\bin\s+(thousands|millions|billions|trillions)\b",
+    re.I,
+)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
 
 _SCALE_VALUE = {
@@ -209,28 +219,89 @@ def _resolve_concept(concept: str, rules: dict[str, Any], xbrl: dict[str, Any]) 
     return None
 
 
-def _rule_matches(rule: dict[str, Any], text: str) -> bool:
-    if any(_phrase_in(text, n) for n in (rule.get("none") or [])):
+def _span_excluded(text: str, abs_index: int) -> bool:
+    before = text[max(0, abs_index - 60):abs_index]
+    if re.search(r"non[-\s]+$", before, re.I):
+        return True
+    return _EXCLUSION_BEFORE.search(before) is not None
+
+
+def _head_hits(text: str, head: str, start: int, end: int) -> list[int]:
+    return [start + m.start() for m in re.finditer(rf"\b{re.escape(head)}\b", text[start:end], re.I)]
+
+
+def _match_excluded(text: str, head: str, start: int, end: int) -> bool:
+    hits = _head_hits(text, head, start, end)
+    if not hits:
         return False
-    positive = False
-    rx = rule.get("regex")
-    if rx:
+    return all(_span_excluded(text, i) for i in hits)
+
+
+def _has_clean_head(text: str, head: str) -> bool:
+    hits = _head_hits(text, head, 0, len(text))
+    return any(not _span_excluded(text, i) for i in hits)
+
+
+def _head_qualified(text: str, head: str, start: int, end: int, qualifiers: set[str]) -> bool:
+    hits = _head_hits(text, head, start, end)
+    if not hits:
+        return False
+
+    def qualified(abs_index: int) -> bool:
+        before = text[max(0, abs_index - 40):abs_index]
+        m = re.search(r"([a-z0-9-]+)\s+$", before, re.I)
+        return bool(m and m.group(1).lower() in qualifiers)
+
+    return all(qualified(i) for i in hits)
+
+
+def _patterns_match(rule: dict[str, Any], text: str) -> bool:
+    head = str(rule.get("head") or "").lower()
+    qualifiers = {str(q).lower() for q in (rule.get("qualifier_block") or [])}
+    for pat in rule.get("patterns") or []:
         try:
-            if re.search(rx, text, re.I):
-                positive = True
+            rx = re.compile(pat, re.I)
         except re.error:
-            pass
-    groups = rule.get("all_any") or []
-    if groups and all(any(_phrase_in(text, p) for p in group) for group in groups):
-        positive = True
-    alls = rule.get("all") or []
-    if alls and all(_phrase_in(text, a) for a in alls):
-        positive = True
-    anys = rule.get("any") or []
-    if anys and any(_phrase_in(text, a) for a in anys):
-        positive = True
-    if not positive:
-        return False
+            continue
+        for m in rx.finditer(text):
+            if head and _match_excluded(text, head, m.start(), m.end()):
+                continue
+            if head and qualifiers and _head_qualified(text, head, m.start(), m.end(), qualifiers):
+                continue
+            return True
+    return False
+
+
+def _rule_matches(rule: dict[str, Any], text: str) -> bool:
+    """Positive patterns name the thing itself. Exclusion scopes reject a match; co-occurrence does not."""
+    if rule.get("patterns"):
+        if not _patterns_match(rule, text):
+            return False
+    else:
+        if any(_phrase_in(text, n) for n in (rule.get("none") or [])):
+            return False
+        positive = False
+        rx = rule.get("regex")
+        if rx:
+            try:
+                if re.search(rx, text, re.I):
+                    positive = True
+            except re.error:
+                pass
+        groups = rule.get("all_any") or []
+        if groups and all(any(_phrase_in(text, p) for p in group) for group in groups):
+            positive = True
+        alls = rule.get("all") or []
+        if alls and all(_phrase_in(text, a) for a in alls):
+            positive = True
+        anys = rule.get("any") or []
+        if anys and any(_phrase_in(text, a) for a in anys):
+            positive = True
+        if not positive:
+            return False
+        head = str(rule.get("head") or "").lower()
+        if head and not _has_clean_head(text, head):
+            return False
     if rule.get("requires_count") and not re.search(r"\d", text):
         return False
     if rule.get("requires_figure") and not _has_figure(text):
@@ -371,14 +442,25 @@ def _amounts_in(fragment: str, base: int) -> list[dict[str, Any]]:
 
 
 def _per_share_amount(frag: str, start: int, end: int, base: int) -> bool:
-    """A per-share amount stays unscaled when the sentence says 'in millions, except per share'."""
-    local_start = start - base
-    local_end = end - base
-    after = frag[local_end:local_end + 48]
-    before = frag[max(0, local_start - 64):local_start]
-    if _PER_SHARE_AFTER.match(after):
+    """An amount inside a per-share or EPS phrase never takes the sentence scale.
+
+    The scale legend may sit anywhere in the sentence. A lone amount under
+    'except per share' is the per-share datum. A later EPS phrase does not
+    unscale an earlier line-item amount.
+    """
+    local_s = start - base
+    local_e = end - base
+    if _PER_SHARE_AFTER.match(frag[local_e:local_e + 32]):
         return True
-    return _PER_SHARE_BEFORE.search(before) is not None
+    gap_start = 0
+    for m in _SYM_PREFIX.finditer(frag):
+        if m.start() < local_s and m.end() <= local_s:
+            gap_start = m.end()
+    gap = _PER_SHARE_LEGEND.sub(" ", frag[gap_start:local_s])
+    if _PER_SHARE_CUE.search(gap):
+        return True
+    dollars = list(_SYM_PREFIX.finditer(frag))
+    return len(dollars) == 1 and _PER_SHARE_LEGEND.search(frag) is not None
 
 
 def _sentence_spans(text: str) -> list[tuple[int, int]]:
