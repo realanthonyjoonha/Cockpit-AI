@@ -45,6 +45,7 @@ import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { installToolCatalog, isKeepVerb, failureBody } from '../server/mcpToolCatalog.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** Monorepo / kernel root (parent of memory-cockpit-v2). MCP desks come from THIS tree only. */
@@ -158,8 +159,9 @@ function textResult(obj) {
 }
 
 const server = new McpServer({ name: 'cockpit-research', version: '1.0.0' });
+installToolCatalog(server, textResult);
 
-server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS MCP monorepo install.', {}, async () => {
+server.tool('list_desks', 'Names and files of desks installed in this monorepo.', {}, async () => {
   let pin;
   try {
     pin = pinGuard();
@@ -225,8 +227,8 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
 
 server.tool(
   'get_house_view',
-  'Read vault house-view markdown for a desk. Bash may read and may not write house-view-*.md, 08-risks-catalysts.md, or 09.',
-  { desk: z.string().describe('slug or ticker, e.g. nbis') },
+  'Read the vault house markdown. Bash may read and may not write house-view-*.md, 08-risks-catalysts.md, or 09.',
+  { desk: z.string().describe('slug or ticker') },
   async ({ desk }) => {
     const { desk: d, profile } = resolveDesk(desk);
     const houseFile = d.house_file || profile.houseFile;
@@ -246,7 +248,7 @@ server.tool(
 
 server.tool(
   'get_pack_snapshot',
-  'Compiled pack + SoR-aware risk statuses (WATCH/FIRED). Use for daily/risk-check/steelman. Tripwires from pack (compile for full sync).',
+  'Capped compiled pack with live claims and risk statuses.',
   { desk: z.string() },
   async ({ desk }) => {
     const { desk: d, profile } = resolveDesk(desk);
@@ -354,7 +356,7 @@ server.tool(
 
 server.tool(
   'get_house_assist_context',
-  'Full assist pack: rules + pack + vault house. Use before drafting house edits.',
+  'Drafting rules plus a pointer. The house text itself is get_house_view.',
   {
     desk: z.string(),
     goal: z.string().optional().describe('optional user goal'),
@@ -382,9 +384,9 @@ server.tool(
 
 server.tool(
   'propose_house_view',
-  'Propose CONFIRMED house after user GO (does NOT write vault house). Never FORMING. After propose, call commit_on_go. SAVE DRAFT / EDIT must not call this.',
+  'Holds one confirmed markdown body as a chip. Nothing is written yet.',
   {
-    desk: z.string().describe('slug or ticker, e.g. nbis'),
+    desk: z.string().describe('slug or ticker'),
     markdown: z.string().optional().describe('Full house-view markdown. Avoid if large — use markdown_path or propose_house_from_current.'),
     markdown_path: z.string().optional().describe('Absolute path under /tmp or vault cockpit/proposals/'),
     rationale: z.string().optional(),
@@ -424,7 +426,7 @@ server.tool(
 
 server.tool(
   'propose_house_from_current',
-  'EFFICIENT propose: load current vault house, apply exact find→replace (each find must match once), store pending proposal. Prefer this over full-file propose. After user GO, commit_on_go. Does NOT write until then (or glass ACCEPT).',
+  'Applies exact find-and-replace pairs onto the current text and holds the result as a chip.',
   {
     desk: z.string().describe('slug or ticker'),
     replacements: z.array(z.object({
@@ -462,7 +464,7 @@ server.tool(
 
 server.tool(
   'commit_on_go',
-  'Write vault after the user said GO. Same path as glass ACCEPT. kind=house needs pending CONFIRMED proposal_id. kind=register requires live house CONFIRMED. Do NOT call after SAVE DRAFT or EDIT. Not agent_accept. Bash may read and may not write house-view-*.md, 08-risks-catalysts.md, or 09.',
+  'Spoken GO write. kind is house, register, or drivers. A KEEP line is not this call.',
   {
     desk: z.string(),
     kind: z.string().describe('house | register | drivers'),
@@ -477,6 +479,12 @@ server.tool(
       const k = String(kind || 'house').toLowerCase();
       if (k === 'metrics') {
         return textResult({ ok: false, error: 'kind=metrics is not wired. Use kind=register or kind=drivers.' });
+      }
+      if (!['house', 'register', 'risks', 'drivers'].includes(k)) {
+        return textResult(failureBody('commit_on_go', `wrong kind ${k}`));
+      }
+      if (k === 'drivers' && isKeepVerb(utterance)) {
+        return textResult(failureBody('commit_on_go', 'KEEP is not a drivers GO. No 09 write.'));
       }
       if (k === 'drivers') {
         const out = goCommitDrivers({
@@ -520,7 +528,7 @@ server.tool(
 
 server.tool(
   'list_house_proposals',
-  'List pending/accepted/rejected house proposals for a desk (no full markdown unless pending summary).',
+  'Inventory of house chips.',
   {
     desk: z.string(),
     status: z.string().optional().describe('pending | accepted | rejected'),
@@ -538,10 +546,10 @@ server.tool(
 
 server.tool(
   'propose_risk_status',
-  'Propose INTACT|WATCH|FIRED for an existing risk. Does NOT write SoR until GO / commit_on_go (glass ACCEPT alternate).',
+  'Queues an INTACT, WATCH, or FIRED label onto an existing row.',
   {
     desk: z.string(),
-    risk_id: z.string().optional().describe('pack risk id e.g. nbis-r3-…'),
+    risk_id: z.string().optional().describe('pack risk id'),
     risk_name: z.string().optional().describe('e.g. R3 — Customer concentration… or R3'),
     from_status: z.string().optional(),
     to_status: z.string().describe('INTACT | WATCH | FIRED'),
@@ -578,7 +586,7 @@ server.tool(
 
 server.tool(
   'propose_add_risk',
-  'Propose NEW risk on register (add_risk). Research first via pack/search; does NOT write SoR until GO / glass ACCEPT on Risks page.',
+  'Propose NEW risk on register. Research first. File stays unchanged until spoken GO.',
   {
     desk: z.string(),
     title: z.string().describe('Short name without Rn prefix'),
@@ -628,34 +636,8 @@ server.tool(
 );
 
 server.tool(
-  'propose_add_metric',
-  'Not wired. Use propose_add_risk (risk register). No Metrics page yet.',
-  {
-    desk: z.string(),
-    title: z.string().describe('Short name without Rn prefix'),
-    summary: z.string().describe('One-line summary for status line'),
-    mechanism: z.string().optional().describe('How it hits the house'),
-    kind: z.string().optional().describe('unused — omit'),
-    grade: z.string().optional().describe('A|B|C default B'),
-    status: z.string().optional().describe('INTACT|WATCH|FIRED default WATCH'),
-    tripwires: z.array(z.object({
-      signal: z.string().optional(),
-      tripwire: z.string().optional(),
-      state: z.string().optional(),
-      as_of: z.string().optional(),
-    })).optional(),
-    rationale: z.string().optional(),
-    as_of: z.string().optional(),
-  },
-  async () => textResult({
-    ok: false,
-    error: 'not wired. Use propose_add_risk (register) or propose_keep_driver (drivers). Does not write 08.',
-  }),
-);
-
-server.tool(
   'list_risk_proposals',
-  'List pending/accepted/rejected risk proposals (status_change + add_risk + set_tripwires).',
+  'Roster of register changes.',
   {
     desk: z.string(),
     status: z.string().optional().describe('pending | accepted | rejected'),
@@ -676,7 +658,7 @@ server.tool(
 
 server.tool(
   'get_risk_sor',
-  'Read one risk section from vault SoR (status + tripwires). Use before editing tripwires.',
+  'Reads one register section, including its tripwire table.',
   {
     desk: z.string(),
     risk_id: z.string().optional(),
@@ -700,22 +682,8 @@ server.tool(
 );
 
 server.tool(
-  'get_metric_sor',
-  'Not wired. Use get_risk_sor (register) or get_driver_sor (drivers).',
-  {
-    desk: z.string().optional(),
-    risk_id: z.string().optional(),
-    risk_name: z.string().optional(),
-  },
-  async () => textResult({
-    ok: false,
-    error: 'not wired. Use get_risk_sor (register) or get_driver_sor (drivers). Does not read 08 as metrics.',
-  }),
-);
-
-server.tool(
   'list_house_driver_candidates',
-  'Does not dump house headings. You name 2–5 business engines with house_cite. User KEEP. Never auto-keep.',
+  'Asks for engines the user names. Does not dump headings.',
   { desk: z.string() },
   async ({ desk }) => {
     try {
@@ -739,7 +707,7 @@ server.tool(
 
 server.tool(
   'propose_keep_driver',
-  'KEEP a named engine (pending). Requires house_cite from the CONFIRMED house. GO writes 09. Does not write 08 or the house. No status.',
+  'Stores a KEEP chip for one named engine, quoting the confirmed house. Later GO writes 09.',
   {
     desk: z.string(),
     house_cite: z.string().describe('Quote from the live CONFIRMED house. The engine must already be in that house.'),
@@ -781,7 +749,7 @@ server.tool(
 
 server.tool(
   'propose_driver_log',
-  'Append one log line and/or one still-open question to a kept driver (pending). GO writes 09 only. Does not write the house or 08.',
+  'Appends one dated note onto an engine that is already kept.',
   {
     desk: z.string(),
     driver: z.string().describe('D1 or the engine title'),
@@ -813,7 +781,7 @@ server.tool(
 
 server.tool(
   'propose_skip_driver',
-  'SKIP a house quote (not a driver). Requires house_cite. Does not write 09/08.',
+  'Records a quote the user will not follow. Does not open an engine.',
   {
     desk: z.string(),
     house_cite: z.string(),
@@ -832,7 +800,7 @@ server.tool(
 
 server.tool(
   'get_driver_sor',
-  'Read 09 drivers (kept lines). Empty [] if no 09.',
+  'Reads kept engine lines from 09. Empty when that file is absent.',
   { desk: z.string() },
   async ({ desk }) => {
     try {
@@ -854,7 +822,7 @@ server.tool(
 
 server.tool(
   'list_driver_proposals',
-  'List pending/accepted driver KEEP/SKIP proposals.',
+  'Queued KEEP and SKIP rows.',
   {
     desk: z.string(),
     status: z.string().optional(),
@@ -867,7 +835,7 @@ server.tool(
 
 server.tool(
   'propose_risk_tripwires',
-  'Propose tripwire table for an existing risk (replace). Research with user first; SoR writes on GO / commit_on_go.',
+  'Replaces the tripwire table on an existing row after the user agrees.',
   {
     desk: z.string(),
     risk_id: z.string().optional(),
@@ -910,7 +878,7 @@ server.tool(
 
 server.tool(
   'agent_accept_status',
-  'Whether this monorepo grants agent ACCEPT of house/risk proposals (scenario or COCKPIT_AGENT_ACCEPT=1).',
+  'Reports whether this install allows an agent to save on its own.',
   {},
   async () => {
     try {
@@ -935,7 +903,7 @@ server.tool(
 
 server.tool(
   'accept_house_proposal',
-  'AGENT ACCEPT pending house proposal (writes vault house). Requires agent_accept grant (scenario default on). Same path as glass ACCEPT.',
+  'Scenario grant saving house markdown. Not commit_on_go.',
   {
     desk: z.string(),
     proposal_id: z.string().describe('Pending house proposal id from list_house_proposals'),
@@ -971,7 +939,7 @@ server.tool(
 
 server.tool(
   'accept_risk_proposal',
-  'AGENT ACCEPT pending risk proposal (writes risks SoR). Requires agent_accept grant. Same path as glass ACCEPT.',
+  'Agent flag updating register headings. Not commit_on_go.',
   {
     desk: z.string(),
     proposal_id: z.string().describe('Pending risk proposal id from list_risk_proposals'),

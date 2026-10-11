@@ -46,7 +46,7 @@ const TASKS = [
   { id: 'T7', ask: 'Read the R1 section from the risk source of record, including tripwires.', full: 'get_risk_sor', core: 'get_risk_sor', bash: '08-risks' },
   { id: 'T8', ask: 'The user said SAVE DRAFT. Do not propose and do not write.', full: null, core: null, bash: null },
   { id: 'T9', ask: 'Add a row on the metrics page.', full: null, core: null, bash: null },
-  { id: 'T10', ask: 'KEEP a business engine already quoted in the CONFIRMED house.', full: 'propose_keep_driver', core: null, bash: null },
+  { id: 'T10', ask: 'KEEP a business engine already quoted in the CONFIRMED house.', full: 'propose_keep_driver', core: 'propose_keep_driver', bash: null },
   { id: 'T11', ask: 'Can this session ACCEPT a house proposal on its own?', full: 'agent_accept_status', core: null, bash: null },
 ];
 
@@ -59,6 +59,8 @@ const CORE = [
   'get_risk_sor',
   'propose_add_risk',
   'propose_risk_status',
+  'propose_keep_driver',
+  'get_driver_sor',
 ];
 
 function catalog(tools, names) {

@@ -19,7 +19,7 @@ function pyCase(ctx, id) {
 }
 
 function call(tools, id) {
-  return (tools.calls || []).find((c) => c.id === id);
+  return (tools?.calls || []).find((c) => c.id === id);
 }
 
 function fence(obj) {
@@ -265,12 +265,18 @@ export function writeReport(dir, outPath) {
     });
   }
 
-  if (tools?.schema) {
-    const dead = ['propose_add_metric', 'get_metric_sor']
-      .map((name) => tools.schema.per_tool.find((t) => t.name === name))
-      .filter(Boolean);
-    const addMetric = call(tools, 'add-metric');
-    const metricSor = call(tools, 'metric-sor');
+  const deadNames = ['propose_add_metric', 'get_metric_sor'];
+  const dead = deadNames
+    .map((name) => tools?.schema?.per_tool?.find((t) => t.name === name))
+    .filter(Boolean);
+  const addMetric = call(tools, 'add-metric');
+  const metricSor = call(tools, 'metric-sor');
+  const metricGone = dead.length === 0
+    && !(tools?.tool_names || []).some((n) => deadNames.includes(n));
+  const metricUnknown = [addMetric, metricSor].every((row) => row
+    && row.ok_field === false
+    && /not found|not registered/i.test(row.error || ''));
+  if (tools?.schema && (!metricGone || !metricUnknown || tools.schema.tool_count !== 22)) {
     findings.push({
       id: 'F12',
       severity: 'P2',
@@ -278,7 +284,7 @@ export function writeReport(dir, outPath) {
       verdict: 'confirmed',
       hypothesis: 'The 24-tool catalog costs tokens on every call, including tools that are not wired.',
       title: 'Full catalog versus an 8-tool core, including two tools that always refuse',
-      summary: `tools/list returned ${tools.schema.tool_count} tools, ${tools.schema.catalog_tokens} tokens for name+description+inputSchema. The 8-tool core is ${tools.schema.core_schema_tokens} tokens. Delta ${tools.schema.full_vs_core_token_delta}. propose_add_metric ok_field=${addMetric?.ok_field} error=${addMetric?.error}. get_metric_sor ok_field=${metricSor?.ok_field} error=${metricSor?.error}. Both still occupy schema tokens (${dead.map((d) => `${d.name}:${d.schema_tokens}`).join(', ')}).`,
+      summary: `tools/list returned ${tools.schema.tool_count} tools, ${tools.schema.catalog_tokens} tokens for name+description+inputSchema. Core-profile tokens ${tools.core_profile?.schema_tokens}. propose_add_metric ok_field=${addMetric?.ok_field} error=${addMetric?.error}. get_metric_sor ok_field=${metricSor?.ok_field} error=${metricSor?.error}. Dead schema tokens (${dead.map((d) => `${d.name}:${d.schema_tokens}`).join(', ') || 'none'}).`,
       repro: ['node harness-stress/run.mjs', 'See tools.json schema.per_tool and calls add-metric, metric-sor.'],
       evidence: {
         tool_count: tools.schema.tool_count,
@@ -291,37 +297,46 @@ export function writeReport(dir, outPath) {
     });
   }
 
-  if (tools?.calls) {
-    const interesting = ['missing-desk', 'desk-type', 'unknown-desk', 'propose-forming', 'propose-save-draft', 'commit-save-draft', 'risk-bad-status', 'register-early', 'accept-house-denied'];
-    const rows = interesting.map((id) => {
-      const c = call(tools, id);
-      return c ? {
-        id,
-        thrown: c.thrown,
-        isError: c.isError,
-        ok_field: c.ok_field,
-        retry_hint: c.retry_hint,
-        ms: c.ms,
-        error: c.error,
-      } : { id, missing: true };
-    });
-    const anyRetry = tools.calls.some((c) => c.retry_hint);
+  const failureIds = ['missing-desk', 'desk-type', 'unknown-desk', 'propose-forming', 'propose-save-draft', 'commit-save-draft', 'risk-bad-status', 'register-early', 'accept-house-denied', 'add-metric', 'metric-sor', 'keep-as-drivers'];
+  const failureRows = failureIds.map((id) => {
+    const c = call(tools, id);
+    return c ? {
+      id,
+      thrown: c.thrown,
+      isError: c.isError,
+      ok_field: c.ok_field,
+      next: c.next,
+      retryable: c.retryable,
+      ms: c.ms,
+      error: c.error,
+    } : { id, missing: true };
+  });
+  const envelopeOk = failureRows.every((row) => row
+    && !row.missing
+    && row.ok_field === false
+    && typeof row.next === 'string'
+    && row.next.length > 0
+    && row.retryable === false
+    && !/retry|backoff|try again/i.test(`${row.next} ${row.error || ''}`));
+  if (tools?.calls && !envelopeOk) {
     findings.push({
       id: 'F13',
       severity: 'P2',
       area: 'tools',
-      verdict: anyRetry ? 'refuted' : 'confirmed',
-      hypothesis: 'Tool and validation errors have no retry or backoff guidance.',
-      title: 'Malformed args, unknown desks, and refused writes return errors with no retry hint',
-      summary: anyRetry
-        ? 'At least one response contained a retry hint. See the call table.'
-        : 'Every captured call has retry_hint false. A missing or mistyped desk is MCP error -32602 with isError true and thrown false (the client gets a tool error result, not an exception). An unknown desk string is a different isError text blob that names the registry path. FORMING, SAVE DRAFT, and a bad risk status are ordinary tool results with ok:false. Wall time per call in this run was 0–19 ms, so the cost is schema tokens and the split error shape, not latency. None of the envelopes say to retry.',
+      verdict: 'confirmed',
+      hypothesis: 'Tool and validation errors have no next step.',
+      title: 'Malformed args, unknown desks, and refused writes return errors with no next step',
+      summary: 'A refused call is missing next or retryable false. The envelope is { ok:false, error, next, retryable:false }. The next string names the call to make instead.',
       repro: ['node harness-stress/run.mjs', 'See tools.json calls missing-desk, desk-type, unknown-desk, propose-forming, commit-save-draft.'],
-      evidence: { any_retry_hint: anyRetry, rows },
+      evidence: { rows: failureRows },
     });
   }
 
-  if (tools?.overlap_pairs) {
+  const assistDesc = (tools?.catalog || []).find((t) => t.name === 'get_house_assist_context')?.description || '';
+  const topJaccard = tools?.overlap_pairs?.[0]?.jaccard || 0;
+  const metricTrap = (tools?.tool_names || []).includes('propose_add_metric');
+  const assistClaimsCopy = /full assist pack/i.test(assistDesc);
+  if (tools?.overlap_pairs && (metricTrap || assistClaimsCopy || topJaccard >= 0.5)) {
     findings.push({
       id: 'F14',
       severity: 'P2',
@@ -329,9 +344,9 @@ export function writeReport(dir, outPath) {
       verdict: 'confirmed',
       hypothesis: 'Several tools overlap, so a model can pick the wrong one.',
       title: 'Description overlap plus a metrics tool that is a trap',
-      summary: `Highest description Jaccard pairs: ${tools.overlap_pairs.slice(0, 8).map((p) => `${p.a}/${p.b}=${p.jaccard}`).join('; ')}. propose_add_metric's schema mirrors propose_add_risk and then returns "not wired". get_house_assist_context embeds the house markdown that get_house_view also returns (assist chars=${call(tools, 'assist')?.chars}, house chars=${call(tools, 'house')?.chars}).`,
+      summary: `Highest description Jaccard pairs: ${(tools.overlap_pairs || []).slice(0, 8).map((p) => `${p.a}/${p.b}=${p.jaccard}`).join('; ') || '(none)'}. Assist description: ${assistDesc}. Metric trap present=${metricTrap}.`,
       repro: ['node harness-stress/run.mjs', 'See tools.json overlap_pairs.'],
-      evidence: { pairs: tools.overlap_pairs.slice(0, 8) },
+      evidence: { pairs: (tools.overlap_pairs || []).slice(0, 8), assist: assistDesc },
     });
   }
 
@@ -391,7 +406,14 @@ export function writeReport(dir, outPath) {
     });
   }
 
-  if (models?.runs) {
+  const keepCall = call(tools, 'keep-as-drivers');
+  const keepGuarded = keepCall
+    && keepCall.ok_field === false
+    && tools?.keep_wrote === false
+    && /propose_keep_driver/.test(`${keepCall.next || ''} ${keepCall.error || ''}`)
+    && (tools?.core_profile?.names || []).includes('propose_keep_driver')
+    && (tools?.core_profile?.names || []).includes('get_driver_sor');
+  if (models?.runs && !keepGuarded) {
     findings.push({
       id: 'F16',
       severity: 'P1',
@@ -410,6 +432,7 @@ export function writeReport(dir, outPath) {
         summary: models.summary,
         by_arm: models.by_arm,
         recall: models.recall,
+        keep_guarded: keepGuarded,
       },
     });
   }
@@ -533,6 +556,22 @@ export function writeReport(dir, outPath) {
   }
   if (phase4.length) {
     lines.push(`- Phase-4 repros not reproduced on this run: ${phase4.join('; ')}.`);
+  }
+  const phase5 = [];
+  if (metricGone && metricUnknown && tools?.schema?.tool_count === 22) {
+    phase5.push(`F12 always-loaded catalog is ${tools.schema.tool_count} tools and ${tools.schema.catalog_tokens} tokens (before this phase: 24 tools, 3063 tokens). Core profile is ${tools.core_profile?.tool_count} tools and ${tools.core_profile?.schema_tokens} tokens. The two always-refusing metric names are absent`);
+  }
+  if (envelopeOk) {
+    phase5.push('F13 refused calls return next and retryable false');
+  }
+  if (!metricTrap && !assistClaimsCopy && topJaccard < 0.5) {
+    phase5.push(`F14 metric trap is gone and the highest description Jaccard is ${topJaccard}`);
+  }
+  if (keepGuarded) {
+    phase5.push('F16 a KEEP utterance does not write drivers and names propose_keep_driver; the core profile includes that tool and get_driver_sor. The earlier model miss stays in models.json and was not re-scored');
+  }
+  if (phase5.length) {
+    lines.push(`- Phase-5 repros not reproduced on this run: ${phase5.join('; ')}.`);
   }
   if (date?.winner === 'sep') {
     lines.push(`- Padded ISO dates do keep the newer claim (C-date-iso winner=${isoWinner}). The failure is the unpadded form, which still sorts as a string.`);

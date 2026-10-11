@@ -17,8 +17,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { countTokens } from './tokens.mjs';
+import { loadSectors } from './sector-check.mjs';
 import { houseCloseout } from '../../memory-cockpit-v2/scripts/house-closeout.mjs';
 import { readHouseWriteAudit } from '../../memory-cockpit-v2/server/thinHouseSave.js';
+import { CORE_TOOLS } from '../../memory-cockpit-v2/server/mcpToolCatalog.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const GLASS = path.join(REPO, 'memory-cockpit-v2');
@@ -127,27 +129,36 @@ function fatPack() {
   return pack;
 }
 
+function deskRow(slug, ticker, label) {
+  return {
+    slug,
+    ticker,
+    id: slug,
+    label,
+    mark: ticker.slice(0, 1),
+    house_file: `house-view-${slug}.md`,
+    profile: {
+      displayName: label,
+      entitySlug: slug,
+      rawDir: `raw/${slug}-research`,
+      risksSource: `raw/${slug}-research/08-risks-catalysts.md`,
+      risksGenerated: `raw/${slug}-research/risks`,
+      sourcePrimaryRe: slug,
+      houseTitleDefault: `House View — ${label}`,
+    },
+  };
+}
+
 function deskRegistry() {
   const base = JSON.parse(readFileSync(path.join(GLASS, 'config/thin-desks.json'), 'utf8'));
+  const sectors = loadSectors().issuers.map((issuer) => deskRow(
+    issuer.id,
+    String(issuer.id).toUpperCase(),
+    `${issuer.sector} fixture`,
+  ));
   return {
     ...base,
-    desks: [{
-      slug: 'demo',
-      ticker: 'DEMO',
-      id: 'demo',
-      label: 'DEMO FIXTURE',
-      mark: 'D',
-      house_file: 'house-view-demo.md',
-      profile: {
-        displayName: 'Demo Fixture',
-        entitySlug: 'demo',
-        rawDir: 'raw/demo-research',
-        risksSource: 'raw/demo-research/08-risks-catalysts.md',
-        risksGenerated: 'raw/demo-research/risks',
-        sourcePrimaryRe: 'demo',
-        houseTitleDefault: 'House View — Demo Fixture (DEMO)',
-      },
-    }],
+    desks: [deskRow('demo', 'DEMO', 'DEMO FIXTURE'), ...sectors],
   };
 }
 
@@ -190,6 +201,15 @@ function buildSandbox() {
   if (existsSync(fm)) cpSync(fm, path.join(vault, 'cockpit/lib/fm.js'));
   writeFileSync(path.join(vault, 'house-view-demo.md'), HOUSE);
   writeFileSync(path.join(vault, 'raw/demo-research/08-risks-catalysts.md'), RISKS);
+  for (const issuer of loadSectors().issuers) {
+    const dir = path.join(vault, 'raw', `${issuer.id}-research`, 'risks');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      path.join(vault, `house-view-${issuer.id}.md`),
+      `---\nstatus: CONFIRMED\n---\n\nSECTOR-FIXTURE-${issuer.id}\n`,
+    );
+    writeFileSync(path.join(vault, 'raw', `${issuer.id}-research`, '08-risks-catalysts.md'), RISKS);
+  }
   const store = path.join(sandbox, 'store');
   mkdirSync(store, { recursive: true });
   writeFileSync(path.join(store, 'DEMO.json'), JSON.stringify(demoPack(), null, 2));
@@ -248,6 +268,8 @@ async function call(client, name, args) {
       tokens: countTokens(text),
       retry_hint: /retry|backoff|try again/i.test(text),
       ok_field: parsed && Object.prototype.hasOwnProperty.call(parsed, 'ok') ? parsed.ok : null,
+      next: parsed?.next != null ? String(parsed.next).slice(0, 300) : null,
+      retryable: parsed && Object.prototype.hasOwnProperty.call(parsed, 'retryable') ? parsed.retryable : null,
       error: parsed?.error ? String(parsed.error).slice(0, 500) : null,
       excerpt: clip(text),
       flags: {
@@ -269,6 +291,8 @@ async function call(client, name, args) {
       tokens: countTokens(msg),
       retry_hint: /retry|backoff|try again/i.test(msg),
       ok_field: null,
+      next: null,
+      retryable: null,
       error: msg.slice(0, 800),
       excerpt: clip(msg, 1200),
       flags: {},
@@ -351,11 +375,14 @@ export async function toolProbe() {
     await run('list-risk-empty', 'list_risk_proposals', { desk: 'demo' });
     await run('list-driver-empty', 'list_driver_proposals', { desk: 'demo' });
     await run('accept-status', 'agent_accept_status', {});
+    const housePath = path.join(sandbox, 'research-wiki/house-view-demo.md');
+    const beforeForming = readFileSync(housePath, 'utf8');
     await run('propose-forming', 'propose_house_view', {
       desk: 'demo',
       markdown: FORMING_DRAFT,
       intent: 'go',
     });
+    const formingWrote = readFileSync(housePath, 'utf8') !== beforeForming;
     await run('propose-save-draft', 'propose_house_view', {
       desk: 'demo',
       markdown: CONFIRMED_DRAFT,
@@ -433,6 +460,19 @@ export async function toolProbe() {
     });
     await run('drivers-list', 'list_house_driver_candidates', { desk: 'demo' });
     await run('drivers-sor', 'get_driver_sor', { desk: 'demo' });
+    const driversPath = path.join(sandbox, 'research-wiki/raw/demo-research/09-drivers.md');
+    const beforeKeep = existsSync(driversPath) ? readFileSync(driversPath, 'utf8') : null;
+    await run('keep-as-drivers', 'commit_on_go', {
+      desk: 'demo',
+      kind: 'drivers',
+      utterance: 'KEEP',
+    });
+    const afterKeep = existsSync(driversPath) ? readFileSync(driversPath, 'utf8') : null;
+    const keepWrote = beforeKeep !== afterKeep;
+    for (const issuer of loadSectors().issuers) {
+      await run(`sector-${issuer.id}`, 'get_house_view', { desk: issuer.id });
+    }
+    await run('sector-unknown', 'get_pack_snapshot', { desk: 'no-sector-desk' });
     await run('driver-keep', 'propose_keep_driver', {
       desk: 'demo',
       title: 'Subscription software',
@@ -484,6 +524,15 @@ export async function toolProbe() {
     stderrHead = session.stderr().slice(0, 2000);
     await session.client.close();
 
+    const coreSession = await connect(sandbox, { COCKPIT_MCP_TOOL_PROFILE: 'core' });
+    const coreListed = (await coreSession.client.listTools()).tools || [];
+    const coreLazy = await call(coreSession.client, 'propose_risk_tripwires', {
+      desk: 'demo',
+      tripwires: [{ signal: 's', tripwire: 't', state: 'now', as_of: '2026-01-15' }],
+    });
+    await coreSession.client.close();
+    const coreStats = schemaStats(coreListed);
+
     const overlapPairs = [];
     for (let i = 0; i < listed.length; i++) {
       for (let j = i + 1; j < listed.length; j++) {
@@ -500,16 +549,7 @@ export async function toolProbe() {
     overlapPairs.sort((a, b) => b.jaccard - a.jaccard);
 
     const stats = schemaStats(listed);
-    const coreNames = [
-      'list_desks',
-      'get_house_view',
-      'get_pack_snapshot',
-      'propose_house_from_current',
-      'commit_on_go',
-      'get_risk_sor',
-      'propose_add_risk',
-      'propose_risk_status',
-    ];
+    const coreNames = CORE_TOOLS.slice();
     const coreTokens = stats.per_tool
       .filter((t) => coreNames.includes(t.name))
       .reduce((s, t) => s + t.schema_tokens, 0);
@@ -575,6 +615,19 @@ export async function toolProbe() {
         tokens: fat.tokens,
         over_10000_chars: fat.chars > 10_000,
       },
+      forming_wrote: formingWrote,
+      keep_wrote: keepWrote,
+      core_profile: {
+        names: coreListed.map((t) => t.name),
+        schema_tokens: coreStats.catalog_tokens,
+        tool_count: coreStats.tool_count,
+        lazy_call: {
+          ok_field: coreLazy.ok_field,
+          error: coreLazy.error,
+          next: coreLazy.next,
+          retryable: coreLazy.retryable,
+        },
+      },
       house_has_alpha_after_tools: houseAfterTools.includes('CANARY-HOUSE-ALPHA')
         || houseAfterTools.includes('CANARY-EDIT-BETA')
         || houseAfterTools.includes('CANARY-EDIT-GAMMA'),
@@ -598,10 +651,8 @@ function expectedNames() {
     'list_house_proposals',
     'propose_risk_status',
     'propose_add_risk',
-    'propose_add_metric',
     'list_risk_proposals',
     'get_risk_sor',
-    'get_metric_sor',
     'list_house_driver_candidates',
     'propose_keep_driver',
     'propose_driver_log',

@@ -339,7 +339,7 @@ function applyLogToText(text, proposal) {
  * Personalization: the human (via Grok) names engines and cites the house.
  */
 export const DRIVER_CANDIDATE_HINT =
-  'Do not KEEP house headings. Name 2–5 business engines the user wants watched closer, each with a house_cite quote from the CONFIRMED house. Examples: AWS growth and profitability; neocloud demand NVDA is backing; FoA ads mix. Cadence is print, news, or on-demand — not 10-Q only. If the engine is not in the house, STOP — GO house first. Never auto-keep. No status.';
+  'Do not KEEP house headings. Name 2–5 business engines the user wants watched closer, each with a house_cite quote from the CONFIRMED house. Examples: a subscription line; a regulated rate base; a rental portfolio. Cadence is print, news, or on-demand — not 10-Q only. If the engine is not in the house, STOP — GO house first. Never auto-keep. No status.';
 
 export function listHouseDriverCandidates(_markdown) {
   return [];

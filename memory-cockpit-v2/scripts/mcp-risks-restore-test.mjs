@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Restore gate: kernel MCP speaks risk register, not Key metrics.
- * Tool ids propose_add_metric / get_metric_sor may exist as unused aliases.
+ * Tool ids propose_add_metric / get_metric_sor are not registered.
  */
 import fs from 'fs';
 import path from 'path';
@@ -38,11 +38,14 @@ else ok('no Kind product schema');
 if (/KEY METRICS/.test(src) || /key metrics/i.test(src)) bad('MCP still says key metrics');
 else ok('no key-metrics product copy');
 
-if (/Not wired\. Use propose_add_risk/.test(src)) ok('propose_add_metric stub');
-else bad('propose_add_metric not stubbed');
+if (/tool\(\s*['"]propose_add_metric['"]/.test(src)) bad('propose_add_metric still registered');
+else ok('propose_add_metric absent');
 
-if (/Not wired\. Use get_risk_sor/.test(src)) ok('get_metric_sor stub');
-else bad('get_metric_sor not stubbed');
+if (/tool\(\s*['"]get_metric_sor['"]/.test(src)) bad('get_metric_sor still registered');
+else ok('get_metric_sor absent');
+
+if (/proposeAddRisk\(/.test(src) && /propose_add_metric/.test(src)) bad('removed metric name still calls proposeAddRisk');
+else ok('no metric handler calls proposeAddRisk');
 
 if (/k === 'metrics'/.test(src) && /not wired/.test(src) && !/k === 'register' \|\| k === 'risks' \|\| k === 'metrics'/.test(src)) {
   ok('kind=metrics refuses (not register alias)');
