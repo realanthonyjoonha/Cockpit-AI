@@ -567,7 +567,7 @@ export function packClaim(c) {
     row.confidence = c.confidence;
   }
   if (c.origin === 'xbrl') {
-    for (const key of ['concept', 'value', 'unit', 'decimals', 'period', 'prior']) row[key] = c[key];
+    for (const key of ['concept', 'value', 'unit']) row[key] = c[key];
   }
   return row;
 }

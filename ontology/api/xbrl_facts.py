@@ -426,8 +426,8 @@ def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
         ]
         prior = max(older, key=rank) if older else None
         text = (
-            f"{win['concept']} = {win['unit']} {group_digits(win['value_text'])} for {_period_desc(win['period'])}"
-            f" (consolidated, tagged XBRL fact"
+            f"{_local(win['concept'])} {win['unit']} {group_digits(win['value_text'])} for {_period_desc(win['period'])}"
+            f" (consolidated tagged fact"
         )
         if prior:
             text += f"; prior {prior['period']['end']}: {group_digits(prior['value_text'])}"

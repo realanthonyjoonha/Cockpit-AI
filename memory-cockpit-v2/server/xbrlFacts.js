@@ -373,7 +373,7 @@ export function taggedSlots(facts, taxonomy = null) {
       && f.period.end < win.period.end
       && Math.abs(days(f.period) - days(win.period)) <= 7);
     const prior = older.length ? best(older) : null;
-    let text = `${win.concept} = ${win.unit} ${groupDigits(win.value_text)} for ${periodDesc(win.period)} (consolidated, tagged XBRL fact`;
+    let text = `${local(win.concept)} ${win.unit} ${groupDigits(win.value_text)} for ${periodDesc(win.period)} (consolidated tagged fact`;
     if (prior) text += `; prior ${prior.period.end}: ${groupDigits(prior.value_text)}`;
     text += ')';
     slots[mid] = {
