@@ -4,11 +4,12 @@
 // metric, only with an amount of that slot's kind, and is marked low confidence.
 import { readFileSync } from 'fs';
 import path from 'path';
-import { conceptIndex, loadTaxonomy, taggedSlots } from './xbrlFacts.js';
+import { conceptIndex, loadTaxonomy, sentenceFillAllowed, taggedSlots } from './xbrlFacts.js';
 
 const GRADE_W = { A: 3, B: 2, C: 1 };
 export const FISCAL_GAP = 'as_of is a fiscal label without a period-end date';
 export const SENTENCE_GAP = 'no tagged XBRL fact; live value is sentence-derived (low confidence): ';
+export const HEADLINE_GAP = (mid, n) => `${mid}: no tagged fact; ${n} candidate sentences in context`;
 export const CONTEXT_CAP = 8;
 const COUNT = /\b(?!(?:19|20)\d{2}\b)\d[\d,]*(?:\.\d+)?\b/;
 
@@ -496,6 +497,7 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
   const gaps = [];
   const seen = new Set();
   const newer = new Map();
+  const blocked = new Map();
   const base = Object.keys(slots).length;
   const addGap = (msg) => {
     if (!seen.has(msg)) {
@@ -516,6 +518,13 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
         const slotKey = parseAsOf(slots[mid].as_of).sort_key || '';
         const ownKey = parseAsOf(c.as_of).sort_key || '';
         if (ownKey > slotKey) newer.set(mid, (newer.get(mid) || 0) + 1);
+      } else if (!sentenceFillAllowed(mid, tax)) {
+        if (sentenceHasAmount(mid, text, tax)) {
+          context.push({ i, row: contextRow(c, mid, 'no_tagged_fact') });
+          blocked.set(mid, (blocked.get(mid) || 0) + 1);
+        } else {
+          context.push({ i, row: contextRow(c, mid, 'no_amount') });
+        }
       } else if (!sentenceHasAmount(mid, text, tax)) {
         context.push({ i, row: contextRow(c, mid, 'no_amount') });
       } else {
@@ -529,6 +538,7 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
   for (const [mid, n] of newer) {
     addGap(`${mid}: ${n} newer sentence(s) not used; live value is the tagged ${slots[mid].as_of} fact`);
   }
+  for (const [mid, n] of blocked) addGap(HEADLINE_GAP(mid, n));
   const indexed = [];
   Object.values(slots).forEach((row, k) => indexed.push({ i: k, row: { ...row } }));
   const filled = Object.keys(buckets);
@@ -803,12 +813,34 @@ function dropOtherClaims(pack) {
   return true;
 }
 
+function isTaggedClaim(claim) {
+  return !!(claim && (claim.origin === 'xbrl' || claim.confidence === 'tagged'));
+}
+
 function dropTailClaim(pack) {
   const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
   if (!claims.length) return false;
-  const dropped = claims[claims.length - 1];
-  pack.claims = claims.slice(0, -1);
+  let idx = -1;
+  for (let i = claims.length - 1; i >= 0; i--) {
+    if (!isTaggedClaim(claims[i])) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) idx = claims.length - 1;
+  const dropped = claims[idx];
+  pack.claims = claims.filter((_, i) => i !== idx);
   addGap(pack, `dropped claim ${dropped.id || dropped.metric_id || 'claim'}`);
+  return true;
+}
+
+function dropUntaggedClaims(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  const kept = claims.filter(isTaggedClaim);
+  const dropped = claims.length - kept.length;
+  if (!dropped) return false;
+  pack.claims = kept;
+  addGap(pack, `${dropped} untagged claims omitted`);
   return true;
 }
 
@@ -868,6 +900,9 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => takeList(pack, 'risks', 2),
     () => dropTailClaim(pack),
     () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropUntaggedClaims(pack),
     () => dropTailClaim(pack),
     () => dropTailClaim(pack),
     () => clearList(pack, 'claims'),

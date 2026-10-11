@@ -15,7 +15,7 @@ import {
   loadContextpackRules,
   OVERVIEW_BUDGET_CHARS,
 } from '../../memory-cockpit-v2/server/contextpack.js';
-import { capAssistClipboard, HOUSE_FILE_POINTER } from '../../memory-cockpit-v2/server/assistContext.js';
+import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../../memory-cockpit-v2/server/assistContext.js';
 import { loadSectors } from './sector-check.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -260,14 +260,44 @@ export function assertP1() {
 
   const longHouse = `\`\`\`markdown\n${'H'.repeat(20_000)}\n\`\`\``;
   const clip = capAssistClipboard(`rules\n${longHouse}\nclaims\n`);
-  if (clip.length > 10_000) errors.push(`assist clipboard ${clip.length}`);
+  const clipTrailer = assistToolTrailer({ chars: clip.length, house_exists: true, compiled_at: '2026-01-15T00:00:00Z' });
+  if (clip.length + clipTrailer.length > 10_000) errors.push(`assist clipboard+trailer ${clip.length + clipTrailer.length}`);
   if (!clip.includes(HOUSE_FILE_POINTER)) errors.push('assist clipboard missing get_house_view pointer');
+
+  const crowded = {
+    claims: [
+      ...Array.from({ length: 16 }, (_, i) => ({
+        id: `sent-${i}`,
+        metric_id: 'gross_margin',
+        text: `Gross margin was ${40 + i} percent. ${'WORD '.repeat(60)}`,
+        origin: 'sentence',
+        confidence: 'low',
+        as_of: '2026-01-01',
+        grade: 'A',
+      })),
+      {
+        id: 'xbrl:us-gaap:Revenues:2025-01-01/2025-12-31',
+        metric_id: 'company_revenue',
+        origin: 'xbrl',
+        confidence: 'tagged',
+        text: 'Revenues USD 48,000,000,000 for 2025-01-01 to 2025-12-31 (consolidated tagged fact)',
+        value_text: '48000000000',
+        as_of: '2025-12-31',
+        grade: 'A',
+      },
+    ],
+    house_prior: { status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'H'.repeat(1800) },
+    gaps: [],
+  };
+  enforceCharBudget(crowded, 2800);
+  if (!(crowded.claims || []).some((c) => c.origin === 'xbrl')) errors.push('over-budget pack dropped the tagged row');
+  if (JSON.stringify(crowded).length > 2800) errors.push(`over-budget tagged-first ${JSON.stringify(crowded).length}`);
 
   const crowd = [];
   for (let i = 0; i < 10; i++) {
     crowd.push(claim(`rev${i}`, `Net sales were $${200 + i} million`, `2026-12-${String(i + 1).padStart(2, '0')}`));
   }
-  crowd.push(claim('cash-old', 'Cash and cash equivalents were $5 million', '2020-01-01'));
+  crowd.push(claim('inv-old', 'Inventory was $5 million', '2020-01-01'));
   crowd.push(claim('debt-old', 'Long-term debt was $7 million', '2020-01-01'));
   crowd.push(claim('gm-old', 'Gross margin was 40%', '2020-01-01'));
 
@@ -346,7 +376,7 @@ export function assertP1() {
   const crowdRow = byId['C-retrieve-crowd'];
   if (!crowdRow || crowdRow.error) errors.push(`C-retrieve-crowd ${crowdRow?.error || 'missing'}`);
   else {
-    for (const id of ['cash-old', 'debt-old', 'gm-old']) {
+    for (const id of ['inv-old', 'debt-old', 'gm-old']) {
       if (!(crowdRow.claim_ids || []).includes(id)) errors.push(`C-retrieve-crowd dropped ${id}`);
     }
   }
