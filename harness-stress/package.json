@@ -1,0 +1,14 @@
+{
+  "name": "cockpit-harness-stress",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Read-only stress harness for Cockpit context management and the 24-tool MCP surface. Does not modify product code.",
+  "scripts": {
+    "start": "node run.mjs",
+    "report": "node run.mjs --report"
+  },
+  "dependencies": {
+    "gpt-tokenizer": "2.9.0"
+  }
+}

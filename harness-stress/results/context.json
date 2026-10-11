@@ -1,0 +1,415 @@
+{
+  "rules_bytes": 4079,
+  "metric_ids": [
+    "revenue_guide",
+    "company_revenue",
+    "net_interest_income",
+    "gross_margin",
+    "operating_income",
+    "net_income",
+    "operating_cash_flow",
+    "cash",
+    "inventory",
+    "long_term_debt",
+    "diluted_shares",
+    "concentration",
+    "purchase_commitments",
+    "rpo_backlog",
+    "capex",
+    "guarantees",
+    "share_repurchase",
+    "dividends",
+    "goodwill_impairment",
+    "credit_loss_provision",
+    "rnd_expense",
+    "export_controls"
+  ],
+  "boilerplate": [
+    "central index key",
+    "commission file number",
+    "incorporated in",
+    "state of delaware",
+    "common stock is listed",
+    "trading symbol",
+    "nasdaq global",
+    "new york stock exchange",
+    "number of employees",
+    "principal executive offices",
+    "irs employer",
+    "registrant's telephone",
+    "title of each class",
+    "exact name of registrant"
+  ],
+  "js_cases": [
+    {
+      "id": "C-date-unpadded",
+      "live": [
+        {
+          "id": "sep",
+          "metric_id": "company_revenue",
+          "as_of": "2026-9-30",
+          "grade": "A",
+          "text": "Net sales were $111 million"
+        }
+      ],
+      "winner": "sep",
+      "newer_id": "oct",
+      "older_id": "sep"
+    },
+    {
+      "id": "C-date-iso",
+      "live": [
+        {
+          "id": "new",
+          "metric_id": "company_revenue",
+          "as_of": "2026-10-01",
+          "grade": "A",
+          "text": "Net sales were $222 million"
+        }
+      ],
+      "winner": "new"
+    },
+    {
+      "id": "C-guid-steals-cash",
+      "live": [
+        {
+          "id": "cash-guid",
+          "metric_id": "revenue_guide",
+          "as_of": "2026-06-02",
+          "grade": "A",
+          "text": "Cash and cash equivalents were $90 million. See guidance."
+        },
+        {
+          "id": "cash-clean",
+          "metric_id": "cash",
+          "as_of": "2026-06-01",
+          "grade": "A",
+          "text": "Cash and cash equivalents were $90 million"
+        }
+      ]
+    },
+    {
+      "id": "C-cash-phrase",
+      "live": [
+        {
+          "id": "new-cash",
+          "metric_id": "other",
+          "as_of": "2026-06-01",
+          "grade": "A",
+          "text": "Cash was $222 million"
+        },
+        {
+          "id": "old-cash",
+          "metric_id": "cash",
+          "as_of": "2024-01-01",
+          "grade": "A",
+          "text": "Cash and cash equivalents were $111 million"
+        }
+      ]
+    },
+    {
+      "id": "C-goodwill-any",
+      "live": [
+        {
+          "id": "inv-imp",
+          "metric_id": "inventory",
+          "as_of": "2026-05-01",
+          "grade": "A",
+          "text": "Inventory impairment of $9 million"
+        },
+        {
+          "id": "gw-bal",
+          "metric_id": "goodwill_impairment",
+          "as_of": "2026-05-01",
+          "grade": "A",
+          "text": "A goodwill balance of $5 billion"
+        }
+      ]
+    },
+    {
+      "id": "C-drops",
+      "input_ids": [
+        "space",
+        "tight",
+        "emp",
+        "qual",
+        "pct",
+        "pctsign"
+      ],
+      "live": [
+        {
+          "id": "pctsign",
+          "metric_id": "other",
+          "as_of": "2026-01-02",
+          "grade": "A",
+          "text": "segment mix was 45%"
+        },
+        {
+          "id": "tight",
+          "metric_id": "other",
+          "as_of": "2026-01-01",
+          "grade": "A",
+          "text": "Unmatched spend was $12 million"
+        }
+      ]
+    },
+    {
+      "id": "C-residual-cap",
+      "input": 12,
+      "kept": 8,
+      "kept_ids": [
+        "r12",
+        "r11",
+        "r10",
+        "r9",
+        "r8",
+        "r7",
+        "r6",
+        "r5"
+      ],
+      "cap": 8
+    },
+    {
+      "id": "C-missing-grade",
+      "js": [
+        {
+          "id": "cee",
+          "metric_id": "company_revenue",
+          "as_of": "2026-08-01",
+          "grade": "C",
+          "text": "Net sales were $11 million"
+        }
+      ]
+    },
+    {
+      "id": "C-same-day-tie",
+      "winner": "first",
+      "note": "same as_of and grade; stable sort keeps the earlier array element"
+    },
+    {
+      "id": "C-js-assemble-shape",
+      "chars": 774,
+      "tokens": 225,
+      "schema": "contextpack.v2",
+      "has_budget": false,
+      "has_superseded": false,
+      "has_stale_tripwires": false,
+      "claim_ids": [
+        "company_revenue:sep",
+        "revenue_guide:cash-guid",
+        "cash:cash-clean"
+      ],
+      "store_claims": 6
+    },
+    {
+      "id": "C-js-no-char-cap",
+      "chars": 16588,
+      "over_10000": true,
+      "claim_count": 2
+    }
+  ],
+  "python": {
+    "ok": true,
+    "cases": [
+      {
+        "id": "C-date-unpadded",
+        "live": [
+          {
+            "id": "sep",
+            "metric_id": "company_revenue",
+            "as_of": "2026-9-30",
+            "grade": "A",
+            "text": "Net sales were $111 million"
+          }
+        ],
+        "superseded_ids": [
+          "oct"
+        ]
+      },
+      {
+        "id": "C-missing-grade",
+        "live": [
+          {
+            "id": "bare",
+            "metric_id": "company_revenue",
+            "as_of": "2026-08-01",
+            "grade": null,
+            "text": "Net sales were $10 million"
+          }
+        ],
+        "superseded_ids": [
+          "cee"
+        ]
+      },
+      {
+        "id": "C-guid-steals-cash",
+        "live": [
+          {
+            "id": "cash-guid",
+            "metric_id": "revenue_guide",
+            "as_of": "2026-06-02",
+            "grade": "A",
+            "text": "Cash and cash equivalents were $90 million. See guidance."
+          },
+          {
+            "id": "cash-clean",
+            "metric_id": "cash",
+            "as_of": "2026-06-01",
+            "grade": "A",
+            "text": "Cash and cash equivalents were $90 million"
+          }
+        ],
+        "superseded_ids": [
+          "outlook"
+        ]
+      },
+      {
+        "id": "C-retrieve-crowd",
+        "chars": 2100,
+        "over_budget": false,
+        "budget": {
+          "limit_chars": 10000,
+          "used_chars": 2100,
+          "trimmed": false
+        },
+        "claim_ids": [
+          "rev9",
+          "rev8",
+          "rev7",
+          "rev6",
+          "rev5",
+          "rev4",
+          "rev3",
+          "rev2",
+          "rev1",
+          "rev0",
+          "cash-old",
+          "debt-old"
+        ],
+        "gap_texts": [
+          "GAP-CANARY-TAIL"
+        ],
+        "series_ids": [],
+        "has_provenance": true,
+        "house_keys": [
+          "date",
+          "play",
+          "status",
+          "view_excerpt"
+        ],
+        "notes_len": 0
+      },
+      {
+        "id": "C-retrieve-fat-claims",
+        "chars": 16891,
+        "over_budget": true,
+        "budget": {
+          "limit_chars": 10000,
+          "used_chars": 16891,
+          "trimmed": true
+        },
+        "claim_ids": [
+          "fat2",
+          "fat1"
+        ],
+        "gap_texts": [
+          "GAP-CANARY-TAIL",
+          "pack over budget after trim (16910 > 10000)"
+        ],
+        "series_ids": [],
+        "has_provenance": false,
+        "house_keys": [
+          "date",
+          "play",
+          "status",
+          "view_excerpt"
+        ],
+        "notes_len": 0
+      },
+      {
+        "id": "C-retrieve-unknown-house-field",
+        "chars": 20792,
+        "over_budget": true,
+        "budget": {
+          "limit_chars": 10000,
+          "used_chars": 20792,
+          "trimmed": true
+        },
+        "claim_ids": [
+          "rev"
+        ],
+        "gap_texts": [
+          "GAP-CANARY-TAIL",
+          "pack over budget after trim (20811 > 10000)"
+        ],
+        "series_ids": [],
+        "has_provenance": false,
+        "house_keys": [
+          "date",
+          "notes",
+          "play",
+          "status",
+          "view_excerpt"
+        ],
+        "notes_len": 20000
+      },
+      {
+        "id": "C-retrieve-risks-mu-filter",
+        "chars": 524,
+        "over_budget": false,
+        "budget": {
+          "limit_chars": 10000,
+          "used_chars": 524,
+          "trimmed": false
+        },
+        "claim_ids": [],
+        "gap_texts": [
+          "GAP-CANARY-TAIL"
+        ],
+        "series_ids": [
+          "mu-price"
+        ],
+        "has_provenance": true,
+        "house_keys": [
+          "date",
+          "play",
+          "status",
+          "view_excerpt"
+        ],
+        "notes_len": 0
+      },
+      {
+        "id": "C-agent-tail-cut",
+        "chars": 28042,
+        "truncated": true,
+        "has_gap_canary": true,
+        "has_end_marker": false,
+        "has_head_canary": true,
+        "tail": "WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WORD WOR\n\n…[agent context truncated at max_chars]…"
+      }
+    ]
+  },
+  "grade_divergence": {
+    "js_winner": "cee",
+    "py_winner": "bare",
+    "js_grades": [
+      {
+        "id": "cee",
+        "metric_id": "company_revenue",
+        "as_of": "2026-08-01",
+        "grade": "C",
+        "text": "Net sales were $11 million"
+      }
+    ],
+    "py_live": [
+      {
+        "id": "bare",
+        "metric_id": "company_revenue",
+        "as_of": "2026-08-01",
+        "grade": null,
+        "text": "Net sales were $10 million"
+      }
+    ]
+  },
+  "product_store_written": false
+}

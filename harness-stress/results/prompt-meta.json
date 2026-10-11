@@ -1,0 +1,38 @@
+{
+  "tool-full.md": {
+    "chars": 14282,
+    "tokens": 3305
+  },
+  "tool-core.md": {
+    "chars": 5917,
+    "tokens": 1399
+  },
+  "tool-bash.md": {
+    "chars": 1341,
+    "tokens": 348
+  },
+  "recall-s.md": {
+    "chars": 1942,
+    "tokens": 513
+  },
+  "recall-l.md": {
+    "chars": 63586,
+    "tokens": 15485
+  },
+  "multiturn-0.md": {
+    "chars": 235,
+    "tokens": 91
+  },
+  "multiturn-1.md": {
+    "chars": 12066,
+    "tokens": 2442
+  },
+  "multiturn-2.md": {
+    "chars": 12066,
+    "tokens": 2442
+  },
+  "multiturn-3.md": {
+    "chars": 4094,
+    "tokens": 834
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "started_at": "2026-10-11T04:55:03.597Z",
+  "finished_at": "2026-10-11T04:55:06.669Z",
+  "wall_ms": 3072,
+  "tokenizer": "gpt-tokenizer@2.9.0 default encode",
+  "desks_unchanged": true,
+  "product_dirty": [],
+  "xai_key_used": false
+}

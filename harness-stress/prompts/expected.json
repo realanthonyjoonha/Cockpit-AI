@@ -1,0 +1,139 @@
+{
+  "canaries": {
+    "F1": "222222",
+    "F2": "111111",
+    "F3": "exactly-3-segments",
+    "F4": "headcount-4242",
+    "F5": "purple-heron",
+    "F6": "Northwind",
+    "F7": "15000015",
+    "F8": "lane-7"
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "ask": "Which desks are registered in this monorepo?",
+      "full": "list_desks",
+      "core": "list_desks",
+      "bash": "thin-desks.json"
+    },
+    {
+      "id": "T2",
+      "ask": "Read the full house-view markdown for desk demo.",
+      "full": "get_house_view",
+      "core": "get_house_view",
+      "bash": "house-view"
+    },
+    {
+      "id": "T3",
+      "ask": "What are the live compiled claims for desk demo?",
+      "full": "get_pack_snapshot",
+      "core": "get_pack_snapshot",
+      "bash": "DEMO.json"
+    },
+    {
+      "id": "T4",
+      "ask": "The user said GO. Write the pending CONFIRMED house proposal.",
+      "full": "commit_on_go",
+      "core": "commit_on_go",
+      "bash": null
+    },
+    {
+      "id": "T5",
+      "ask": "Apply one exact find-and-replace to the current house and store a proposal. Do not paste the whole file.",
+      "full": "propose_house_from_current",
+      "core": "propose_house_from_current",
+      "bash": null
+    },
+    {
+      "id": "T6",
+      "ask": "Propose a new risk on the register. Do not write the file yet.",
+      "full": "propose_add_risk",
+      "core": "propose_add_risk",
+      "bash": null
+    },
+    {
+      "id": "T7",
+      "ask": "Read the R1 section from the risk source of record, including tripwires.",
+      "full": "get_risk_sor",
+      "core": "get_risk_sor",
+      "bash": "08-risks"
+    },
+    {
+      "id": "T8",
+      "ask": "The user said SAVE DRAFT. Do not propose and do not write.",
+      "full": null,
+      "core": null,
+      "bash": null
+    },
+    {
+      "id": "T9",
+      "ask": "Add a row on the metrics page.",
+      "full": null,
+      "core": null,
+      "bash": null
+    },
+    {
+      "id": "T10",
+      "ask": "KEEP a business engine already quoted in the CONFIRMED house.",
+      "full": "propose_keep_driver",
+      "core": null,
+      "bash": null
+    },
+    {
+      "id": "T11",
+      "ask": "Can this session ACCEPT a house proposal on its own?",
+      "full": "agent_accept_status",
+      "core": null,
+      "bash": null
+    }
+  ],
+  "core": [
+    "list_desks",
+    "get_house_view",
+    "get_pack_snapshot",
+    "propose_house_from_current",
+    "commit_on_go",
+    "get_risk_sor",
+    "propose_add_risk",
+    "propose_risk_status"
+  ],
+  "prompts": {
+    "tool-full.md": {
+      "chars": 14282,
+      "tokens": 3305
+    },
+    "tool-core.md": {
+      "chars": 5917,
+      "tokens": 1399
+    },
+    "tool-bash.md": {
+      "chars": 1341,
+      "tokens": 348
+    },
+    "recall-s.md": {
+      "chars": 1942,
+      "tokens": 513
+    },
+    "recall-l.md": {
+      "chars": 63586,
+      "tokens": 15485
+    },
+    "multiturn-0.md": {
+      "chars": 235,
+      "tokens": 91
+    },
+    "multiturn-1.md": {
+      "chars": 12066,
+      "tokens": 2442
+    },
+    "multiturn-2.md": {
+      "chars": 12066,
+      "tokens": 2442
+    },
+    "multiturn-3.md": {
+      "chars": 4094,
+      "tokens": 834
+    }
+  }
+}

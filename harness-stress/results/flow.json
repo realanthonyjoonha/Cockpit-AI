@@ -1,0 +1,2348 @@
+{
+  "canaries": {
+    "F1": "222222",
+    "F2": "111111",
+    "F3": "exactly-3-segments",
+    "F4": "headcount-4242",
+    "F5": "purple-heron",
+    "F6": "Northwind",
+    "F7": "15000015",
+    "F8": "lane-7"
+  },
+  "command_tokens": 4184,
+  "command_chars": 15324,
+  "agents_tokens": 2933,
+  "command_files_mentioning_summarize_or_window": [],
+  "implementation_notes_is_prose_anchor": true,
+  "trajectories": [
+    {
+      "slice_token_target": 2000,
+      "slice_chars": 10500,
+      "overhead_tokens": 7262,
+      "seed_tokens": 72,
+      "final_tokens": 25560,
+      "overflow_step": {
+        "8000": 1,
+        "16000": 5,
+        "32000": null,
+        "64000": null,
+        "96000": null,
+        "128000": null
+      },
+      "steps": [
+        {
+          "step": 0,
+          "role": "seed",
+          "cumulative_tokens": 7335,
+          "cumulative_chars": 26033,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 1,
+          "role": "slice-1",
+          "cumulative_tokens": 9485,
+          "cumulative_chars": 36546,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 9485,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 9485,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 9485,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 9485,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 9485,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 2,
+          "role": "slice-2",
+          "cumulative_tokens": 11636,
+          "cumulative_chars": 47059,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 11636,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 11636,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 11636,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 11636,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 11636,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 3,
+          "role": "slice-3",
+          "cumulative_tokens": 13787,
+          "cumulative_chars": 57572,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13787,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13787,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13787,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13787,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13787,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 4,
+          "role": "slice-4",
+          "cumulative_tokens": 15938,
+          "cumulative_chars": 68085,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 15938,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 15938,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 15938,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 15938,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 15938,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 5,
+          "role": "slice-5",
+          "cumulative_tokens": 18089,
+          "cumulative_chars": 78598,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 18089,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 18089,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 18089,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 18089,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 6,
+          "role": "slice-6",
+          "cumulative_tokens": 20240,
+          "cumulative_chars": 89111,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20240,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20240,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20240,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20240,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 7,
+          "role": "slice-7",
+          "cumulative_tokens": 22391,
+          "cumulative_chars": 99624,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 22391,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 22391,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 22391,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 22391,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 8,
+          "role": "slice-8",
+          "cumulative_tokens": 24542,
+          "cumulative_chars": 110137,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 24542,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 24542,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 24542,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 24542,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 9,
+          "role": "synthesis",
+          "cumulative_tokens": 25560,
+          "cumulative_chars": 115427,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 25560,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 25560,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 25560,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 25560,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "slice_token_target": 6000,
+      "slice_chars": 32000,
+      "overhead_tokens": 7262,
+      "seed_tokens": 72,
+      "final_tokens": 62382,
+      "overflow_step": {
+        "8000": 1,
+        "16000": 2,
+        "32000": 4,
+        "64000": null,
+        "96000": null,
+        "128000": null
+      },
+      "steps": [
+        {
+          "step": 0,
+          "role": "seed",
+          "cumulative_tokens": 7335,
+          "cumulative_chars": 26033,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 7335,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 1,
+          "role": "slice-1",
+          "cumulative_tokens": 13832,
+          "cumulative_chars": 58046,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13832,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13832,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13832,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13832,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 13832,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 2,
+          "role": "slice-2",
+          "cumulative_tokens": 20330,
+          "cumulative_chars": 90059,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20330,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20330,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20330,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 20330,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 3,
+          "role": "slice-3",
+          "cumulative_tokens": 26828,
+          "cumulative_chars": 122072,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 26828,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 26828,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 26828,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 26828,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 4,
+          "role": "slice-4",
+          "cumulative_tokens": 33326,
+          "cumulative_chars": 154085,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 32000,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 33326,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 33326,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 33326,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 5,
+          "role": "slice-5",
+          "cumulative_tokens": 39824,
+          "cumulative_chars": 186098,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 32000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 39824,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 39824,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 39824,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 6,
+          "role": "slice-6",
+          "cumulative_tokens": 46322,
+          "cumulative_chars": 218111,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 32000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 46322,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 46322,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 46322,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 7,
+          "role": "slice-7",
+          "cumulative_tokens": 52820,
+          "cumulative_chars": 250124,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 32000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 52820,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 52820,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 52820,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 8,
+          "role": "slice-8",
+          "cumulative_tokens": 59318,
+          "cumulative_chars": 282137,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 32000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 59318,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 59318,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 59318,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        },
+        {
+          "step": 9,
+          "role": "synthesis",
+          "cumulative_tokens": 62382,
+          "cumulative_chars": 298177,
+          "per_call_schema_tokens": 3011,
+          "budgets": {
+            "8000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 8000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "16000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 16000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "32000": {
+              "overflow": true,
+              "tokens_after_tail_keep": 32000,
+              "canaries_kept": 0,
+              "canaries": {
+                "F1": false,
+                "F2": false,
+                "F3": false,
+                "F4": false,
+                "F5": false,
+                "F6": false,
+                "F7": false,
+                "F8": false,
+                "kept": 0,
+                "total": 8
+              }
+            },
+            "64000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 62382,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "96000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 62382,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            },
+            "128000": {
+              "overflow": false,
+              "tokens_after_tail_keep": 62382,
+              "canaries_kept": 8,
+              "canaries": {
+                "F1": true,
+                "F2": true,
+                "F3": true,
+                "F4": true,
+                "F5": true,
+                "F6": true,
+                "F7": true,
+                "F8": true,
+                "kept": 8,
+                "total": 8
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "repeated_pack_calls": [
+    {
+      "call": 1,
+      "tokens": 1682,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 2,
+      "tokens": 3292,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 3,
+      "tokens": 4902,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 4,
+      "tokens": 6512,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 5,
+      "tokens": 8122,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 6,
+      "tokens": 9732,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 7,
+      "tokens": 11342,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 8,
+      "tokens": 12952,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 9,
+      "tokens": 14562,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 10,
+      "tokens": 16172,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 11,
+      "tokens": 17782,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    },
+    {
+      "call": 12,
+      "tokens": 19392,
+      "canaries_in_full": 8,
+      "canaries_in_32k_tail": 8
+    }
+  ],
+  "schema_tokens_added_each_call": 3011
+}
