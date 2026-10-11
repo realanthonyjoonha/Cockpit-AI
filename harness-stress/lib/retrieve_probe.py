@@ -14,7 +14,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "ontology"))
 
 import paths  # noqa: E402
-from api.contextpack import live_claims, load_rules  # noqa: E402
+from api.contextpack import claim_gaps, live_claims, load_rules  # noqa: E402
 from api.retrieve import retrieve  # noqa: E402
 
 
@@ -30,6 +30,15 @@ def main() -> int:
     for case in job.get("cases") or []:
         row = {"id": case.get("id")}
         try:
+            if case.get("op") == "resolve":
+                from api.retrieve import resolve_ticker
+
+                try:
+                    row["ticker"] = resolve_ticker(str(case.get("focus") or ""))
+                except KeyError as e:
+                    row["error"] = str(e).strip("'")
+                out["cases"].append(row)
+                continue
             ticker = str(case.get("ticker") or "DEMO").upper()
             store = case["store"]
             (store_dir / f"{ticker}.json").write_text(
@@ -50,6 +59,7 @@ def main() -> int:
                     for c in live
                 ]
                 row["superseded_ids"] = [c.get("id") for c in superseded]
+                row["gaps"] = claim_gaps(store.get("claims") or [], rules)
             elif case.get("op") == "retrieve":
                 pack = retrieve(
                     ticker,
@@ -63,6 +73,7 @@ def main() -> int:
                 )
                 row["budget"] = pack.get("budget")
                 row["claim_ids"] = [c.get("id") for c in (pack.get("claims") or [])]
+                row["metric_ids"] = [c.get("metric_id") for c in (pack.get("claims") or [])]
                 row["gap_texts"] = list(pack.get("gaps") or [])
                 row["series_ids"] = [
                     s.get("id") for s in (pack.get("series_snapshot") or [])
@@ -78,12 +89,15 @@ def main() -> int:
                     ticker,
                     case.get("question") or "overview status",
                     include_overview=True,
+                    max_chars=int(case.get("max_chars") or 28_000),
                 )
                 row["chars"] = len(text)
+                row["max_chars"] = int(case.get("max_chars") or 28_000)
                 row["truncated"] = "agent context truncated" in text
                 row["has_gap_canary"] = "GAP-CANARY-TAIL" in text
                 row["has_end_marker"] = "END CONTEXT" in text
                 row["has_head_canary"] = "HEAD-CANARY" in text
+                row["middle_omitted"] = "the middle was omitted" in text
                 row["tail"] = text[-400:]
             else:
                 row["error"] = f"unknown op {case.get('op')}"

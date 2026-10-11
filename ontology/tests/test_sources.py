@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import paths
 from api.sources import get_source, list_sources
 from compile.run import write_pack
 
@@ -15,6 +16,8 @@ from compile.run import write_pack
 class TestSources(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if not (paths.ENTITIES / "micron.md").is_file():
+            raise unittest.SkipTest("no MU entity on this tree")
         cls.pack = write_pack("MU")
 
     def test_catalog_nonempty(self):

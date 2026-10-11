@@ -1,7 +1,8 @@
 /**
  * Phase gates. Exit 1 when a case in that phase fails.
  * P0 owns the DEMO repros and the ten-sector fixture.
- * Later phases add their own cases to --assert sectors (mu-filter, budget, GO).
+ * P1 adds the cap, the agent closer, and the series allowlist.
+ * Later phases add GO cases to --assert sectors.
  */
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -16,6 +17,7 @@ import {
   parseAmounts,
   parseAsOf,
 } from '../../memory-cockpit-v2/server/contextpack.js';
+import { sectorBudgetErrors } from './assert-p1.mjs';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -103,6 +105,7 @@ export function assertSectors() {
   if (!Array.isArray(desks.desks) || desks.desks.length !== 0) {
     errors.push('thin-desks.json desks is not empty');
   }
+  errors.push(...sectorBudgetErrors());
   return errors;
 }
 

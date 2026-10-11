@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import paths
 from api.agent import agent_system_prompt, build_agent_context
 from compile.run import write_pack
 
@@ -15,6 +16,8 @@ from compile.run import write_pack
 class TestAgent(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        if not (paths.ENTITIES / "micron.md").is_file():
+            raise unittest.SkipTest("no MU entity on this tree")
         write_pack("MU")
 
     def test_system_prompt_guardrails(self):

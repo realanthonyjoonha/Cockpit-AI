@@ -592,7 +592,7 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
     for g in extra + cc:
         if g not in gaps:
             gaps.append(g)
-    return {
+    built = {
         "schema": "contextpack.v2",
         "intent": "agent",
         "focus": store.get("focus"),
@@ -633,9 +633,14 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
         "store_claims": len(claims),
         "decision_support_only": True,
     }
+    from api.retrieve import enforce_char_budget
+    import paths as _paths
+
+    return enforce_char_budget(built, _paths.OVERVIEW_BUDGET_CHARS)
 
 
 def to_agent_markdown(pack: dict[str, Any]) -> str:
+    """Render the packed fields only. Do not read the store or restore a cut field."""
     lines: list[str] = []
     f = pack.get("focus") or {}
     lines.append(f"# {f.get('ticker', '?')} — agent ContextPack v2")
@@ -648,7 +653,7 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
     hp = pack.get("house_prior") or {}
     if hp.get("play") or hp.get("view_excerpt"):
         lines.append(f"## House (pinned) — {hp.get('status') or ''} · {hp.get('date') or 'n.d.'}")
-        lines.append((hp.get("view_excerpt") or "")[:1200])
+        lines.append(hp.get("view_excerpt") or "")
         lines.append("")
     pin = pack.get("pin") or {}
     lines.append(

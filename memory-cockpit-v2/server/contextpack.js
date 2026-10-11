@@ -430,7 +430,7 @@ export function assembleAgentPack(store, rules) {
   const storeGaps = Array.isArray(store.gaps) ? store.gaps : [];
   const merged = storeGaps.slice();
   for (const g of gaps) if (!merged.includes(g)) merged.push(g);
-  return {
+  const pack = {
     schema: 'contextpack.v2',
     intent: 'agent',
     compiled_at: store.compiled_at || null,
@@ -458,4 +458,262 @@ export function assembleAgentPack(store, rules) {
     gaps: merged,
     decision_support_only: true,
   };
+  return enforceCharBudget(pack, OVERVIEW_BUDGET_CHARS);
+}
+
+/** Same cap as ontology/paths.py OVERVIEW_BUDGET_CHARS. Not raised per ticker. */
+export const OVERVIEW_BUDGET_CHARS = 10000;
+
+const HOUSE_PRIOR_KEYS = ['play', 'status', 'date', 'view_excerpt'];
+const PACK_KEYS = new Set([
+  'schema', 'intent', 'focus', 'compiled_at', 'house_prior', 'object', 'claims',
+  'risk_summary', 'risks', 'series_snapshot', 'catalysts', 'sources', 'related',
+  'gaps', 'provenance', 'pin', 'superseded_count', 'stale_tripwires', 'store_claims',
+  'decision_support_only', 'budget', 'available', 'ticker', 'slug', 'pack_path',
+  'contextpack', 'sor_ahead_of_pack', 'note',
+]);
+
+function addGap(pack, msg) {
+  const gaps = Array.isArray(pack.gaps) ? pack.gaps.slice() : [];
+  if (!gaps.includes(msg)) gaps.push(msg);
+  pack.gaps = gaps;
+}
+
+function seal(pack, limit, trimmed, measure) {
+  pack.budget = { limit_chars: limit, used_chars: 0, trimmed: !!trimmed };
+  let n = 0;
+  for (let i = 0; i < 4; i++) {
+    n = measure(pack);
+    if (pack.budget.used_chars === n) return n;
+    pack.budget.used_chars = n;
+  }
+  return measure(pack);
+}
+
+function allowlist(pack) {
+  let changed = false;
+  const hp = pack.house_prior;
+  if (hp && typeof hp === 'object' && !Array.isArray(hp)) {
+    const dropped = Object.keys(hp).filter((k) => !HOUSE_PRIOR_KEYS.includes(k));
+    const kept = {};
+    for (const key of HOUSE_PRIOR_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(hp, key)) kept[key] = hp[key];
+    }
+    pack.house_prior = kept;
+    for (const key of dropped) addGap(pack, `dropped house_prior.${key}`);
+    if (dropped.length) changed = true;
+  }
+  for (const key of Object.keys(pack)) {
+    if (!PACK_KEYS.has(key)) {
+      delete pack[key];
+      addGap(pack, `dropped key ${key}`);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function clipClaimTexts(pack, n, metricId) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object') {
+      out.push(claim);
+      continue;
+    }
+    const row = { ...claim };
+    if (metricId == null || row.metric_id === metricId) {
+      if (typeof row.text === 'string' && row.text.length > n) {
+        row.text = row.text.slice(0, n);
+        changed = true;
+      }
+    }
+    out.push(row);
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function clipObject(pack, n) {
+  const obj = pack.object;
+  if (!obj || typeof obj !== 'object') return false;
+  const row = { ...obj };
+  let changed = false;
+  for (const key of ['summary', 'role_in_theses']) {
+    if (typeof row[key] === 'string' && row[key].length > n) {
+      row[key] = row[key].slice(0, n);
+      changed = true;
+    }
+  }
+  if (Array.isArray(row.stance) && row.stance.length > 4) {
+    row.stance = row.stance.slice(0, 4);
+    changed = true;
+  }
+  if (changed) pack.object = row;
+  return changed;
+}
+
+function clipRisks(pack, summaryN, tripN) {
+  if (!Array.isArray(pack.risks)) return false;
+  let changed = false;
+  const out = pack.risks.map((risk) => {
+    if (!risk || typeof risk !== 'object') return risk;
+    const row = { ...risk };
+    if (typeof row.summary === 'string' && row.summary.length > summaryN) {
+      row.summary = row.summary.slice(0, summaryN);
+      changed = true;
+    }
+    if (tripN != null && Array.isArray(row.tripwires) && row.tripwires.length > tripN) {
+      row.tripwires = row.tripwires.slice(0, tripN);
+      changed = true;
+    }
+    return row;
+  });
+  if (changed) pack.risks = out;
+  return changed;
+}
+
+function clipPin(pack, n) {
+  const pin = pack.pin;
+  if (!pin || typeof pin !== 'object' || !Array.isArray(pin.risks)) return false;
+  let changed = false;
+  const risks = pin.risks.map((risk) => {
+    if (!risk || typeof risk !== 'object') return risk;
+    const row = { ...risk };
+    if (typeof row.summary === 'string' && row.summary.length > n) {
+      row.summary = row.summary.slice(0, n);
+      changed = true;
+    }
+    return row;
+  });
+  if (!changed) return false;
+  pack.pin = { ...pin, risks };
+  return true;
+}
+
+function clipExcerpt(pack, n) {
+  const hp = pack.house_prior;
+  if (!hp || typeof hp !== 'object') return false;
+  if (typeof hp.view_excerpt !== 'string' || hp.view_excerpt.length <= n) return false;
+  pack.house_prior = { ...hp, view_excerpt: hp.view_excerpt.slice(0, n) };
+  return true;
+}
+
+function clipProvenance(pack, n) {
+  const prov = pack.provenance;
+  if (!prov || typeof prov !== 'object') return false;
+  if (typeof prov.note !== 'string' || prov.note.length <= n) return false;
+  pack.provenance = { note: prov.note.slice(0, n), pack_config: prov.pack_config || '' };
+  return true;
+}
+
+function takeList(pack, key, n) {
+  if (!Array.isArray(pack[key]) || pack[key].length <= n) return false;
+  pack[key] = pack[key].slice(0, n);
+  return true;
+}
+
+function clearList(pack, key) {
+  if (!Array.isArray(pack[key]) || !pack[key].length) return false;
+  pack[key] = [];
+  return true;
+}
+
+function dropOtherClaims(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  const kept = claims.filter((c) => c.metric_id !== 'other');
+  const dropped = claims.length - kept.length;
+  if (!dropped) return false;
+  pack.claims = kept;
+  addGap(pack, `${dropped} residual claims omitted`);
+  return true;
+}
+
+function dropTailClaim(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  if (!claims.length) return false;
+  const dropped = claims[claims.length - 1];
+  pack.claims = claims.slice(0, -1);
+  addGap(pack, `dropped claim ${dropped.id || dropped.metric_id || 'claim'}`);
+  return true;
+}
+
+function stubPack(pack, limit, measure) {
+  const focus = pack.focus && typeof pack.focus === 'object' ? pack.focus : {};
+  const hp = pack.house_prior && typeof pack.house_prior === 'object' ? pack.house_prior : {};
+  let gaps = (pack.gaps || []).filter((g) => typeof g === 'string' && g.length <= 180);
+  if (!gaps.includes('pack was over budget')) gaps.push('pack was over budget');
+  const stub = {
+    focus: { id: String(focus.id || '').slice(0, 64), ticker: String(focus.ticker || '').slice(0, 16) },
+    intent: String(pack.intent || 'overview').slice(0, 32),
+    house_prior: {
+      status: String(hp.status || '').slice(0, 32),
+      date: String(hp.date || '').slice(0, 32),
+    },
+    gaps: gaps.slice(0, 12),
+    claims: [],
+    budget: { limit_chars: limit, used_chars: 0, trimmed: true },
+  };
+  if (measure(stub) > limit) {
+    stub.gaps = ['pack was over budget'];
+    stub.focus = { ticker: String(stub.focus.ticker || '').slice(0, 12) };
+  }
+  seal(stub, limit, true, measure);
+  return stub;
+}
+
+export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure = null) {
+  const size = measure || ((p) => JSON.stringify(p).length);
+  const cap = Number(limit);
+  let trimmed = allowlist(pack);
+  const fits = () => seal(pack, cap, trimmed, size) <= cap;
+  if (fits()) return pack;
+  trimmed = true;
+  const steps = [
+    () => clearList(pack, 'related'),
+    () => clipClaimTexts(pack, 480, 'other'),
+    () => clipClaimTexts(pack, 480, null),
+    () => clipObject(pack, 300),
+    () => clipRisks(pack, 160, 2),
+    () => clipPin(pack, 160),
+    () => clipExcerpt(pack, 500),
+    () => clipProvenance(pack, 120),
+    () => takeList(pack, 'catalysts', 4),
+    () => takeList(pack, 'series_snapshot', 4),
+    () => takeList(pack, 'sources', 4),
+    () => clipExcerpt(pack, 200),
+    () => clipClaimTexts(pack, 160, 'other'),
+    () => clipClaimTexts(pack, 160, null),
+    () => dropOtherClaims(pack),
+    () => clipClaimTexts(pack, 80, null),
+    () => clipExcerpt(pack, 80),
+    () => clearList(pack, 'catalysts'),
+    () => clearList(pack, 'series_snapshot'),
+    () => clearList(pack, 'sources'),
+    () => takeList(pack, 'risks', 2),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => clearList(pack, 'claims'),
+    () => clearList(pack, 'risks'),
+    () => clearList(pack, 'stale_tripwires'),
+  ];
+  for (const step of steps) {
+    if (fits()) return pack;
+    step();
+  }
+  if (fits()) return pack;
+  const stub = stubPack(pack, cap, size);
+  for (const key of Object.keys(pack)) delete pack[key];
+  Object.assign(pack, stub);
+  if (size(pack) > cap) {
+    for (const key of Object.keys(pack)) delete pack[key];
+    Object.assign(pack, {
+      gaps: ['pack was over budget'],
+      budget: { limit_chars: cap, used_chars: 0, trimmed: true },
+    });
+    seal(pack, cap, true, size);
+  }
+  return pack;
 }

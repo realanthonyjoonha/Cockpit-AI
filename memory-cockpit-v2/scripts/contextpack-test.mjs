@@ -4,14 +4,18 @@ import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
+  assembleAgentPack,
   claimGaps,
   classifyClaim,
   classifyMetric,
+  enforceCharBudget,
   liveClaims,
   loadContextpackRules,
+  OVERVIEW_BUDGET_CHARS,
   parseAmounts,
   parseAsOf,
 } from '../server/contextpack.js';
+import { capAssistClipboard, HOUSE_FILE_POINTER } from '../server/assistContext.js';
 import {
   bannedNeedles,
   bannedWordHits,
@@ -81,6 +85,43 @@ else bad(`issuer tokens: ${bannedHits.join(', ')}`);
 const stems = bannedNeedles(rules);
 if (!stems.length) ok('no guid or inventor stems');
 else bad(`stems: ${stems.join(', ')}`);
+
+const fat = 'Z'.repeat(8000);
+const fatPack = assembleAgentPack({
+  compiled_at: '2026-01-15T00:00:00Z',
+  house_prior: { play: 'fixture', status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'short', notes: 'N'.repeat(20000) },
+  claims: [
+    { id: 'fat1', text: `Net sales were $10 million ${fat}`, as_of: '2026-01-01', grade: 'A', source_id: 'fixture' },
+    { id: 'fat2', text: `Gross margin was 40% ${fat}`, as_of: '2026-01-02', grade: 'A', source_id: 'fixture' },
+  ],
+  gaps: [],
+}, rules);
+const fatJson = JSON.stringify(fatPack);
+if (fatJson.length <= OVERVIEW_BUDGET_CHARS && fatPack.budget.used_chars === fatJson.length && !fatPack.house_prior.notes) {
+  ok('JS assemble stays under 10000 and drops notes');
+} else bad(`JS assemble cap ${fatJson.length} notes=${fatPack.house_prior && fatPack.house_prior.notes != null}`);
+
+const residual = [];
+for (let i = 1; i <= 12; i++) {
+  residual.push({ id: `r${i}`, text: `Unmatched item ${i} cost $${i} million`, as_of: `2026-${String(i).padStart(2, '0')}-01`, grade: 'A', source_id: 'fixture' });
+}
+const residualGaps = claimGaps(residual, rules);
+if (liveClaims(residual, rules).length === 8 && residualGaps.includes('4 unclassified numbered claims omitted')) {
+  ok('JS residual cap names the omission');
+} else bad(`JS residual ${JSON.stringify(residualGaps)}`);
+
+const pretty = enforceCharBudget({
+  claims: [{ id: 'fat', metric_id: 'company_revenue', text: `Net sales were $1 ${'Q'.repeat(12000)}`, as_of: '2026-01-01', grade: 'A' }],
+  house_prior: { status: 'CONFIRMED', date: '2026-01-15', notes: 'N'.repeat(20000), view_excerpt: 'H'.repeat(4000) },
+  gaps: [],
+}, 10000, (row) => JSON.stringify(row, null, 2).length);
+if (JSON.stringify(pretty, null, 2).length <= 10000 && !(pretty.house_prior && pretty.house_prior.notes)) {
+  ok('JS pretty snapshot stays under 10000');
+} else bad('JS pretty snapshot over cap');
+
+const clip = capAssistClipboard('rules\n```markdown\n' + 'H'.repeat(20000) + '\n```\n');
+if (clip.length <= 10000 && clip.includes(HOUSE_FILE_POINTER)) ok('assist clipboard points at get_house_view');
+else bad(`assist clipboard ${clip.length}`);
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);

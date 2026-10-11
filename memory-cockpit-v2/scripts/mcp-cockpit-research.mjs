@@ -94,6 +94,7 @@ function readAllowlistedMarkdownFile(filePath) {
 }
 
 const { loadPack } = await import(path.join(ROOT, 'server', 'pack.js'));
+const { enforceCharBudget, OVERVIEW_BUDGET_CHARS } = await import(path.join(ROOT, 'server', 'contextpack.js'));
 const { readHouseMarkdown } = await import(path.join(ROOT, 'server', 'thinHouseSave.js'));
 const { buildHouseAssistContext } = await import(path.join(ROOT, 'server', 'assistContext.js'));
 const { getLiveThinDeskProfiles } = await import(path.join(ROOT, 'server', 'thinDeskProfiles.js'));
@@ -299,7 +300,7 @@ server.tool(
     const sorLag = risks.some((r) => r.status_source === 'sor');
     const packSummary = pack.risk_summary || {};
 
-    return textResult({
+    const snapshot = {
       available: true,
       ticker,
       slug: d.slug,
@@ -329,7 +330,13 @@ server.tool(
         ? 'SoR risk status ahead of pack — risk_summary.watch is SoR-aware. COMPILE BOOK to sync store.'
         : 'Pack and SoR status aligned. COMPILE BOOK after house/risk SoR edits.',
       decision_support_only: true,
-    });
+    };
+    enforceCharBudget(
+      snapshot,
+      OVERVIEW_BUDGET_CHARS,
+      (row) => JSON.stringify(row, null, 2).length,
+    );
+    return textResult(snapshot);
   },
 );
 

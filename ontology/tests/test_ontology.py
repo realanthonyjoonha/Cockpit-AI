@@ -30,6 +30,9 @@ REQUIRED_TOP = {
 class TestCompileAndRetrieve(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        entity = paths.ENTITIES / "micron.md"
+        if not entity.is_file():
+            raise unittest.SkipTest("no MU entity on this tree")
         cls.pack_path = write_pack("MU")
         cls.store = json.loads(cls.pack_path.read_text(encoding="utf-8"))
 

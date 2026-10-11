@@ -128,7 +128,11 @@ export function writeReport(dir, outPath) {
   const fatTool = tools?.fat_pack;
   const fatRetrieve = pyCase(ctx, 'C-retrieve-fat-claims');
   const notes = pyCase(ctx, 'C-retrieve-unknown-house-field');
-  if (cap?.over_10000 || fatTool?.over_10000_chars) {
+  const notesLeak = (notes?.notes_len || 0) > 500;
+  const retrieveOver = !!(fatRetrieve?.over_budget)
+    || (fatRetrieve?.budget?.used_chars > 10_000)
+    || (fatRetrieve?.chars > 10_000);
+  if (cap?.over_10000 || fatTool?.over_10000_chars || retrieveOver || notesLeak) {
     findings.push({
       id: 'F5',
       severity: 'P1',
@@ -152,7 +156,7 @@ export function writeReport(dir, outPath) {
   }
 
   const agent = pyCase(ctx, 'C-agent-tail-cut');
-  if (agent && agent.truncated) {
+  if (agent && (agent.truncated || agent.has_end_marker === false || agent.chars > 28_000)) {
     findings.push({
       id: 'F6',
       severity: 'P1',
@@ -188,7 +192,7 @@ export function writeReport(dir, outPath) {
   const crowd = pyCase(ctx, 'C-retrieve-crowd');
   if (crowd && Array.isArray(crowd.claim_ids)) {
     const keptUnique = ['cash-old', 'debt-old', 'gm-old'].filter((id) => crowd.claim_ids.includes(id));
-    findings.push({
+    if (keptUnique.length < 3) findings.push({
       id: 'F8',
       severity: 'P1',
       area: 'context',
@@ -217,7 +221,8 @@ export function writeReport(dir, outPath) {
   }
 
   const residual = jsCase(ctx, 'C-residual-cap');
-  if (residual) {
+  const residualNamed = (residual?.gaps || []).some((g) => /unclassified numbered claims omitted/.test(String(g)));
+  if (residual && !(residual.kept === 8 && residualNamed)) {
     findings.push({
       id: 'F10',
       severity: 'P2',
@@ -482,6 +487,26 @@ export function writeReport(dir, outPath) {
   }
   if (phase1.length) {
     lines.push(`- Phase-1 repros not reproduced on this run: ${phase1.join('; ')}.`);
+  }
+  const phase2 = [];
+  if (!cap?.over_10000 && !fatTool?.over_10000_chars && !retrieveOver && !notesLeak) {
+    phase2.push('F5 assemble, retrieve, and get_pack_snapshot stay within 10000 characters; unknown house notes do not survive');
+  }
+  if (agent && !agent.truncated && agent.has_end_marker && agent.chars <= 28_000) {
+    phase2.push('F6 END CONTEXT is inside max_chars');
+  }
+  if (mu && Array.isArray(mu.series_ids) && mu.series_ids.includes('demo-price')) {
+    phase2.push('F7 risks intent keeps demo-price');
+  }
+  const crowdKept = ['cash-old', 'debt-old', 'gm-old'].filter((id) => (crowd?.claim_ids || []).includes(id));
+  if (crowdKept.length === 3) {
+    phase2.push('F8 older cash, debt, and gross margin stay beside newer revenue');
+  }
+  if (residual?.kept === 8 && residualNamed) {
+    phase2.push('F10 the residual cap of 8 names the omitted claims');
+  }
+  if (phase2.length) {
+    lines.push(`- Phase-2 repros not reproduced on this run: ${phase2.join('; ')}.`);
   }
   if (date?.winner === 'sep') {
     lines.push(`- Padded ISO dates do keep the newer claim (C-date-iso winner=${isoWinner}). The failure is the unpadded form, which still sorts as a string.`);

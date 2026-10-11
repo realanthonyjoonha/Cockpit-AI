@@ -195,16 +195,56 @@ def build_agent_context(
     else:
         parts.append("- (none listed)")
     parts.append("")
-    parts.append("---")
-    parts.append(
+
+    return _fit_agent_text("\n".join(parts), max_chars)
+
+
+def _fit_agent_text(body: str, max_chars: int) -> str:
+    """Reserve the closing block, then fill the body up to the remaining room.
+
+    The cut is on a newline. END CONTEXT is outside the sliced region, so a
+    canary that exists only in the closer survives. A dropped middle is a gap,
+    not a mid-token slice. The returned string is at most max_chars.
+    """
+    instruction = (
         "END CONTEXT. Answer the user question using only the material above. "
         "Cite claim grades/dates. Flag gaps."
     )
+    omitted = "the middle was omitted"
 
-    text = "\n".join(parts)
-    if len(text) > max_chars:
-        text = text[:max_chars] + "\n\n…[agent context truncated at max_chars]…"
-    return text
+    def render(body_text: str, dropped: bool) -> str:
+        blocks: list[str] = []
+        cleaned = (body_text or "").rstrip("\n")
+        if cleaned:
+            blocks.append(cleaned)
+        if dropped:
+            blocks.append(omitted)
+        blocks.append("---")
+        blocks.append(instruction)
+        return "\n".join(blocks)
+
+    full = render(body, False)
+    if len(full) <= max_chars:
+        return full
+
+    tail = render("", True)
+    room = max_chars - len(tail) - 1
+    fitted = ""
+    if room > 0 and len(body) > room:
+        cut = body.rfind("\n", 0, room + 1)
+        if cut > 0:
+            fitted = body[:cut].rstrip("\n")
+    elif room > 0:
+        fitted = body.rstrip("\n")
+    text = render(fitted, True)
+    if len(text) <= max_chars:
+        return text
+    if len(tail) <= max_chars:
+        return tail
+    marker = "END CONTEXT"
+    if max_chars >= len(marker):
+        return marker
+    return ""
 
 
 def agent_system_prompt() -> str:

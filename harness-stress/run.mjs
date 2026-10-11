@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
  * Deterministic stress run. Does not modify product sources.
- * Usage: node harness-stress/run.mjs [--report] [--assert p0|sectors]
+ * Usage: node harness-stress/run.mjs [--report] [--assert p0|p1|sectors]
  */
 import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertP0, assertSectors } from './lib/assert-phase.mjs';
+import { assertP1 } from './lib/assert-p1.mjs';
 import { contextProbe } from './lib/context-probe.mjs';
 import { flowSim } from './lib/flow-sim.mjs';
 import { emitPrompts } from './lib/prompts.mjs';
@@ -23,7 +24,7 @@ const assertAt = process.argv.indexOf('--assert');
 const assertPhase = assertAt >= 0 ? process.argv[assertAt + 1] : null;
 
 if (assertPhase) {
-  const known = { p0: assertP0, sectors: assertSectors };
+  const known = { p0: assertP0, p1: assertP1, sectors: assertSectors };
   const run = known[assertPhase];
   if (!run) {
     console.error(`unknown phase ${assertPhase}`);
