@@ -1,0 +1,63 @@
+"""Router needles stay generic. Existing Microsoft/Meta/Nvidia boosts are flagged, not extended."""
+from __future__ import annotations
+
+import ast
+import re
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+ASK = ROOT / "api" / "ask.py"
+
+# Flagged in docs/HARNESS-FIX-PLAN.md. A new issuer needle is not allowed.
+GRANDFATHERED = {"microsoft", "meta agreement", "nvidia"}
+ISSUER = {
+    "micron", "mu", "nvidia", "nvda", "amazon", "amzn", "nebius", "nbis",
+    "apple", "aapl", "google", "goog", "googl", "alphabet", "tesla", "tsla",
+    "microsoft", "meta", "jpmorgan", "jpm", "netflix", "nflx", "intel", "intc",
+    "asml", "tsm", "broadcom", "avgo", "amd",
+}
+
+
+def _match_calls(path: Path) -> list[list[str]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    found: list[list[str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not isinstance(func, ast.Name) or func.id != "_match":
+            continue
+        needles: list[str] = []
+        for arg in node.args[1:]:
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                needles.append(arg.value)
+        found.append(needles)
+    return found
+
+
+class TestRouterNeedles(unittest.TestCase):
+    def test_stance_literal_removed(self):
+        src = ASK.read_text(encoding="utf-8").lower()
+        self.assertNotIn("what is micron", src)
+        stance = next(n for n in _match_calls(ASK) if "stance" in n and "advantaged" in n)
+        self.assertEqual(stance, ["stance", "advantaged", "exposed", "contested"])
+
+    def test_no_new_issuer_needles(self):
+        for needles in _match_calls(ASK):
+            for needle in needles:
+                low = needle.lower()
+                if low in GRANDFATHERED:
+                    continue
+                for banned in ISSUER:
+                    self.assertIsNone(
+                        re.search(rf"\b{re.escape(banned)}\b", low),
+                        f"new issuer needle: {needle}",
+                    )
+
+
+if __name__ == "__main__":
+    unittest.main()

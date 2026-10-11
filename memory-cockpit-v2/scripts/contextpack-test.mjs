@@ -3,7 +3,22 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadContextpackRules, liveClaims, classifyMetric } from '../server/contextpack.js';
+import {
+  claimGaps,
+  classifyClaim,
+  classifyMetric,
+  liveClaims,
+  loadContextpackRules,
+  parseAmounts,
+  parseAsOf,
+} from '../server/contextpack.js';
+import {
+  bannedNeedles,
+  bannedWordHits,
+  checkDemo,
+  checkSectors,
+  loadSectors,
+} from '../../harness-stress/lib/sector-check.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(ROOT, '..');
@@ -49,6 +64,23 @@ else bad(`JS acme ${JSON.stringify(acmeRev)}`);
 if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) == null) {
   ok('JS does not special-case data-center revenue');
 } else bad('JS still has dc_revenue');
+
+const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps };
+const demoErrors = checkDemo(api);
+if (!demoErrors.length) ok('JS DEMO repros (dates, cash, guidance, goodwill, drops, grade)');
+else demoErrors.forEach((e) => bad(e));
+const sectorErrors = checkSectors(loadSectors(), api);
+if (!sectorErrors.length) ok('JS ten-sector fixture');
+else sectorErrors.forEach((e) => bad(e));
+
+const rulesFile = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
+const xbrlFile = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
+const bannedHits = [...bannedWordHits(rulesFile), ...bannedWordHits(xbrlFile)];
+if (!bannedHits.length) ok('metrics JSON and XBRL map have no issuer tokens');
+else bad(`issuer tokens: ${bannedHits.join(', ')}`);
+const stems = bannedNeedles(rules);
+if (!stems.length) ok('no guid or inventor stems');
+else bad(`stems: ${stems.join(', ')}`);
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);

@@ -108,7 +108,8 @@ export function writeReport(dir, outPath) {
   const drops = jsCase(ctx, 'C-drops');
   const dropIds = new Set((drops?.live || []).map((r) => r.id));
   const lost = (drops?.input_ids || []).filter((id) => !dropIds.has(id));
-  if (lost.includes('qual') || lost.includes('emp') || lost.includes('space')) {
+  const stillLost = ['emp', 'space', 'pct', 'pctsign', 'tight'].filter((id) => lost.includes(id));
+  if (stillLost.length) {
     findings.push({
       id: 'F4',
       severity: 'P1',
@@ -116,9 +117,9 @@ export function writeReport(dir, outPath) {
       verdict: 'confirmed',
       hypothesis: 'Rule-based elision drops boilerplate and keeps the facts that matter.',
       title: 'Seeded facts are dropped before they reach the agent pack',
-      summary: `Of the six probe claims, the live set kept ${(drops?.live || []).map((r) => r.id).join(', ') || '(none)'}. Dropped ids: ${lost.join(', ')}. A qualitative segment canary has no dollar sign or percent sign, so it is discarded. "45 percent" is discarded; "45%" is kept as residual. A spaced "$ 12" misses the residual regex. "Number of employees" is on the boilerplate list, so the headcount is discarded even when the sentence contains a dollar amount.`,
+      summary: `Of the six probe claims, the live set kept ${(drops?.live || []).map((r) => r.id).join(', ') || '(none)'}. Dropped ids that must stay: ${stillLost.join(', ')}. A qualitative sentence with no amount and no phrase is elision. "45 percent", a spaced "$ 12", and an employee count are supposed to remain.`,
       repro: ['node harness-stress/run.mjs', 'See context.json case C-drops.'],
-      evidence: { input_ids: drops.input_ids, live: drops.live, lost },
+      evidence: { input_ids: drops.input_ids, live: drops.live, lost, still_lost: stillLost },
     });
   }
 
@@ -402,7 +403,7 @@ export function writeReport(dir, outPath) {
   const lines = [];
   lines.push('# Cockpit harness stress — context and tools');
   lines.push('');
-  lines.push('Test only. This branch adds a harness and measured results. It does not change product code and it does not fix the findings.');
+  lines.push('Measured on this tree. A flaw is listed below only when this run still reproduces it.');
   lines.push('');
   lines.push(`Run at: ${meta.finished_at || '(see run-meta.json)'}`);
   lines.push(`Tokenizer: ${meta.tokenizer || 'gpt-tokenizer@2.9.0 default encode'}`);
@@ -457,7 +458,36 @@ export function writeReport(dir, outPath) {
   lines.push('## Refuted or narrowed');
   lines.push('');
   const isoWinner = iso?.winner;
-  lines.push(`- Padded ISO dates do keep the newer claim (C-date-iso winner=${isoWinner}). The failure is the unpadded form, which still sorts as a string.`);
+  const phase1 = [];
+  if (date?.winner === 'oct') phase1.push('F1 unpadded 2026-10-01 beats 2026-9-30');
+  if (isoWinner === 'new') phase1.push('C-date-iso keeps October');
+  if (stolen?.metric_id === 'cash' && outlook?.metric_id === 'revenue_guide') {
+    phase1.push('F2 cash-plus-guidance stays cash and the outlook sentence stays revenue_guide');
+  }
+  if (newCash?.metric_id === 'cash' && oldCash?.metric_id !== 'cash') {
+    phase1.push('F3 “Cash was $222 million” is the live cash claim');
+  }
+  const keptDrop = new Set((drops?.live || []).map((r) => r.id));
+  if (['emp', 'space', 'pct', 'pctsign', 'tight'].every((id) => keptDrop.has(id)) && !keptDrop.has('qual')) {
+    phase1.push('F4 employees, “45 percent”, and spaced “$ 12” stay; the qualitative canary is elided');
+  }
+  if (grade && grade.js_winner && grade.js_winner === grade.py_winner) {
+    phase1.push(`F9 missing grade and explicit C pick ${grade.js_winner} in both languages`);
+  }
+  const gwLive = goodwill?.live || [];
+  const inv = gwLive.find((r) => r.id === 'inv-imp');
+  const bal = gwLive.find((r) => r.id === 'gw-bal');
+  if (inv?.metric_id === 'impairment' && bal?.metric_id === 'goodwill') {
+    phase1.push('F17 inventory impairment is impairment and a goodwill balance is goodwill');
+  }
+  if (phase1.length) {
+    lines.push(`- Phase-1 repros not reproduced on this run: ${phase1.join('; ')}.`);
+  }
+  if (date?.winner === 'sep') {
+    lines.push(`- Padded ISO dates do keep the newer claim (C-date-iso winner=${isoWinner}). The failure is the unpadded form, which still sorts as a string.`);
+  } else {
+    lines.push(`- Unpadded and padded dates keep the newer claim (C-date-unpadded winner=${date?.winner}, C-date-iso winner=${isoWinner}). A bare FY label still has no invented month.`);
+  }
   lines.push(`- Same-day ties keep the earlier array element (C-same-day-tie winner=${jsCase(ctx, 'C-same-day-tie')?.winner}). That matches a stable sort. It is an arbitrary pick when two filings share a date, and it is visible in the case.`);
   lines.push('- The audit\'s "okay" rating is fair for a short pack that already uses padded dates and the exact rule phrases. It understates what happens when dates are unpadded, when "guidance" appears in an unrelated sentence, or when the host trajectory is the new-desk command plus eight slice notes.');
   if (!models) {

@@ -257,16 +257,19 @@ server.tool(
     const claims = Array.isArray(pack.claims) ? pack.claims : [];
     let ranked = [];
     try {
-      const { loadContextpackRules, liveClaims } = await import(path.join(ROOT, 'server', 'contextpack.js'));
-      const rules = loadContextpackRules(process.env.ONTOLOGY_ROOT);
-      ranked = liveClaims(claims, rules);
+      const mod = await import(path.join(ROOT, 'server', 'contextpack.js'));
+      try {
+        const rules = mod.loadContextpackRules(process.env.ONTOLOGY_ROOT);
+        ranked = mod.liveClaims(claims, rules);
+      } catch {
+        ranked = claims
+          .map((c, i) => ({ c, i }))
+          .sort((x, y) => mod.compareClaimsNewestFirst(x.c, y.c, x.i, y.i))
+          .map((x) => x.c)
+          .slice(0, 10);
+      }
     } catch {
-      ranked = [...claims].sort((a, b) => {
-        const ga = a.grade === 'A' ? 0 : a.grade === 'B' ? 1 : 2;
-        const gb = b.grade === 'A' ? 0 : b.grade === 'B' ? 1 : 2;
-        if (ga !== gb) return ga - gb;
-        return String(b.as_of || '').localeCompare(String(a.as_of || ''));
-      }).slice(0, 10);
+      ranked = [...claims].sort((a, b) => String(b.as_of || '').localeCompare(String(a.as_of || ''))).slice(0, 10);
     }
 
     // Same SoR overlay as glass risks/overview — pack.risk_summary lags after GO

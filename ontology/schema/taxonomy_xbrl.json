@@ -1,0 +1,19 @@
+{
+  "comment": "XBRL local name or prefixed tag to a taxonomy id. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "tags": {
+    "CashAndCashEquivalentsAtCarryingValue": "cash",
+    "CashAndCashEquivalents": "cash",
+    "Revenue": "company_revenue",
+    "Revenues": "company_revenue",
+    "SalesRevenueNet": "company_revenue",
+    "RevenueFromContractWithCustomerExcludingAssessedTax": "company_revenue",
+    "RevenueFromContractWithCustomerIncludingAssessedTax": "company_revenue",
+    "RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer": "company_revenue",
+    "PremiumsEarnedNet": "company_revenue",
+    "OperatingLeasesIncomeStatementLeaseRevenue": "company_revenue",
+    "InterestIncomeExpenseNet": "net_interest_income",
+    "Goodwill": "goodwill",
+    "GoodwillImpairmentLoss": "goodwill_impairment",
+    "InventoryNet": "inventory"
+  }
+}

@@ -145,7 +145,7 @@ def answer(focus: str, question: str) -> str:
                 lines.append(f"- {s.get('id')}: {s.get('latest')} as of {s.get('as_of')}")
         return "\n".join(lines)
 
-    if _match(q, "stance", "advantaged", "exposed", "contested", "what is micron"):
+    if _match(q, "stance", "advantaged", "exposed", "contested"):
         obj = store.get("object") or {}
         lines.append(f"**{obj.get('name')} ({obj.get('ticker')})**")
         if obj.get("summary"):

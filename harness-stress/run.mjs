@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
  * Deterministic stress run. Does not modify product sources.
- * Usage: node harness-stress/run.mjs [--report]
+ * Usage: node harness-stress/run.mjs [--report] [--assert p0|sectors]
  */
 import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertP0, assertSectors } from './lib/assert-phase.mjs';
 import { contextProbe } from './lib/context-probe.mjs';
 import { flowSim } from './lib/flow-sim.mjs';
 import { emitPrompts } from './lib/prompts.mjs';
@@ -18,6 +19,25 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..');
 const OUT = path.join(HERE, 'results');
 const reportOnly = process.argv.includes('--report');
+const assertAt = process.argv.indexOf('--assert');
+const assertPhase = assertAt >= 0 ? process.argv[assertAt + 1] : null;
+
+if (assertPhase) {
+  const known = { p0: assertP0, sectors: assertSectors };
+  const run = known[assertPhase];
+  if (!run) {
+    console.error(`unknown phase ${assertPhase}`);
+    process.exit(1);
+  }
+  const errors = run();
+  if (errors.length) {
+    for (const err of errors) console.error(`✗ ${err}`);
+    console.error(`${errors.length} ${assertPhase} case(s) failed`);
+    process.exit(1);
+  }
+  console.log(`assert ${assertPhase} ok`);
+  if (!reportOnly && assertPhase) process.exit(0);
+}
 
 function productDirty() {
   const out = execSync('git status --short --untracked-files=all', {
