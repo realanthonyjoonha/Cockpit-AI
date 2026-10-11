@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { flowSim, COMMAND_TOKEN_BASELINE } from './flow-sim.mjs';
 import { loadSectors } from './sector-check.mjs';
 import { countTokens } from './tokens.mjs';
-import { countCardTokens, SLICE_CARD_TOKEN_CAP } from '../../memory-cockpit-v2/scripts/slice-card-check.mjs';
+import { checkSliceCard, countCardTokens, SLICE_CARD_TOKEN_CAP } from '../../memory-cockpit-v2/scripts/slice-card-check.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -133,6 +133,20 @@ export function assertP3() {
     const ptRun = runChecker([pt]);
     if (ptRun.status !== 1 || !/buy\/sell\/target\/sizing/.test(ptRun.stderr)) {
       errors.push(`price target exit ${ptRun.status}: ${ptRun.stderr}`);
+    }
+
+    const allowed = [
+      ['sell-side', '- Sell-side coverage was thin. (2026-01-01) [A] [[sec-10k]]\n'],
+      ['hold-meeting', '- The board will hold a meeting. (2026-01-01) [A] [[sec-8k]]\n'],
+      ['gap-year', 'GAP: fiscal 2026 filing not read.\n'],
+    ];
+    for (const [id, text] of allowed) {
+      const got = checkSliceCard(text);
+      if (!got.ok) errors.push(`${id} false-reject ${JSON.stringify(got.errors)}`);
+    }
+    const stillAdvice = checkSliceCard('- We hold the name. (2026-01-01) [A] [[sec-10k]]\n');
+    if (stillAdvice.ok || !stillAdvice.errors.some((e) => /buy\/sell\/target\/sizing/.test(e))) {
+      errors.push('bare hold advice was accepted');
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });
