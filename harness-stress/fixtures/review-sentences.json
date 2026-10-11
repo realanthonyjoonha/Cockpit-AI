@@ -111,14 +111,14 @@
       "older": { "text": "A $2.3 billion impairment of goodwill was recorded in 2024.", "as_of": "2024-12-31" },
       "newer": { "text": "The Company performed its annual goodwill impairment test in the fourth quarter.", "as_of": "2025-12-31" },
       "metric_id": "goodwill_impairment",
-      "sentence_only": "older"
+      "sentence_only": null
     },
     {
       "id": "gw-losses-vs-none-recognized",
       "older": { "text": "Goodwill impairment losses totaled $12 million in 2024.", "as_of": "2024-12-31" },
       "newer": { "text": "No goodwill impairment was recognized in 2025 or 2024.", "as_of": "2025-12-31" },
       "metric_id": "goodwill_impairment",
-      "sentence_only": "older"
+      "sentence_only": null
     },
     {
       "id": "impairment-vs-tested-annually",
@@ -132,7 +132,7 @@
       "older": { "text": "Net cash provided by operating activities was $500 million.", "as_of": "2024-12-31" },
       "newer": { "text": "Operating activities may be affected by weather.", "as_of": "2026-06-01" },
       "metric_id": "operating_cash_flow",
-      "sentence_only": "older"
+      "sentence_only": null
     },
     {
       "id": "goodwill-vs-acquisition-impaired",
@@ -153,14 +153,14 @@
       "older": { "text": "Total revenue was $20 billion.", "as_of": "2024-12-31" },
       "newer": { "text": "Unearned revenue was $40 million.", "as_of": "2025-12-31" },
       "metric_id": "company_revenue",
-      "sentence_only": "older"
+      "sentence_only": null
     },
     {
       "id": "gw-vs-non-goodwill",
       "older": { "text": "Goodwill impairment was $9 million.", "as_of": "2024-12-31" },
       "newer": { "text": "Impairment of non-goodwill intangible assets was $4 million.", "as_of": "2025-12-31" },
       "metric_id": "goodwill_impairment",
-      "sentence_only": "older"
+      "sentence_only": null
     },
     {
       "id": "ifrs-revenue-vs-segment",

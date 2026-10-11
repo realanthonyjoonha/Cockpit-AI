@@ -12,17 +12,26 @@ const ENTITY = /&(#x[0-9A-Fa-f]+|#\d+|[A-Za-z]+);/g;
 const NAMED = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
 const DATE = /^(\d{4})-(\d{2})-(\d{2})/;
 const PLAIN = /^-?\d+(?:\.\d+)?$/;
-const INT = /^-?\d+$/;
+const INT = /^[+-]?\d+$/;
 const NUM_WORDS = {
   no: '0', none: '0', nil: '0', zero: '0',
   one: '1', two: '2', three: '3', four: '4', five: '5',
   six: '6', seven: '7', eight: '8', nine: '9', ten: '10',
 };
-const TEXT_LOCALS = new Set(['identifier', 'startDate', 'endDate', 'instant', 'explicitMember', 'measure']);
+const TEXT_LOCALS = new Set(['identifier', 'startdate', 'enddate', 'instant', 'explicitmember', 'typedmember', 'measure']);
+const DATE_LOCALS = { startdate: 'startDate', enddate: 'endDate', instant: 'instant' };
 const DOT_FORMATS = new Set(['', 'numdotdecimal', 'num-dot-decimal']);
 const COMMA_FORMATS = new Set(['numcommadecimal', 'num-comma-decimal']);
 const ZERO_FORMATS = new Set(['fixed-zero', 'fixedzero', 'zerodash']);
 const WORD_FORMATS = new Set(['numwordsen', 'num-word-en']);
+const ACCESSION = /ACCESSION[- ]NUMBER[^0-9A-Z]*([0-9]{10}-[0-9]{2}-[0-9]{6})/i;
+const ACCESSION_NAME = /([0-9]{10}-[0-9]{2}-[0-9]{6})/;
+const FILING_DATE = /FILING[- ]DATE[^0-9]*([0-9]{4}-[0-9]{2}-[0-9]{2})/i;
+const ACCEPT = /ACCEPTANCE-DATETIME[^0-9]*([0-9]{8})/i;
+const TYPE = /(?:^|[\n<])TYPE[:\s>]*([A-Z0-9][-A-Z0-9/]+)/i;
+const DEI_FLAG = /name="dei:AmendmentFlag"[^>]*>\s*(true|1|yes)/i;
+const DEI_TYPE = /name="dei:DocumentType"[^>]*>\s*([^<]+)/i;
+const RESTAT = /restat/i;
 
 let taxonomyCache = null;
 
@@ -35,6 +44,11 @@ export function loadTaxonomy(ontologyRoot) {
     taxonomyCache = { namespaces: {}, metrics: {} };
   }
   return taxonomyCache;
+}
+
+export function sentenceFillAllowed(metricId, taxonomy = null) {
+  const spec = ((taxonomy || loadTaxonomy()).metrics || {})[metricId] || {};
+  return spec.sentence_fill !== false;
 }
 
 function decode(text) {
@@ -64,6 +78,11 @@ function local(name) {
   return parts[parts.length - 1];
 }
 
+function isMember(name) {
+  const loc = local(name).toLowerCase();
+  return loc === 'explicitmember' || loc === 'typedmember' || loc.endsWith('member');
+}
+
 function canonicalPrefix(prefix, prefixes, namespaces) {
   const uri = prefixes[prefix];
   if (uri) {
@@ -86,9 +105,37 @@ function dateOnly(raw) {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
 }
 
+export function filingMeta(text, { sourceId = null, filed = null, accession = null } = {}) {
+  const blob = String(text || '');
+  let acc = accession || null;
+  const am = ACCESSION.exec(blob);
+  if (!acc && am) acc = am[1];
+  if (!acc && sourceId) {
+    const n = ACCESSION_NAME.exec(sourceId);
+    if (n) acc = n[1];
+  }
+  let day = filed || null;
+  const d = FILING_DATE.exec(blob);
+  if (!day && d) day = d[1];
+  if (!day) {
+    const a = ACCEPT.exec(blob);
+    if (a) day = `${a[1].slice(0, 4)}-${a[1].slice(4, 6)}-${a[1].slice(6, 8)}`;
+  }
+  let form = null;
+  const t = DEI_TYPE.exec(blob);
+  if (t) form = t[1].trim();
+  if (!form) {
+    const t2 = TYPE.exec(blob);
+    if (t2) form = t2[1].trim();
+  }
+  let amendment = DEI_FLAG.test(blob) || Boolean(form && form.toUpperCase().endsWith('/A'));
+  if (sourceId && /10-?k\/?a|10-?q\/?a|20-?f\/?a|amend/i.test(sourceId)) amendment = true;
+  return { filed: day, accession: acc, form, amendment };
+}
+
 export function shiftDecimal(num, scale) {
   const neg = num.startsWith('-');
-  const s = num.replace(/^-+/, '');
+  const s = num.replace(/^[+-]+/, '');
   const dot = s.indexOf('.');
   let ip = dot < 0 ? s : s.slice(0, dot);
   let fp = dot < 0 ? '' : s.slice(dot + 1);
@@ -128,7 +175,17 @@ function unitString(unit) {
   return join(unit.measures);
 }
 
-export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy = null } = {}) {
+function applySign(num, scale, sign) {
+  const scaled = shiftDecimal(num, scale);
+  const absText = scaled.startsWith('-') ? scaled.slice(1) : scaled;
+  if (String(sign || '').trim() === '-' && absText !== '0') return `-${absText}`;
+  if (String(sign || '').trim() === '-') return '0';
+  return scaled;
+}
+
+export function parseXbrlFacts(text, {
+  sourceId = null, orderBase = 0, filed = null, accession = null, taxonomy = null,
+} = {}) {
   const namespaces = (taxonomy || loadTaxonomy()).namespaces || {};
   const prefixes = {};
   const contexts = {};
@@ -136,19 +193,22 @@ export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy 
   const rawFacts = [];
   const stack = [];
   let excludeDepth = 0;
+  let dupContext = 0;
   let pos = 0;
   const doc = String(text || '');
+  const meta = filingMeta(doc, { sourceId, filed, accession });
 
   const feed = (chunk) => {
     if (!chunk || excludeDepth) return;
     for (const frame of stack) if (frame.want) frame.text.push(chunk);
   };
   const inside = (loc) => {
-    for (let k = stack.length - 1; k >= 0; k--) if (stack[k].local === loc) return stack[k];
+    const want = loc.toLowerCase();
+    for (let k = stack.length - 1; k >= 0; k--) if (stack[k].local.toLowerCase() === want) return stack[k];
     return null;
   };
   const close = (frame) => {
-    const loc = frame.local;
+    const loc = frame.local.toLowerCase();
     const body = decode(frame.text.join(''));
     const attrs = frame.attrs;
     if (loc === 'exclude') {
@@ -170,11 +230,14 @@ export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy 
       return;
     }
     const ctx = inside('context');
-    if (ctx && (loc === 'startDate' || loc === 'endDate' || loc === 'instant')) ctx.ctx[loc] = dateOnly(body);
+    if (ctx && Object.prototype.hasOwnProperty.call(DATE_LOCALS, loc)) ctx.ctx[DATE_LOCALS[loc]] = dateOnly(body);
     else if (ctx && loc === 'forever') ctx.ctx.forever = true;
-    else if (ctx && loc === 'explicitMember') ctx.ctx.dims.push([attrs.dimension || '', body.trim()]);
-    else if (ctx && loc === 'typedMember') ctx.ctx.dims.push([attrs.dimension || '', 'typed']);
-    else if (loc === 'context' && attrs.id) contexts[attrs.id] = frame.ctx;
+    else if (ctx && isMember(frame.local)) ctx.ctx.dims.push([attrs.dimension || '', body.trim() || 'member']);
+    else if (ctx && (loc === 'segment' || loc === 'scenario')) ctx.ctx.has_segment = true;
+    else if (loc === 'context' && attrs.id) {
+      if (!Object.prototype.hasOwnProperty.call(contexts, attrs.id)) contexts[attrs.id] = frame.ctx;
+      else dupContext += 1;
+    }
     const unit = inside('unit');
     if (unit && loc === 'measure') {
       if (inside('unitNumerator')) unit.unit.num.push(body.trim());
@@ -209,20 +272,21 @@ export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy 
     for (const [key, val] of Object.entries(attrs)) {
       if (key.startsWith('xmlns:')) prefixes[key.slice(6)] = val;
     }
-    const loc = local(name);
-    const isIxFraction = loc.toLowerCase() === 'nonfraction';
+    const locName = local(name);
+    const loc = locName.toLowerCase();
+    const isIxFraction = loc === 'nonfraction';
     const isInstanceFact = !isIxFraction
       && Object.prototype.hasOwnProperty.call(attrs, 'contextRef')
       && Object.prototype.hasOwnProperty.call(attrs, 'unitRef')
-      && !['nonnumeric', 'fraction'].includes(loc.toLowerCase());
+      && !['nonnumeric', 'fraction'].includes(loc);
     const frame = {
       name,
-      local: loc,
+      local: locName,
       attrs,
       text: [],
       fact: isIxFraction || isInstanceFact,
-      want: isIxFraction || isInstanceFact || TEXT_LOCALS.has(loc),
-      ctx: loc === 'context' ? { dims: [] } : null,
+      want: isIxFraction || isInstanceFact || TEXT_LOCALS.has(loc) || isMember(locName),
+      ctx: loc === 'context' ? { dims: [], has_segment: false } : null,
       unit: loc === 'unit' ? { measures: [], num: [], den: [] } : null,
     };
     if (loc === 'exclude') excludeDepth += 1;
@@ -257,10 +321,7 @@ export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy 
     }
     const scaleRaw = String(raw.scale || '').trim();
     const scale = INT.test(scaleRaw) ? parseInt(scaleRaw, 10) : 0;
-    let valueText = shiftDecimal(num, scale);
-    if (String(raw.sign || '').trim() === '-' && valueText !== '0') {
-      valueText = valueText.startsWith('-') ? valueText.slice(1) : `-${valueText}`;
-    }
+    const valueText = applySign(num, scale, raw.sign);
     const decRaw = String(raw.decimals || '').trim();
     const decimals = INT.test(decRaw) ? parseInt(decRaw, 10) : (decRaw.toUpperCase() === 'INF' ? 'INF' : null);
     let period;
@@ -276,6 +337,7 @@ export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy 
     }
     seen.set(key, valueText);
     const dims = ctx.dims.map(([a, b]) => [canonicalConcept(a, prefixes, namespaces), canonicalConcept(b, prefixes, namespaces)]);
+    const restated = RESTAT.test(raw.context || '') || dims.some(([a, b]) => RESTAT.test(a) || RESTAT.test(b));
     facts.push({
       concept,
       value: Number(valueText),
@@ -283,26 +345,38 @@ export function parseXbrlFacts(text, { sourceId = null, orderBase = 0, taxonomy 
       unit: unitStr,
       decimals,
       period,
-      dimensional: dims.length > 0,
+      dimensional: dims.length > 0 || Boolean(ctx.has_segment),
       dims,
       context_id: raw.context,
       source_id: sourceId,
       order: orderBase + idx,
+      filed: meta.filed,
+      accession: meta.accession,
+      form: meta.form,
+      amendment: Boolean(meta.amendment),
+      restated,
     });
   });
   const notes = [];
+  if (dupContext) notes.push(`xbrl: ${dupContext} duplicate context id(s); first definition kept`);
   if (counts.conflict) notes.push(`xbrl: ${counts.conflict} duplicate facts disagree; first kept`);
   if (counts.unparsed) notes.push(`xbrl: ${counts.unparsed} facts with an unsupported format skipped`);
   if (counts.no_context || counts.no_unit) {
     notes.push(`xbrl: ${counts.no_context + counts.no_unit} facts without a context or unit skipped`);
   }
-  return { facts, notes, contexts: Object.keys(contexts).length, units: Object.keys(units).length };
+  return { facts, notes, contexts: Object.keys(contexts).length, units: Object.keys(units).length, filing: meta };
 }
 
 function days(period) {
   if (!period || period.type !== 'duration' || !period.start || !period.end) return 0;
   const toUtc = (s) => Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
   return Math.round((toUtc(period.end) - toUtc(period.start)) / 86400000);
+}
+
+function durationPref(n) {
+  if (n >= 341) return 2;
+  if (n >= 70 && n <= 110) return 1;
+  return 0;
 }
 
 function unitOk(unit, kind) {
@@ -366,15 +440,49 @@ export function taggedSlots(facts, taxonomy = null) {
       && f.period.end
       && unitOk(String(f.unit || ''), String(spec.unit)));
     if (!cands.length) continue;
-    const rank = (f) => [f.period.end, days(f.period), -concepts.indexOf(f.concept), -Number(f.order || 0)];
+    const rank = (f) => [
+      f.period.end,
+      f.filed || '',
+      f.amendment ? 1 : 0,
+      f.restated ? 1 : 0,
+      durationPref(days(f.period)),
+      -concepts.indexOf(f.concept),
+      Number(f.order || 0),
+    ];
     const best = (rows) => rows.reduce((acc, f) => (acc == null || cmpTuple(rank(f), rank(acc)) > 0 ? f : acc), null);
     const win = best(cands);
+    const sameEnd = cands.filter((f) => f !== win
+      && f.concept === win.concept
+      && f.period.end === win.period.end
+      && Math.abs(days(f.period) - days(win.period)) <= 7
+      && f.value_text !== win.value_text);
+    const restatedFrom = sameEnd.length ? best(sameEnd) : null;
     const older = cands.filter((f) => f.concept === win.concept
       && f.period.end < win.period.end
       && Math.abs(days(f.period) - days(win.period)) <= 7);
-    const prior = older.length ? best(older) : null;
+    const priorYear = older.length ? best(older) : null;
+    let ytd = null;
+    if (spec.period === 'duration' && durationPref(days(win.period)) === 1) {
+      const longer = cands.filter((f) => f.period.end === win.period.end && days(f.period) >= 111 && days(f.period) <= 340);
+      if (longer.length) ytd = best(longer);
+    }
     let text = `${local(win.concept)} ${win.unit} ${groupDigits(win.value_text)} for ${periodDesc(win.period)} (consolidated tagged fact`;
-    if (prior) text += `; prior ${prior.period.end}: ${groupDigits(prior.value_text)}`;
+    let prior = null;
+    if (restatedFrom) {
+      text += `; restated from ${groupDigits(restatedFrom.value_text)}`;
+      prior = {
+        end: restatedFrom.period.end,
+        value: restatedFrom.value,
+        value_text: restatedFrom.value_text,
+        restated: true,
+        source_id: restatedFrom.source_id ?? null,
+      };
+    }
+    if (priorYear) {
+      text += `; prior ${priorYear.period.end}: ${groupDigits(priorYear.value_text)}`;
+      if (!prior) prior = { end: priorYear.period.end, value: priorYear.value, value_text: priorYear.value_text };
+    }
+    if (ytd) text += `; ytd ${groupDigits(ytd.value_text)}`;
     text += ')';
     slots[mid] = {
       id: `xbrl:${win.concept}:${periodLabel(win.period)}`,
@@ -391,7 +499,16 @@ export function taggedSlots(facts, taxonomy = null) {
       unit: win.unit,
       decimals: win.decimals ?? null,
       period: { ...win.period },
-      prior: prior ? { end: prior.period.end, value: prior.value, value_text: prior.value_text } : null,
+      filed: win.filed ?? null,
+      accession: win.accession ?? null,
+      prior,
+      ytd: ytd ? {
+        start: ytd.period.start,
+        end: ytd.period.end,
+        value: ytd.value,
+        value_text: ytd.value_text,
+        concept: ytd.concept,
+      } : null,
     };
   }
   return slots;
