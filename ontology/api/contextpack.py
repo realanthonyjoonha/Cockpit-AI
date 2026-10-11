@@ -1,5 +1,10 @@
 """ContextPack v2 — pinned book + one live claim per metric. No LLM. No store writes.
 
+A live metric slot is a tagged XBRL fact when the pack has one for that metric.
+A sentence fills a slot only when no tagged fact exists, only when it carries an
+amount of the slot's kind, and it is marked low confidence. Sentences never
+overwrite a tagged value; they stay as context.
+
 Date, unit, and phrase rules match memory-cockpit-v2/server/contextpack.js.
 ASCII needles. No ticker branch. No model call.
 """
@@ -7,15 +12,24 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from api.xbrl_facts import concept_index, load_taxonomy, tagged_slots  # noqa: E402
+
 RULES_PATH = ROOT / "schema" / "contextpack_metrics.json"
 XBRL_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
 
 GRADE_W = {"A": 3, "B": 2, "C": 1}
 FISCAL_GAP = "as_of is a fiscal label without a period-end date"
+SENTENCE_GAP = "no tagged XBRL fact; live value is sentence-derived (low confidence): "
+CONTEXT_CAP = 8
+_COUNT = re.compile(r"\b(?!(?:19|20)\d{2}\b)\d[\d,]*(?:\.\d+)?\b")
 
 _MONTHS = {
     "january": 1, "jan": 1,
@@ -109,21 +123,12 @@ _SENTENCE_SCALE_VALUE = {
 }
 _SYMBOL_CODE = {"$": "USD", "us$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY"}
 
-_XBRL: dict[str, Any] | None = None
-
-
 def load_rules() -> dict[str, Any]:
     return json.loads(RULES_PATH.read_text(encoding="utf-8"))
 
 
 def load_xbrl() -> dict[str, Any]:
-    global _XBRL
-    if _XBRL is None:
-        if XBRL_PATH.is_file():
-            _XBRL = json.loads(XBRL_PATH.read_text(encoding="utf-8"))
-        else:
-            _XBRL = {"tags": {}}
-    return _XBRL
+    return load_taxonomy()
 
 
 def grade_weight(grade: Any) -> int:
@@ -209,13 +214,13 @@ def _resolve_concept(concept: str, rules: dict[str, Any], xbrl: dict[str, Any]) 
     ids = _metric_ids(rules)
     if concept in ids:
         return concept
-    tags = (xbrl or {}).get("tags") or {}
-    if concept in tags and str(tags[concept]) in ids:
-        return str(tags[concept])
+    idx = concept_index(xbrl)
+    if concept in idx and idx[concept] in ids:
+        return idx[concept]
     if ":" in concept:
         local = concept.split(":")[-1]
-        if local in tags and str(tags[local]) in ids:
-            return str(tags[local])
+        if local in idx and idx[local] in ids:
+            return idx[local]
     return None
 
 
@@ -505,29 +510,65 @@ def _claim_sort_key(c: dict[str, Any], index: int) -> tuple:
     return (sk, grade_weight(c.get("grade")), -index)
 
 
+def sentence_has_amount(metric_id: str, text: str, tax: dict[str, Any] | None = None) -> bool:
+    """A sentence may fill a slot only when it carries an amount of that slot's kind."""
+    tax = tax or load_taxonomy()
+    kind = ((tax.get("metrics") or {}).get(metric_id) or {}).get("unit") or "currency_or_percent"
+    if kind in ("count", "shares"):
+        return _COUNT.search(text or "") is not None
+    units = {a.get("unit") for a in parse_amounts(text or "")}
+    if kind == "currency":
+        return "currency" in units
+    if kind == "percent":
+        return "percent" in units
+    return "currency" in units or "percent" in units
+
+
+def _context_row(c: dict[str, Any], mid: str, reason: str) -> dict[str, Any]:
+    return {
+        "id": c.get("id"),
+        "metric_id": mid,
+        "text": c.get("text"),
+        "as_of": c.get("as_of"),
+        "grade": c.get("grade"),
+        "source_id": c.get("source_id"),
+        "reason": reason,
+    }
+
+
 def live_claims(
     claims: list[dict[str, Any]],
     rules: dict[str, Any] | None = None,
     *,
     residual_cap: int = 8,
     gaps_out: list[str] | None = None,
+    facts: list[dict[str, Any]] | None = None,
+    context_out: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """One latest claim per metric_id. Residual numbered claims capped.
+    """One live row per metric_id. Residual numbered claims capped.
 
-    A fiscal label does not beat a real period-end date. Boilerplate does not drop a figure.
+    Tagged facts own their metric. A sentence fills only an untagged metric, only
+    with an amount, and is marked low confidence. A fiscal label does not beat a
+    real period-end date. Boilerplate does not drop a figure.
     """
     rules = rules or load_rules()
+    tax = load_taxonomy()
+    slots = tagged_slots(facts or [], tax)
     buckets: dict[str, list[tuple[int, dict[str, Any]]]] = {}
     residual: list[tuple[int, dict[str, Any]]] = []
+    context: list[tuple[int, dict[str, Any]]] = []
     gaps: list[str] = []
     seen: set[str] = set()
+    newer: dict[str, int] = {}
+    base = len(slots)
 
     def add_gap(msg: str) -> None:
         if msg not in seen:
             seen.add(msg)
             gaps.append(msg)
 
-    for i, c in enumerate(claims or []):
+    for j, c in enumerate(claims or []):
+        i = base + j
         text = c.get("text") or ""
         classified = classify_claim(c, rules)
         for note in classified.get("notes") or []:
@@ -536,16 +577,34 @@ def live_claims(
             add_gap(FISCAL_GAP)
         mid = classified.get("metric_id")
         if mid:
-            buckets.setdefault(str(mid), []).append((i, c))
+            mid = str(mid)
+            if mid in slots:
+                context.append((i, _context_row(c, mid, "tagged_slot")))
+                slot_key = parse_as_of(slots[mid]["as_of"]).get("sort_key") or ""
+                own_key = parse_as_of(c.get("as_of")).get("sort_key") or ""
+                if own_key > slot_key:
+                    newer[mid] = newer.get(mid, 0) + 1
+            elif not sentence_has_amount(mid, text, tax):
+                context.append((i, _context_row(c, mid, "no_amount")))
+            else:
+                buckets.setdefault(mid, []).append((i, c))
         elif _has_figure(text):
             residual.append((i, c))
 
     indexed: list[tuple[int, dict[str, Any]]] = []
     superseded: list[dict[str, Any]] = []
+    for mid, n in newer.items():
+        add_gap(f"{mid}: {n} newer sentence(s) not used; live value is the tagged {slots[mid]['as_of']} fact")
+    for k, row in enumerate(slots.values()):
+        indexed.append((k, dict(row)))
+    if buckets:
+        add_gap(SENTENCE_GAP + ", ".join(sorted(buckets)))
     for mid, group in buckets.items():
         ordered = sorted(group, key=lambda ic: _claim_sort_key(ic[1], ic[0]), reverse=True)
         winner = dict(ordered[0][1])
         winner["metric_id"] = mid
+        winner["origin"] = "sentence"
+        winner["confidence"] = "low"
         indexed.append((ordered[0][0], winner))
         for _, old in ordered[1:]:
             superseded.append({
@@ -569,6 +628,9 @@ def live_claims(
     live = [c for _, c in indexed]
     if gaps_out is not None:
         gaps_out.extend(gaps)
+    if context_out is not None:
+        context.sort(key=lambda ic: _claim_sort_key(ic[1], ic[0]), reverse=True)
+        context_out.extend(row for _, row in context)
     return live, superseded
 
 
@@ -577,9 +639,10 @@ def claim_gaps(
     rules: dict[str, Any] | None = None,
     *,
     residual_cap: int = 8,
+    facts: list[dict[str, Any]] | None = None,
 ) -> list[str]:
     gaps: list[str] = []
-    live_claims(claims, rules, residual_cap=residual_cap, gaps_out=gaps)
+    live_claims(claims, rules, residual_cap=residual_cap, gaps_out=gaps, facts=facts)
     return gaps
 
 
@@ -618,7 +681,11 @@ def stale_tripwires(
         if not mid or mid not in by_metric:
             continue
         claim = by_metric[mid]
-        claim_by = _currency_values(claim.get("text") or "")
+        if claim.get("origin") == "xbrl":
+            unit = str(claim.get("unit") or "")
+            claim_by = {unit: [float(claim["value"])]} if re.fullmatch(r"[A-Z]{3}", unit) else {}
+        else:
+            claim_by = _currency_values(claim.get("text") or "")
         if not claim_by:
             continue
         for tw in r.get("tripwires") or []:
@@ -667,12 +734,48 @@ def stale_tripwires(
     return out
 
 
+def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
+    row = {
+        "id": c.get("id"),
+        "metric_id": c.get("metric_id"),
+        "text": c.get("text"),
+        "as_of": c.get("as_of"),
+        "grade": c.get("grade"),
+        "source_id": c.get("source_id"),
+    }
+    if c.get("origin"):
+        row["origin"] = c.get("origin")
+        row["confidence"] = c.get("confidence")
+    if c.get("origin") == "xbrl":
+        for key in ("concept", "value", "unit"):
+            row[key] = c.get(key)
+    return row
+
+
+def context_claim(c: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": c.get("id"),
+        "metric_id": c.get("metric_id"),
+        "text": (c.get("text") or "")[:240],
+        "as_of": c.get("as_of"),
+        "reason": c.get("reason"),
+    }
+
+
 def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict[str, Any]:
     """Pinned ContextPack v2 from a compiled store dict. Does not write."""
     rules = load_rules()
     claims = list(store.get("claims") or [])
     extra: list[str] = []
-    live, superseded = live_claims(claims, rules, residual_cap=residual_cap, gaps_out=extra)
+    context: list[dict[str, Any]] = []
+    live, superseded = live_claims(
+        claims,
+        rules,
+        residual_cap=residual_cap,
+        gaps_out=extra,
+        facts=list(store.get("facts") or []),
+        context_out=context,
+    )
     all_risks = list(store.get("risks") or [])
     pin_risks = []
     for r in all_risks:
@@ -724,17 +827,8 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
             "fired": rs.get("fired") or [],
             "risks": pin_risks,
         },
-        "claims": [
-            {
-                "id": c.get("id"),
-                "metric_id": c.get("metric_id"),
-                "text": c.get("text"),
-                "as_of": c.get("as_of"),
-                "grade": c.get("grade"),
-                "source_id": c.get("source_id"),
-            }
-            for c in live
-        ],
+        "claims": [pack_claim(c) for c in live],
+        "context_claims": [context_claim(c) for c in context[:CONTEXT_CAP]],
         "superseded_count": len(superseded),
         "stale_tripwires": stale,
         "gaps": gaps,
@@ -786,10 +880,21 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
     if claims:
         lines.append("## Live claims (one per metric)")
         for c in claims:
+            tag = ""
+            if c.get("origin") == "xbrl":
+                tag = " · tagged"
+            elif c.get("confidence") == "low":
+                tag = " · sentence, low confidence"
             lines.append(
-                f"- `{c.get('metric_id')}` [{c.get('grade')}] ({c.get('as_of')}) {c.get('text')} "
+                f"- `{c.get('metric_id')}`{tag} [{c.get('grade')}] ({c.get('as_of')}) {c.get('text')} "
                 f"← {c.get('source_id')}"
             )
+        lines.append("")
+    context = pack.get("context_claims") or []
+    if context:
+        lines.append("## Context sentences (not live values)")
+        for c in context:
+            lines.append(f"- `{c.get('metric_id')}` ({c.get('as_of')}) {c.get('text')} — {c.get('reason')}")
         lines.append("")
     gaps = pack.get("gaps") or []
     lines.append("## Gaps")
