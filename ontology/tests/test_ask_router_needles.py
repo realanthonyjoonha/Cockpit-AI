@@ -13,7 +13,8 @@ sys.path.insert(0, str(ROOT))
 ASK = ROOT / "api" / "ask.py"
 
 # Flagged in docs/HARNESS-FIX-PLAN.md. A new issuer needle is not allowed.
-GRANDFATHERED = {"microsoft", "meta agreement", "nvidia"}
+# The contract scorer no longer keeps issuer or dollar-amount literals.
+GRANDFATHERED = {"nvidia"}
 ISSUER = {
     "micron", "mu", "nvidia", "nvda", "amazon", "amzn", "nebius", "nbis",
     "apple", "aapl", "google", "goog", "googl", "alphabet", "tesla", "tsla",
@@ -39,7 +40,31 @@ def _match_calls(path: Path) -> list[list[str]]:
     return found
 
 
+def _string_constants(path: Path) -> list[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    found: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            found.append(node.value)
+    return found
+
+
 class TestRouterNeedles(unittest.TestCase):
+    def test_scorer_literals_removed(self):
+        src = ASK.read_text(encoding="utf-8")
+        self.assertIsNone(re.search(r"microsoft", src, re.I))
+        self.assertIsNone(re.search(r"meta agreement", src, re.I))
+        self.assertIsNone(re.search(r"\$100\b", src))
+        for text in _string_constants(ASK):
+            low = text.lower()
+            self.assertNotIn("microsoft", low, text)
+            self.assertNotIn("meta agreement", low, text)
+            self.assertNotIn("$100", text)
+            # mode="meta" is the source viewer, not an issuer boost.
+            if low.strip() == "meta":
+                continue
+            self.assertIsNone(re.search(r"\bmeta\b", low), text)
+
     def test_stance_literal_removed(self):
         src = ASK.read_text(encoding="utf-8").lower()
         self.assertNotIn("what is micron", src)
