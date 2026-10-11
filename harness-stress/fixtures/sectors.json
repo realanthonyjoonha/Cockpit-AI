@@ -1,22 +1,70 @@
 {
-  "comment": "Harness constants in the wording of public-filing line items. Not a house view, not a desk, not a vault note. Ten sectors, one rule file. risk_metric rows are the review tripwire names.",
+  "comment": "Harness constants in the wording of public-filing line items. Not a house view, not a desk, not a vault note. Ten sectors, one rule file. Each issuer has a real-shaped iXBRL fixture under xbrl/. live/gaps/context are the sentence-only run; tagged is the same claims with that issuer's XBRL facts. risk_metric rows are the review tripwire names.",
   "risk_metric": [
-    {"name": "Operating margin pressure", "metric_id": null},
-    {"name": "Customer lawsuit", "metric_id": null},
-    {"name": "The board sanctions the capital plan", "metric_id": null},
-    {"name": "Gross margin", "metric_id": "gross_margin"},
-    {"name": "Gross margins", "metric_id": "gross_margin"},
-    {"name": "Customer concentration", "metric_id": "concentration"},
-    {"name": "Largest customer", "metric_id": "concentration"},
-    {"name": "Trade sanctions", "metric_id": "export_controls"},
-    {"name": "Export sanctions", "metric_id": "export_controls"},
-    {"name": "Indemnify", "metric_id": "guarantees"},
-    {"name": "Operating leverage in the software model", "metric_id": null},
-    {"name": "Water supply interruption", "metric_id": null},
-    {"name": "Regulatory commitment to the rate case", "metric_id": null},
-    {"name": "Bad debt on the card book", "metric_id": null},
-    {"name": "Crude exports", "metric_id": "export_controls"},
-    {"name": "Net interest margin compression", "metric_id": null}
+    {
+      "name": "Operating margin pressure",
+      "metric_id": null
+    },
+    {
+      "name": "Customer lawsuit",
+      "metric_id": null
+    },
+    {
+      "name": "The board sanctions the capital plan",
+      "metric_id": null
+    },
+    {
+      "name": "Gross margin",
+      "metric_id": "gross_margin"
+    },
+    {
+      "name": "Gross margins",
+      "metric_id": "gross_margin"
+    },
+    {
+      "name": "Customer concentration",
+      "metric_id": "concentration"
+    },
+    {
+      "name": "Largest customer",
+      "metric_id": "concentration"
+    },
+    {
+      "name": "Trade sanctions",
+      "metric_id": "export_controls"
+    },
+    {
+      "name": "Export sanctions",
+      "metric_id": "export_controls"
+    },
+    {
+      "name": "Indemnify",
+      "metric_id": "guarantees"
+    },
+    {
+      "name": "Operating leverage in the software model",
+      "metric_id": null
+    },
+    {
+      "name": "Water supply interruption",
+      "metric_id": null
+    },
+    {
+      "name": "Regulatory commitment to the rate case",
+      "metric_id": null
+    },
+    {
+      "name": "Bad debt on the card book",
+      "metric_id": null
+    },
+    {
+      "name": "Crude exports",
+      "metric_id": "export_controls"
+    },
+    {
+      "name": "Net interest margin compression",
+      "metric_id": null
+    }
   ],
   "issuers": [
     {
@@ -26,12 +74,24 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "gaps": ["as_of is a fiscal label without a period-end date"],
+      "gaps": [
+        "as_of is a fiscal label without a period-end date",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): credit_loss_provision, net_interest_income"
+      ],
       "absent": [],
       "live": [
-        {"id": "nii-new", "metric_id": "net_interest_income"},
-        {"id": "pcl", "metric_id": "credit_loss_provision"},
-        {"id": "deposits", "metric_id": "other"}
+        {
+          "id": "nii-new",
+          "metric_id": "net_interest_income"
+        },
+        {
+          "id": "pcl",
+          "metric_id": "credit_loss_provision"
+        },
+        {
+          "id": "deposits",
+          "metric_id": "other"
+        }
       ],
       "claims": [
         {
@@ -42,7 +102,14 @@
           "classify": "net_interest_income",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4200000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4200000000
+            }
+          ]
         },
         {
           "id": "nii-old",
@@ -52,7 +119,14 @@
           "classify": "net_interest_income",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 3900000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 3900000000
+            }
+          ]
         },
         {
           "id": "nii-fy",
@@ -62,7 +136,14 @@
           "classify": "net_interest_income",
           "sort_key": null,
           "precision": "fiscal_label",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
         },
         {
           "id": "nii-xbrl",
@@ -83,7 +164,14 @@
           "classify": "credit_loss_provision",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 310000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 310000000
+            }
+          ]
         },
         {
           "id": "deposits",
@@ -93,9 +181,88 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 88000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 88000000000
+            }
+          ]
         }
-      ]
+      ],
+      "context": [
+        {
+          "id": "nii-xbrl",
+          "metric_id": "net_interest_income",
+          "reason": "no_amount"
+        }
+      ],
+      "xbrl": "xbrl/bank.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:Goodwill:2025-12-31",
+            "metric_id": "goodwill",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:InterestIncomeExpenseNet:2025-01-01/2025-12-31",
+            "metric_id": "net_interest_income",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:ProvisionForLoanLeaseAndOtherLosses:2025-01-01/2025-12-31",
+            "metric_id": "credit_loss_provision",
+            "confidence": "tagged"
+          },
+          {
+            "id": "deposits",
+            "metric_id": "other",
+            "confidence": null
+          }
+        ],
+        "gaps": [
+          "as_of is a fiscal label without a period-end date"
+        ],
+        "context": [
+          {
+            "id": "nii-new",
+            "metric_id": "net_interest_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "pcl",
+            "metric_id": "credit_loss_provision",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "nii-old",
+            "metric_id": "net_interest_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "nii-xbrl",
+            "metric_id": "net_interest_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "nii-fy",
+            "metric_id": "net_interest_income",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "insurer",
@@ -104,11 +271,19 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "gaps": [],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+      ],
       "absent": [],
       "live": [
-        {"id": "prem-new", "metric_id": "company_revenue"},
-        {"id": "claims", "metric_id": "other"}
+        {
+          "id": "prem-new",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "claims",
+          "metric_id": "other"
+        }
       ],
       "claims": [
         {
@@ -119,7 +294,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 9500000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 9500000000
+            }
+          ]
         },
         {
           "id": "prem-old",
@@ -129,7 +311,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 9100000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 9100000000
+            }
+          ]
         },
         {
           "id": "claims",
@@ -139,9 +328,50 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 6100000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 6100000000
+            }
+          ]
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/insurer.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "claims",
+            "metric_id": "other",
+            "confidence": null
+          }
+        ],
+        "gaps": [],
+        "context": [
+          {
+            "id": "prem-new",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "prem-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "reit",
@@ -150,12 +380,24 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "gaps": ["unmapped_concept: us-gaap:FundsFromOperations"],
+      "gaps": [
+        "unmapped_concept: us-gaap:FundsFromOperations",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+      ],
       "absent": [],
       "live": [
-        {"id": "rent", "metric_id": "company_revenue"},
-        {"id": "realestate", "metric_id": "other"},
-        {"id": "ffo", "metric_id": "other"}
+        {
+          "id": "rent",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "realestate",
+          "metric_id": "other"
+        },
+        {
+          "id": "ffo",
+          "metric_id": "other"
+        }
       ],
       "claims": [
         {
@@ -166,7 +408,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1240000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1240000000
+            }
+          ]
         },
         {
           "id": "rent-old",
@@ -176,7 +425,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1100000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1100000000
+            }
+          ]
         },
         {
           "id": "realestate",
@@ -186,7 +442,14 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 8400000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 8400000000
+            }
+          ]
         },
         {
           "id": "ffo",
@@ -197,9 +460,62 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 620000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 620000000
+            }
+          ]
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/reit.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:ImpairmentOfRealEstate:2025-01-01/2025-12-31",
+            "metric_id": "impairment",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "realestate",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "ffo",
+            "metric_id": "other",
+            "confidence": null
+          }
+        ],
+        "gaps": [
+          "unmapped_concept: us-gaap:FundsFromOperations"
+        ],
+        "context": [
+          {
+            "id": "rent",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rent-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "utility",
@@ -208,11 +524,19 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "gaps": [],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+      ],
       "absent": [],
       "live": [
-        {"id": "oprev", "metric_id": "company_revenue"},
-        {"id": "regasset", "metric_id": "other"}
+        {
+          "id": "oprev",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "regasset",
+          "metric_id": "other"
+        }
       ],
       "claims": [
         {
@@ -223,7 +547,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 14800000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 14800000000
+            }
+          ]
         },
         {
           "id": "oprev-old",
@@ -233,7 +564,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 13900000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 13900000000
+            }
+          ]
         },
         {
           "id": "regasset",
@@ -243,9 +581,60 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 2100000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 2100000000
+            }
+          ]
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/utility.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:RegulatedAndUnregulatedOperatingRevenue:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:NetCashProvidedByUsedInOperatingActivities:2025-01-01/2025-12-31",
+            "metric_id": "operating_cash_flow",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:LongTermDebtNoncurrent:2025-12-31",
+            "metric_id": "long_term_debt",
+            "confidence": "tagged"
+          },
+          {
+            "id": "regasset",
+            "metric_id": "other",
+            "confidence": null
+          }
+        ],
+        "gaps": [],
+        "context": [
+          {
+            "id": "oprev",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "oprev-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "biotech",
@@ -254,12 +643,22 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "forbid_phrases": ["net sales"],
-      "gaps": [],
+      "forbid_phrases": [
+        "net sales"
+      ],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue, rnd_expense"
+      ],
       "absent": [],
       "live": [
-        {"id": "collab", "metric_id": "company_revenue"},
-        {"id": "rnd", "metric_id": "rnd_expense"}
+        {
+          "id": "collab",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "rnd",
+          "metric_id": "rnd_expense"
+        }
       ],
       "claims": [
         {
@@ -270,7 +669,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 480000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 480000000
+            }
+          ]
         },
         {
           "id": "collab-old",
@@ -280,7 +686,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 410000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 410000000
+            }
+          ]
         },
         {
           "id": "rnd",
@@ -290,9 +703,65 @@
           "classify": "rnd_expense",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 910000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 910000000
+            }
+          ]
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/biotech.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:NetCashProvidedByUsedInOperatingActivities:2025-01-01/2025-12-31",
+            "metric_id": "operating_cash_flow",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:NetIncomeLoss:2025-01-01/2025-12-31",
+            "metric_id": "net_income",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:ResearchAndDevelopmentExpense:2025-01-01/2025-12-31",
+            "metric_id": "rnd_expense",
+            "confidence": "tagged"
+          }
+        ],
+        "gaps": [],
+        "context": [
+          {
+            "id": "collab",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rnd",
+            "metric_id": "rnd_expense",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "collab-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "retail",
@@ -301,12 +770,23 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "53 weeks ended January 28, 2026",
-      "gaps": [],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue, inventory"
+      ],
       "absent": [],
       "live": [
-        {"id": "sales", "metric_id": "company_revenue"},
-        {"id": "inv", "metric_id": "inventory"},
-        {"id": "pct", "metric_id": "other"}
+        {
+          "id": "sales",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "inv",
+          "metric_id": "inventory"
+        },
+        {
+          "id": "pct",
+          "metric_id": "other"
+        }
       ],
       "claims": [
         {
@@ -317,7 +797,14 @@
           "classify": "company_revenue",
           "sort_key": "2026-01-28",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 52000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 52000000000
+            }
+          ]
         },
         {
           "id": "sales-old",
@@ -327,7 +814,14 @@
           "classify": "company_revenue",
           "sort_key": "2026-01-27",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 49000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 49000000000
+            }
+          ]
         },
         {
           "id": "inv",
@@ -337,7 +831,14 @@
           "classify": "inventory",
           "sort_key": "2026-01-28",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 6400000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 6400000000
+            }
+          ]
         },
         {
           "id": "pct",
@@ -347,9 +848,55 @@
           "classify": null,
           "sort_key": "2026-01-28",
           "precision": "day",
-          "units": [{"unit": "percent", "currency": null, "scale": null, "value": 45}]
+          "units": [
+            {
+              "unit": "percent",
+              "currency": null,
+              "scale": null,
+              "value": 45
+            }
+          ]
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/retail.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-23/2026-01-28",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:InventoryNet:2026-01-28",
+            "metric_id": "inventory",
+            "confidence": "tagged"
+          },
+          {
+            "id": "pct",
+            "metric_id": "other",
+            "confidence": null
+          }
+        ],
+        "gaps": [],
+        "context": [
+          {
+            "id": "sales",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "inv",
+            "metric_id": "inventory",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "sales-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "energy",
@@ -358,11 +905,21 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended October 1, 2025",
-      "gaps": [],
-      "absent": ["barrels"],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): capex, company_revenue"
+      ],
+      "absent": [
+        "barrels"
+      ],
       "live": [
-        {"id": "rev-oct", "metric_id": "company_revenue"},
-        {"id": "capex", "metric_id": "capex"}
+        {
+          "id": "rev-oct",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "capex",
+          "metric_id": "capex"
+        }
       ],
       "claims": [
         {
@@ -373,7 +930,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-10-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 18200000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 18200000000
+            }
+          ]
         },
         {
           "id": "rev-sep",
@@ -383,7 +947,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-09-30",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 17400000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 17400000000
+            }
+          ]
         },
         {
           "id": "capex",
@@ -393,7 +964,14 @@
           "classify": "capex",
           "sort_key": "2025-10-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 3400000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 3400000000
+            }
+          ]
         },
         {
           "id": "barrels",
@@ -405,7 +983,51 @@
           "precision": "day",
           "units": []
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/energy.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:ImpairmentOfOilAndGasProperties:2025-01-01/2025-12-31",
+            "metric_id": "impairment",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:PaymentsToAcquirePropertyPlantAndEquipment:2025-01-01/2025-12-31",
+            "metric_id": "capex",
+            "confidence": "tagged"
+          }
+        ],
+        "gaps": [],
+        "context": [
+          {
+            "id": "rev-oct",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "capex",
+            "metric_id": "capex",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-sep",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "industrial",
@@ -414,32 +1036,108 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "gaps": ["as_of is a fiscal label without a period-end date"],
-      "absent": ["ocf-weather", "ocf-qual", "guid", "guidelines", "bps", "barrels", "fy"],
+      "gaps": [
+        "as_of is a fiscal label without a period-end date",
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): cash, company_revenue, dividends, goodwill_impairment, gross_margin, guarantees, impairment, interest_revenue, net_income, operating_cash_flow, operating_income, purchase_commitments, revenue_guide, rpo_backlog"
+      ],
+      "absent": [
+        "ocf-weather",
+        "ocf-qual",
+        "guid",
+        "guidelines",
+        "bps",
+        "barrels",
+        "fy"
+      ],
       "live": [
-        {"id": "backlog", "metric_id": "rpo_backlog"},
-        {"id": "oi", "metric_id": "operating_income"},
-        {"id": "commit", "metric_id": "purchase_commitments"},
-        {"id": "gw-real", "metric_id": "goodwill_impairment"},
-        {"id": "gw-non", "metric_id": "impairment"},
-        {"id": "ocf-2024", "metric_id": "operating_cash_flow"},
-        {"id": "sales-see", "metric_id": "company_revenue"},
-        {"id": "see-guide", "metric_id": "revenue_guide"},
-        {"id": "interest", "metric_id": "interest_revenue"},
-        {"id": "trade-sanctions", "metric_id": "export_controls"},
-        {"id": "sanctions", "metric_id": "other"},
-        {"id": "indemnify", "metric_id": "guarantees"},
-        {"id": "eps-pair", "metric_id": "net_income"},
-        {"id": "unearned", "metric_id": "other"},
-        {"id": "ocf-lease", "metric_id": "other"},
-        {"id": "registers", "metric_id": "other"},
-        {"id": "inventor", "metric_id": "other"},
-        {"id": "cash-oct", "metric_id": "cash"},
-        {"id": "gm-blank", "metric_id": "gross_margin"},
-        {"id": "div-fy", "metric_id": "dividends"},
-        {"id": "deposits", "metric_id": "other"},
-        {"id": "deferred", "metric_id": "other"},
-        {"id": "ffo", "metric_id": "other"}
+        {
+          "id": "gw-non",
+          "metric_id": "impairment"
+        },
+        {
+          "id": "eps-pair",
+          "metric_id": "net_income"
+        },
+        {
+          "id": "cash-oct",
+          "metric_id": "cash"
+        },
+        {
+          "id": "see-guide",
+          "metric_id": "revenue_guide"
+        },
+        {
+          "id": "registers",
+          "metric_id": "other"
+        },
+        {
+          "id": "ocf-lease",
+          "metric_id": "other"
+        },
+        {
+          "id": "gm-blank",
+          "metric_id": "gross_margin"
+        },
+        {
+          "id": "div-fy",
+          "metric_id": "dividends"
+        },
+        {
+          "id": "interest",
+          "metric_id": "interest_revenue"
+        },
+        {
+          "id": "unearned",
+          "metric_id": "other"
+        },
+        {
+          "id": "backlog",
+          "metric_id": "rpo_backlog"
+        },
+        {
+          "id": "oi",
+          "metric_id": "operating_income"
+        },
+        {
+          "id": "commit",
+          "metric_id": "purchase_commitments"
+        },
+        {
+          "id": "deposits",
+          "metric_id": "other"
+        },
+        {
+          "id": "deferred",
+          "metric_id": "other"
+        },
+        {
+          "id": "ffo",
+          "metric_id": "other"
+        },
+        {
+          "id": "inventor",
+          "metric_id": "other"
+        },
+        {
+          "id": "indemnify",
+          "metric_id": "guarantees"
+        },
+        {
+          "id": "sales-see",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "sanctions",
+          "metric_id": "other"
+        },
+        {
+          "id": "ocf-2024",
+          "metric_id": "operating_cash_flow"
+        },
+        {
+          "id": "gw-real",
+          "metric_id": "goodwill_impairment"
+        }
       ],
       "claims": [
         {
@@ -450,7 +1148,14 @@
           "classify": "rpo_backlog",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 9800000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 9800000000
+            }
+          ]
         },
         {
           "id": "backlog-old",
@@ -460,7 +1165,14 @@
           "classify": "rpo_backlog",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 8200000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 8200000000
+            }
+          ]
         },
         {
           "id": "oi",
@@ -470,7 +1182,14 @@
           "classify": "operating_income",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 2150000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 2150000000
+            }
+          ]
         },
         {
           "id": "commit",
@@ -480,7 +1199,14 @@
           "classify": "purchase_commitments",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 740000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 740000000
+            }
+          ]
         },
         {
           "id": "gw-real",
@@ -490,7 +1216,14 @@
           "classify": "goodwill_impairment",
           "sort_key": "2024-06-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
         },
         {
           "id": "gw-other",
@@ -500,7 +1233,14 @@
           "classify": "impairment",
           "sort_key": "2026-06-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
         },
         {
           "id": "ocf-2024",
@@ -510,7 +1250,14 @@
           "classify": "operating_cash_flow",
           "sort_key": "2024-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 500000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 500000000
+            }
+          ]
         },
         {
           "id": "ocf-weather",
@@ -540,7 +1287,14 @@
           "classify": "company_revenue",
           "sort_key": "2023-12-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 10000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
         },
         {
           "id": "rev-word",
@@ -550,7 +1304,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-01-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 10000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
         },
         {
           "id": "rev-plural",
@@ -560,7 +1321,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-02-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 10000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
         },
         {
           "id": "rev-tnr",
@@ -570,7 +1338,14 @@
           "classify": "company_revenue",
           "sort_key": "2024-03-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 10000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
         },
         {
           "id": "sales-see",
@@ -580,7 +1355,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-06-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 10000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 10000000
+            }
+          ]
         },
         {
           "id": "outlook",
@@ -590,7 +1372,14 @@
           "classify": "revenue_guide",
           "sort_key": "2026-06-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 100000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 100000000
+            }
+          ]
         },
         {
           "id": "trade-sanctions",
@@ -610,7 +1399,14 @@
           "classify": null,
           "sort_key": "2025-06-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 5000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 5000000000
+            }
+          ]
         },
         {
           "id": "indemnify",
@@ -620,7 +1416,14 @@
           "classify": "guarantees",
           "sort_key": "2025-06-02",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 5000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 5000000
+            }
+          ]
         },
         {
           "id": "bps",
@@ -630,7 +1433,14 @@
           "classify": null,
           "sort_key": "2025-07-01",
           "precision": "day",
-          "units": [{"unit": "bps", "currency": null, "scale": null, "value": 12}]
+          "units": [
+            {
+              "unit": "bps",
+              "currency": null,
+              "scale": null,
+              "value": 12
+            }
+          ]
         },
         {
           "id": "eps",
@@ -641,8 +1451,18 @@
           "sort_key": "2025-08-01",
           "precision": "day",
           "units": [
-            {"unit": "currency", "currency": "USD", "scale": "million", "value": 12000000},
-            {"unit": "currency", "currency": "USD", "scale": null, "value": 0.12}
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 12000000
+            },
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": null,
+              "value": 0.12
+            }
           ]
         },
         {
@@ -653,7 +1473,14 @@
           "classify": null,
           "sort_key": "2025-08-02",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
         },
         {
           "id": "guid",
@@ -683,7 +1510,14 @@
           "classify": "cash",
           "sort_key": "2026-06-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 222000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 222000000
+            }
+          ]
         },
         {
           "id": "cash-sep",
@@ -693,7 +1527,14 @@
           "classify": "cash",
           "sort_key": "2026-09-30",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 10000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 10000000
+            }
+          ]
         },
         {
           "id": "cash-oct",
@@ -703,7 +1544,14 @@
           "classify": "cash",
           "sort_key": "2026-10-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 11000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 11000000
+            }
+          ]
         },
         {
           "id": "cash-iso",
@@ -713,7 +1561,14 @@
           "classify": "cash",
           "sort_key": "2026-10-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 12000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 12000000
+            }
+          ]
         },
         {
           "id": "gm-blank",
@@ -723,7 +1578,14 @@
           "classify": "gross_margin",
           "sort_key": "2026-08-01",
           "precision": "day",
-          "units": [{"unit": "percent", "currency": null, "scale": null, "value": 40}]
+          "units": [
+            {
+              "unit": "percent",
+              "currency": null,
+              "scale": null,
+              "value": 40
+            }
+          ]
         },
         {
           "id": "gm-c",
@@ -733,7 +1595,14 @@
           "classify": "gross_margin",
           "sort_key": "2026-08-01",
           "precision": "day",
-          "units": [{"unit": "percent", "currency": null, "scale": null, "value": 41}]
+          "units": [
+            {
+              "unit": "percent",
+              "currency": null,
+              "scale": null,
+              "value": 41
+            }
+          ]
         },
         {
           "id": "div-fy",
@@ -743,7 +1612,14 @@
           "classify": "dividends",
           "sort_key": "2026-03-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
         },
         {
           "id": "fy",
@@ -763,7 +1639,14 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 88000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 88000000000
+            }
+          ]
         },
         {
           "id": "deferred",
@@ -773,7 +1656,14 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4050000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4050000000
+            }
+          ]
         },
         {
           "id": "barrels",
@@ -793,7 +1683,14 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 620000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 620000000
+            }
+          ]
         },
         {
           "id": "gw-non",
@@ -803,7 +1700,14 @@
           "classify": "impairment",
           "sort_key": "2026-12-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
         },
         {
           "id": "gw-article",
@@ -813,7 +1717,14 @@
           "classify": "impairment",
           "sort_key": "2026-03-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 3000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 3000000
+            }
+          ]
         },
         {
           "id": "gw-excl",
@@ -823,7 +1734,14 @@
           "classify": "impairment",
           "sort_key": "2026-03-02",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 2000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 2000000
+            }
+          ]
         },
         {
           "id": "gw-for",
@@ -833,7 +1751,14 @@
           "classify": "impairment",
           "sort_key": "2026-03-03",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 1000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
         },
         {
           "id": "unearned",
@@ -843,7 +1768,14 @@
           "classify": null,
           "sort_key": "2026-01-15",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 40000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 40000000
+            }
+          ]
         },
         {
           "id": "interest",
@@ -853,7 +1785,14 @@
           "classify": "interest_revenue",
           "sort_key": "2026-02-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 8000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 8000000000
+            }
+          ]
         },
         {
           "id": "see-guide",
@@ -863,7 +1802,14 @@
           "classify": "revenue_guide",
           "sort_key": "2026-09-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "billion", "value": 12000000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 12000000000
+            }
+          ]
         },
         {
           "id": "ocf-lease",
@@ -873,7 +1819,14 @@
           "classify": null,
           "sort_key": "2026-08-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 90000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 90000000
+            }
+          ]
         },
         {
           "id": "registers",
@@ -883,7 +1836,14 @@
           "classify": null,
           "sort_key": "2026-08-02",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
         },
         {
           "id": "eps-header",
@@ -893,7 +1853,14 @@
           "classify": "net_income",
           "sort_key": "2025-07-01",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": null, "value": 0.12}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": null,
+              "value": 0.12
+            }
+          ]
         },
         {
           "id": "eps-pair",
@@ -904,11 +1871,329 @@
           "sort_key": "2026-11-01",
           "precision": "day",
           "units": [
-            {"unit": "currency", "currency": "USD", "scale": "million", "value": 400000000},
-            {"unit": "currency", "currency": "USD", "scale": null, "value": 1.25}
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 400000000
+            },
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": null,
+              "value": 1.25
+            }
           ]
         }
-      ]
+      ],
+      "context": [
+        {
+          "id": "trade-sanctions",
+          "metric_id": "export_controls",
+          "reason": "no_amount"
+        }
+      ],
+      "xbrl": "xbrl/industrial.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "see-guide",
+            "metric_id": "revenue_guide",
+            "confidence": "low"
+          },
+          {
+            "id": "registers",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "ocf-lease",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "gm-blank",
+            "metric_id": "gross_margin",
+            "confidence": "low"
+          },
+          {
+            "id": "unearned",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:GoodwillImpairmentLoss:2025-01-01/2025-12-31",
+            "metric_id": "goodwill_impairment",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill:2025-01-01/2025-12-31",
+            "metric_id": "impairment",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:Goodwill:2025-12-31",
+            "metric_id": "goodwill",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:InventoryNet:2025-12-31",
+            "metric_id": "inventory",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:NetCashProvidedByUsedInOperatingActivities:2025-01-01/2025-12-31",
+            "metric_id": "operating_cash_flow",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:InterestIncomeExpenseNet:2025-01-01/2025-12-31",
+            "metric_id": "net_interest_income",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:InterestAndDividendIncomeOperating:2025-01-01/2025-12-31",
+            "metric_id": "interest_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:OperatingIncomeLoss:2025-01-01/2025-12-31",
+            "metric_id": "operating_income",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:NetIncomeLoss:2025-01-01/2025-12-31",
+            "metric_id": "net_income",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:ResearchAndDevelopmentExpense:2025-01-01/2025-12-31",
+            "metric_id": "rnd_expense",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:RevenueRemainingPerformanceObligation:2025-12-31",
+            "metric_id": "rpo_backlog",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:PurchaseObligation:2025-12-31",
+            "metric_id": "purchase_commitments",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:PaymentsToAcquirePropertyPlantAndEquipment:2025-01-01/2025-12-31",
+            "metric_id": "capex",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:LongTermDebtNoncurrent:2025-12-31",
+            "metric_id": "long_term_debt",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding:2025-01-01/2025-12-31",
+            "metric_id": "diluted_shares",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:GuaranteeObligationsMaximumExposure:2025-12-31",
+            "metric_id": "guarantees",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:PaymentsForRepurchaseOfCommonStock:2025-01-01/2025-12-31",
+            "metric_id": "share_repurchase",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:PaymentsOfDividends:2025-01-01/2025-12-31",
+            "metric_id": "dividends",
+            "confidence": "tagged"
+          },
+          {
+            "id": "deposits",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "deferred",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "ffo",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "inventor",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "sanctions",
+            "metric_id": "other",
+            "confidence": null
+          }
+        ],
+        "gaps": [
+          "as_of is a fiscal label without a period-end date",
+          "impairment: 5 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
+          "cash: 4 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
+          "dividends: 1 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
+          "interest_revenue: 1 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
+          "net_income: 1 newer sentence(s) not used; live value is the tagged 2025-12-31 fact",
+          "no tagged XBRL fact; live value is sentence-derived (low confidence): gross_margin, revenue_guide"
+        ],
+        "context": [
+          {
+            "id": "gw-non",
+            "metric_id": "impairment",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "eps-pair",
+            "metric_id": "net_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "cash-oct",
+            "metric_id": "cash",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "cash-iso",
+            "metric_id": "cash",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "cash-sep",
+            "metric_id": "cash",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "gw-other",
+            "metric_id": "impairment",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "cash-see",
+            "metric_id": "cash",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "div-fy",
+            "metric_id": "dividends",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "gw-for",
+            "metric_id": "impairment",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "gw-excl",
+            "metric_id": "impairment",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "gw-article",
+            "metric_id": "impairment",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "interest",
+            "metric_id": "interest_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "backlog",
+            "metric_id": "rpo_backlog",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "oi",
+            "metric_id": "operating_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "commit",
+            "metric_id": "purchase_commitments",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "eps",
+            "metric_id": "net_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "eps-header",
+            "metric_id": "net_income",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "indemnify",
+            "metric_id": "guarantees",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "sales-see",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "trade-sanctions",
+            "metric_id": "export_controls",
+            "reason": "no_amount"
+          },
+          {
+            "id": "backlog-old",
+            "metric_id": "rpo_backlog",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "ocf-2024",
+            "metric_id": "operating_cash_flow",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "gw-real",
+            "metric_id": "goodwill_impairment",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-tnr",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-plural",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-word",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-total",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "software",
@@ -917,13 +2202,27 @@
       "reporting": "us-gaap",
       "currency": "USD",
       "period": "year ended December 31, 2025",
-      "gaps": [],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue, operating_segments, rpo_backlog"
+      ],
       "absent": [],
       "live": [
-        {"id": "rev", "metric_id": "company_revenue"},
-        {"id": "rpo", "metric_id": "rpo_backlog"},
-        {"id": "deferred", "metric_id": "other"},
-        {"id": "segs", "metric_id": "operating_segments"}
+        {
+          "id": "rev",
+          "metric_id": "company_revenue"
+        },
+        {
+          "id": "rpo",
+          "metric_id": "rpo_backlog"
+        },
+        {
+          "id": "deferred",
+          "metric_id": "other"
+        },
+        {
+          "id": "segs",
+          "metric_id": "operating_segments"
+        }
       ],
       "claims": [
         {
@@ -934,7 +2233,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 8800000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 8800000000
+            }
+          ]
         },
         {
           "id": "rev-old",
@@ -944,7 +2250,14 @@
           "classify": "company_revenue",
           "sort_key": "2025-09-30",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 6200000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 6200000000
+            }
+          ]
         },
         {
           "id": "rpo",
@@ -954,7 +2267,14 @@
           "classify": "rpo_backlog",
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 11600000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 11600000000
+            }
+          ]
         },
         {
           "id": "deferred",
@@ -964,7 +2284,14 @@
           "classify": null,
           "sort_key": "2025-12-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "USD", "scale": "million", "value": 4050000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4050000000
+            }
+          ]
         },
         {
           "id": "segs",
@@ -976,7 +2303,63 @@
           "precision": "day",
           "units": []
         }
-      ]
+      ],
+      "context": [],
+      "xbrl": "xbrl/software.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:us-gaap:Revenues:2025-01-01/2025-12-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:CashAndCashEquivalentsAtCarryingValue:2025-12-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:OperatingIncomeLoss:2025-01-01/2025-12-31",
+            "metric_id": "operating_income",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:us-gaap:RevenueRemainingPerformanceObligation:2025-12-31",
+            "metric_id": "rpo_backlog",
+            "confidence": "tagged"
+          },
+          {
+            "id": "deferred",
+            "metric_id": "other",
+            "confidence": null
+          },
+          {
+            "id": "segs",
+            "metric_id": "operating_segments",
+            "confidence": "low"
+          }
+        ],
+        "gaps": [
+          "no tagged XBRL fact; live value is sentence-derived (low confidence): operating_segments"
+        ],
+        "context": [
+          {
+            "id": "rev",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rpo",
+            "metric_id": "rpo_backlog",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     },
     {
       "id": "fpi",
@@ -985,11 +2368,15 @@
       "reporting": "ifrs-full",
       "currency": "EUR",
       "period": "fiscal year ended 31 March 2026",
-      "gaps": [],
+      "gaps": [
+        "no tagged XBRL fact; live value is sentence-derived (low confidence): company_revenue"
+      ],
       "absent": [],
       "live": [
-        {"id": "rev", "metric_id": "company_revenue"},
-        {"id": "cash-ifrs", "metric_id": "cash"}
+        {
+          "id": "rev",
+          "metric_id": "company_revenue"
+        }
       ],
       "claims": [
         {
@@ -1000,7 +2387,14 @@
           "classify": "company_revenue",
           "sort_key": "2026-03-31",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "EUR", "scale": "million", "value": 1200000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "EUR",
+              "scale": "million",
+              "value": 1200000000
+            }
+          ]
         },
         {
           "id": "rev-old",
@@ -1010,7 +2404,14 @@
           "classify": "company_revenue",
           "sort_key": "2026-03-15",
           "precision": "day",
-          "units": [{"unit": "currency", "currency": "EUR", "scale": "million", "value": 1050000000}]
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "EUR",
+              "scale": "million",
+              "value": 1050000000
+            }
+          ]
         },
         {
           "id": "cash-ifrs",
@@ -1023,7 +2424,67 @@
           "precision": "day",
           "units": []
         }
-      ]
+      ],
+      "context": [
+        {
+          "id": "cash-ifrs",
+          "metric_id": "cash",
+          "reason": "no_amount"
+        }
+      ],
+      "xbrl": "xbrl/fpi.htm",
+      "tagged": {
+        "live": [
+          {
+            "id": "xbrl:ifrs-full:Revenue:2025-04-01/2026-03-31",
+            "metric_id": "company_revenue",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:ifrs-full:ImpairmentLossRecognisedInProfitOrLossGoodwill:2025-04-01/2026-03-31",
+            "metric_id": "goodwill_impairment",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:ifrs-full:Goodwill:2026-03-31",
+            "metric_id": "goodwill",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:ifrs-full:CashFlowsFromUsedInOperatingActivities:2025-04-01/2026-03-31",
+            "metric_id": "operating_cash_flow",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:ifrs-full:CashAndCashEquivalents:2026-03-31",
+            "metric_id": "cash",
+            "confidence": "tagged"
+          },
+          {
+            "id": "xbrl:ifrs-full:ProfitLoss:2025-04-01/2026-03-31",
+            "metric_id": "net_income",
+            "confidence": "tagged"
+          }
+        ],
+        "gaps": [],
+        "context": [
+          {
+            "id": "rev",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "cash-ifrs",
+            "metric_id": "cash",
+            "reason": "tagged_slot"
+          },
+          {
+            "id": "rev-old",
+            "metric_id": "company_revenue",
+            "reason": "tagged_slot"
+          }
+        ]
+      }
     }
   ]
 }

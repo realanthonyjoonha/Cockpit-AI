@@ -1,0 +1,402 @@
+{
+  "bank": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2025-12-31",
+        "value_text": "9000000000",
+        "prior_value_text": "8400000000"
+      },
+      "net_interest_income": {
+        "concept": "us-gaap:InterestIncomeExpenseNet",
+        "end": "2025-12-31",
+        "value_text": "4200000000",
+        "prior_value_text": "3900000000"
+      },
+      "credit_loss_provision": {
+        "concept": "us-gaap:ProvisionForLoanLeaseAndOtherLosses",
+        "end": "2025-12-31",
+        "value_text": "310000000",
+        "prior_value_text": null
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "5000000000",
+        "prior_value_text": "4000000000"
+      },
+      "goodwill": {
+        "concept": "us-gaap:Goodwill",
+        "end": "2025-12-31",
+        "value_text": "2000000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "insurer": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2025-12-31",
+        "value_text": "11000000000",
+        "prior_value_text": null
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "700000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "reit": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2025-12-31",
+        "value_text": "1300000000",
+        "prior_value_text": "1150000000"
+      },
+      "impairment": {
+        "concept": "us-gaap:ImpairmentOfRealEstate",
+        "end": "2025-12-31",
+        "value_text": "20000000",
+        "prior_value_text": null
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "150000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "utility": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:RegulatedAndUnregulatedOperatingRevenue",
+        "end": "2025-12-31",
+        "value_text": "14800000000",
+        "prior_value_text": "13900000000"
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "300000000",
+        "prior_value_text": null
+      },
+      "operating_cash_flow": {
+        "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+        "end": "2025-12-31",
+        "value_text": "4000000000",
+        "prior_value_text": null
+      },
+      "long_term_debt": {
+        "concept": "us-gaap:LongTermDebtNoncurrent",
+        "end": "2025-12-31",
+        "value_text": "25000000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "biotech": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer",
+        "end": "2025-12-31",
+        "value_text": "480000000",
+        "prior_value_text": "410000000"
+      },
+      "rnd_expense": {
+        "concept": "us-gaap:ResearchAndDevelopmentExpense",
+        "end": "2025-12-31",
+        "value_text": "910000000",
+        "prior_value_text": null
+      },
+      "operating_cash_flow": {
+        "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+        "end": "2025-12-31",
+        "value_text": "-300000000",
+        "prior_value_text": null
+      },
+      "net_income": {
+        "concept": "us-gaap:NetIncomeLoss",
+        "end": "2025-12-31",
+        "value_text": "-700000000",
+        "prior_value_text": null
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "1200000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "retail": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2026-01-28",
+        "value_text": "52000000000",
+        "prior_value_text": "49000000000"
+      },
+      "inventory": {
+        "concept": "us-gaap:InventoryNet",
+        "end": "2026-01-28",
+        "value_text": "6400000000",
+        "prior_value_text": "6000000000"
+      }
+    }
+  },
+  "energy": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2025-12-31",
+        "value_text": "18200000000",
+        "prior_value_text": "17400000000"
+      },
+      "capex": {
+        "concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+        "end": "2025-12-31",
+        "value_text": "3400000000",
+        "prior_value_text": null
+      },
+      "impairment": {
+        "concept": "us-gaap:ImpairmentOfOilAndGasProperties",
+        "end": "2025-12-31",
+        "value_text": "150000000",
+        "prior_value_text": null
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "900000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "industrial": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2025-12-31",
+        "value_text": "10000000000",
+        "prior_value_text": "9000000000"
+      },
+      "goodwill_impairment": {
+        "concept": "us-gaap:GoodwillImpairmentLoss",
+        "end": "2025-12-31",
+        "value_text": "0",
+        "prior_value_text": "2300000000"
+      },
+      "impairment": {
+        "concept": "us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill",
+        "end": "2025-12-31",
+        "value_text": "4000000",
+        "prior_value_text": null
+      },
+      "goodwill": {
+        "concept": "us-gaap:Goodwill",
+        "end": "2025-12-31",
+        "value_text": "4100000000",
+        "prior_value_text": "6400000000"
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "1100000000",
+        "prior_value_text": null
+      },
+      "operating_cash_flow": {
+        "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+        "end": "2025-12-31",
+        "value_text": "800000000",
+        "prior_value_text": "500000000"
+      },
+      "operating_income": {
+        "concept": "us-gaap:OperatingIncomeLoss",
+        "end": "2025-12-31",
+        "value_text": "2150000000",
+        "prior_value_text": null
+      },
+      "rpo_backlog": {
+        "concept": "us-gaap:RevenueRemainingPerformanceObligation",
+        "end": "2025-12-31",
+        "value_text": "9800000000",
+        "prior_value_text": null
+      },
+      "purchase_commitments": {
+        "concept": "us-gaap:PurchaseObligation",
+        "end": "2025-12-31",
+        "value_text": "740000000",
+        "prior_value_text": null
+      },
+      "net_income": {
+        "concept": "us-gaap:NetIncomeLoss",
+        "end": "2025-12-31",
+        "value_text": "400000000",
+        "prior_value_text": null
+      },
+      "diluted_shares": {
+        "concept": "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding",
+        "end": "2025-12-31",
+        "value_text": "320000000",
+        "prior_value_text": null
+      },
+      "guarantees": {
+        "concept": "us-gaap:GuaranteeObligationsMaximumExposure",
+        "end": "2025-12-31",
+        "value_text": "5000000",
+        "prior_value_text": null
+      },
+      "dividends": {
+        "concept": "us-gaap:PaymentsOfDividends",
+        "end": "2025-12-31",
+        "value_text": "1000000",
+        "prior_value_text": null
+      },
+      "share_repurchase": {
+        "concept": "us-gaap:PaymentsForRepurchaseOfCommonStock",
+        "end": "2025-12-31",
+        "value_text": "200000000",
+        "prior_value_text": null
+      },
+      "long_term_debt": {
+        "concept": "us-gaap:LongTermDebtNoncurrent",
+        "end": "2025-12-31",
+        "value_text": "3000000000",
+        "prior_value_text": null
+      },
+      "rnd_expense": {
+        "concept": "us-gaap:ResearchAndDevelopmentExpense",
+        "end": "2025-12-31",
+        "value_text": "300000000",
+        "prior_value_text": null
+      },
+      "interest_revenue": {
+        "concept": "us-gaap:InterestAndDividendIncomeOperating",
+        "end": "2025-12-31",
+        "value_text": "80000000",
+        "prior_value_text": null
+      },
+      "net_interest_income": {
+        "concept": "us-gaap:InterestIncomeExpenseNet",
+        "end": "2025-12-31",
+        "value_text": "-50000000",
+        "prior_value_text": null
+      },
+      "inventory": {
+        "concept": "us-gaap:InventoryNet",
+        "end": "2025-12-31",
+        "value_text": "1000000000",
+        "prior_value_text": null
+      },
+      "capex": {
+        "concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+        "end": "2025-12-31",
+        "value_text": "600000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "software": {
+    "form": "10-K",
+    "taxonomy": "us-gaap",
+    "currency": "USD",
+    "slots": {
+      "company_revenue": {
+        "concept": "us-gaap:Revenues",
+        "end": "2025-12-31",
+        "value_text": "8800000000",
+        "prior_value_text": "6200000000"
+      },
+      "rpo_backlog": {
+        "concept": "us-gaap:RevenueRemainingPerformanceObligation",
+        "end": "2025-12-31",
+        "value_text": "11600000000",
+        "prior_value_text": null
+      },
+      "cash": {
+        "concept": "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "end": "2025-12-31",
+        "value_text": "2000000000",
+        "prior_value_text": null
+      },
+      "operating_income": {
+        "concept": "us-gaap:OperatingIncomeLoss",
+        "end": "2025-12-31",
+        "value_text": "1000000000",
+        "prior_value_text": null
+      }
+    }
+  },
+  "fpi": {
+    "form": "20-F",
+    "taxonomy": "ifrs-full",
+    "currency": "EUR",
+    "slots": {
+      "company_revenue": {
+        "concept": "ifrs-full:Revenue",
+        "end": "2026-03-31",
+        "value_text": "1200000000",
+        "prior_value_text": "1050000000"
+      },
+      "cash": {
+        "concept": "ifrs-full:CashAndCashEquivalents",
+        "end": "2026-03-31",
+        "value_text": "350000000",
+        "prior_value_text": null
+      },
+      "goodwill_impairment": {
+        "concept": "ifrs-full:ImpairmentLossRecognisedInProfitOrLossGoodwill",
+        "end": "2026-03-31",
+        "value_text": "86000000",
+        "prior_value_text": null
+      },
+      "goodwill": {
+        "concept": "ifrs-full:Goodwill",
+        "end": "2026-03-31",
+        "value_text": "900000000",
+        "prior_value_text": null
+      },
+      "operating_cash_flow": {
+        "concept": "ifrs-full:CashFlowsFromUsedInOperatingActivities",
+        "end": "2026-03-31",
+        "value_text": "210000000",
+        "prior_value_text": null
+      },
+      "net_income": {
+        "concept": "ifrs-full:ProfitLoss",
+        "end": "2026-03-31",
+        "value_text": "95400000",
+        "prior_value_text": null
+      }
+    }
+  }
+}

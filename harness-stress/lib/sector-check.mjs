@@ -75,6 +75,12 @@ export function checkSectors(fixture, api) {
     if (JSON.stringify(gaps) !== JSON.stringify(issuer.gaps || [])) {
       errors.push(`${tag} gaps ${JSON.stringify(gaps)} != ${JSON.stringify(issuer.gaps || [])}`);
     }
+    const context = [];
+    api.liveClaims(claims, api.rules, 8, null, { contextOut: context });
+    const ctx = context.map((c) => ({ id: c.id, metric_id: c.metric_id, reason: c.reason }));
+    if (JSON.stringify(ctx) !== JSON.stringify(issuer.context || [])) {
+      errors.push(`${tag} context ${JSON.stringify(ctx)} != ${JSON.stringify(issuer.context || [])}`);
+    }
     for (const claim of claims) {
       const classified = api.classifyClaim(claim, api.rules);
       if (classified.metric_id !== claim.classify) {

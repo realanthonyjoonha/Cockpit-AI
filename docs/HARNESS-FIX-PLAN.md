@@ -218,6 +218,15 @@ Options and the chosen taxonomy, parser, and unit rules are in Generalization. T
 
 `goodwill_impairment` becomes `all` of goodwill and impairment, and it is ordered before a generic impairment rule and before inventory. Inventory’s needle is the word `inventory`, with `none` containing impairment. Cash is ordered before revenue guidance and gains phrase coverage for “cash was”, “cash were”, “cash balance”, and the equivalents phrases, with negatives for cash flow. Guidance requires a guidance or outlook word and a revenue or sales word, with the cash phrases on `none`. The stem `guid` is deleted.
 
+#### Rework after PR #5 review: tagged facts own the live number
+
+Three rounds of wording rules failed review, so the live numeric slot no longer depends on sentence wording.
+
+- **Tagged slot.** `ontology/api/xbrl_facts.py` and `memory-cockpit-v2/server/xbrlFacts.js` parse iXBRL `ix:nonFraction` and plain XBRL instance facts from local files. They read the concept, context period, unit, scale, sign, decimals, and dimensions. `taxonomy_xbrl.json` (v2) maps us-gaap and ifrs-full concepts to a metric, with a period type and a unit kind. Only non-dimensional facts fill a slot. The latest period end wins; on the same end date, the longer duration wins, then concept priority. Compile (`compile/from_xbrl.py`) writes `pack.facts` from `raw/{slug}-research/filings/*`, or from `xbrl_globs` when the pack config sets it.
+- **Sentence slot.** A classified sentence fills a metric only when no tagged fact exists for that metric. It must carry an amount of the slot's kind, and it is marked `confidence: low`. A gap names those metrics. A sentence never overwrites a tagged value. That holds even when the sentence is dated after the tagged fact; a gap reports the newer sentence instead.
+- **Context.** Every other classified sentence lands in `context_claims` with reason `tagged_slot` or `no_amount`. It is never a live value.
+- **Proof.** `harness-stress/fixtures/xbrl/*.htm` hold round-number facts for the ten sectors. Every PR #5 review sentence and held-out wording case is in `harness-stress/fixtures/review-sentences.json`. Each one, alone and together, must leave every tagged slot unchanged (`harness-stress/lib/review-check.mjs`, `ontology/tests/test_xbrl_facts.py`). Parity compares the parsed facts and the merge across both languages.
+
 Headcount and operating segments are taxonomy ids, not boilerplate drops. “45 percent” and “$ 12” are accepted by the shared unit parser and can remain residual when no phrase hits. A qualitative sentence with no number and no phrase still drops. That is elision, and the sector fixture does not treat it as a classified metric.
 
 ### Files and functions

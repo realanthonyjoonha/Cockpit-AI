@@ -91,7 +91,9 @@ export function buildHouseAssistContext(opts) {
       || (process.env.COCKPIT_REPO && `${process.env.COCKPIT_REPO}/ontology`)
       || null;
     if (ontologyRoot) {
-      rankedClaims = liveClaims(claims, loadContextpackRules(ontologyRoot));
+      rankedClaims = liveClaims(claims, loadContextpackRules(ontologyRoot), 8, null, {
+        facts: available && Array.isArray(pack?.facts) ? pack.facts : [],
+      });
     }
   } catch { /* fall through */ }
   if (!rankedClaims.length) {
@@ -151,7 +153,8 @@ export function buildHouseAssistContext(opts) {
   if (!rankedClaims.length) sections.push('_No claims._');
   else {
     for (const c of rankedClaims) {
-      const mid = c.metric_id ? `\`${c.metric_id}\` ` : '';
+      const low = c.confidence === 'low' ? 'sentence, low confidence ' : '';
+      const mid = c.metric_id ? `\`${c.metric_id}\` ${low}` : '';
       sections.push(`- ${mid}[${c.grade || '?'}] (${c.as_of || '—'}) ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
     }
   }
