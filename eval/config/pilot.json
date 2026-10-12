@@ -11,7 +11,7 @@
     "comment": "Subject is the strong Cursor model (same host as harness-stress). Never XAI_API_KEY."
   },
   "sec": {
-    "user_agent": "Cockpit-AI-eval/0.1 (+https://github.com/realanthonyjoonha/Cockpit-AI; research evaluation contact)",
+    "user_agent": "Cockpit Research Eval anthonyjoonha@gmail.com",
     "url_template": "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json",
     "min_interval_ms": 200,
     "max_requests_per_sec": 5,

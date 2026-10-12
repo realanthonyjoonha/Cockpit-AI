@@ -86,13 +86,21 @@ export function jobPromptMarkdown(job) {
     'number = primary figure in native units (not millions unless you say so). numbers = every figure you stated. gap=true if you refuse or the line is untagged.',
     '',
   ];
+  let lastCtx = null;
+  let lastCompany = null;
   job.items.forEach((item, i) => {
-    lines.push(`---`);
-    lines.push(`### Item ${i + 1} \`${item.item_id}\``);
-    if (item.context) {
+    if (item.company_id !== lastCompany && item.context && item.context !== lastCtx) {
+      lines.push(`---`);
+      lines.push(`## Context for ${item.ticker || item.company_id} (applies to the next items until a new context)`);
       lines.push('');
       lines.push(item.context);
+      lastCtx = item.context;
+      lastCompany = item.company_id;
+    } else if (item.company_id !== lastCompany) {
+      lastCompany = item.company_id;
     }
+    lines.push(`---`);
+    lines.push(`### Item ${i + 1} \`${item.item_id}\``);
     lines.push('');
     lines.push(`QUESTION: ${item.question}`);
     lines.push('');
