@@ -194,7 +194,7 @@ class TestRetrieveBudget(unittest.TestCase):
         from api.contextpack import object_identity
 
         primer = "BACKGROUND-CANARY US G-SIB shape: consumer, CIB, asset management."
-        stance = [{"label": "Advantaged", "text": "BACKGROUND-CANARY product map deposits to NII."}]
+        stance = [{"label": "Advantaged", "text": "VAULT-STANCE deposit beta is the named watch."}]
         role = "BACKGROUND-CANARY role in a sector thesis the model can search."
         store = _store(
             [_claim("rev", "Net sales were $10 million", "2026-01-01")],
@@ -207,18 +207,21 @@ class TestRetrieveBudget(unittest.TestCase):
         agent = assemble_agent_pack(store)
         self._assert_under(pack)
         self._assert_under(agent)
+        identity = {"id": "demo", "name": "Demo Fixture", "ticker": "DEMO"}
         for row in (pack, agent):
             obj = row.get("object") or {}
+            self.assertEqual(obj, identity)
             self.assertEqual(obj, object_identity(store["object"]))
-            self.assertNotIn("summary", obj)
-            self.assertNotIn("stance", obj)
-            self.assertNotIn("role_in_theses", obj)
+        stuffed_md = to_markdown({"object": store["object"], "focus": store["focus"], "intent": "overview"})
         md = to_markdown(pack)
         agent_md = to_agent_markdown(agent)
-        ctx = build_agent_context("DEMO", "overview status")
-        for text in (json.dumps(pack), json.dumps(agent), md, agent_md, ctx):
+        texts = [json.dumps(pack), json.dumps(agent), md, agent_md, stuffed_md]
+        for q in ("overview status", "how exposed is DEMO to pricing?", "what is the stance"):
+            texts.append(build_agent_context("DEMO", q))
+        for text in texts:
             self.assertNotIn("BACKGROUND-CANARY", text)
             self.assertNotIn("## Company —", text)
+        ctx = build_agent_context("DEMO", "overview status")
         self.assertIn("HEAD-CANARY fixture excerpt", ctx)
         self.assertIn("END CONTEXT", ctx)
 

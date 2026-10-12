@@ -1,4 +1,4 @@
-# Ontology CONTRACT v0.1
+# Ontology CONTRACT v0.2
 
 **Status:** PROPOSED FREEZE — Anthony to confirm  
 **Effective:** 2026-10-12  
@@ -156,4 +156,4 @@ Voice · multi-ticker depth · Nebius pack quality · X/firehose core · Neo4j �
 | v0.2 | 2026-10-12 | Overview pack drops company/sector primer, stance, and role_in_theses (eval arm 0+d: no accuracy or cost gain vs bare+web). Identity, tagged facts, house/risks, 10k cap, and gaps stay. |
 | v0.1 | 2026-07-19 | Initial freeze proposal |
 
-**Anthony confirmation:** ☐ I freeze v0.1 · ☐ Request changes before freeze  
+**Anthony confirmation:** ☐ I freeze v0.2 · ☐ Request changes before freeze  

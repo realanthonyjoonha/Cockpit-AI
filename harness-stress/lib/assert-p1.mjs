@@ -374,7 +374,7 @@ export function assertP1() {
     {
       id: 'C-agent-background',
       op: 'agent',
-      question: 'overview status',
+      question: 'how exposed is DEMO to pricing?',
       store: baseStore([claim('rev', 'Net sales were $10 million', '2026-01-01')], {
         summary: 'BACKGROUND-CANARY US G-SIB shape: consumer, CIB, asset management.',
       }),
@@ -426,8 +426,8 @@ export function assertP1() {
     if (background.has_background) errors.push('overview pack kept company/sector primer fields');
     if (background.has_background_canary) errors.push('overview pack leaked BACKGROUND-CANARY');
     const keys = background.object_keys || [];
-    if (keys.includes('summary') || keys.includes('stance') || keys.includes('role_in_theses')) {
-      errors.push(`overview object still has primer keys ${keys.join(',')}`);
+    if (JSON.stringify(keys) !== JSON.stringify(['id', 'name', 'ticker'])) {
+      errors.push(`overview object keys ${keys.join(',') || '(none)'}`);
     }
   }
   const agentBg = byId['C-agent-background'];

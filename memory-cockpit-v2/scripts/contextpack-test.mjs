@@ -128,14 +128,16 @@ const primerStore = {
 const primerPack = assembleAgentPack(primerStore, rules);
 const primerObj = primerPack.object || {};
 const primerMd = toMarkdown(primerPack);
+const stuffedMd = toMarkdown({ object: primerStore.object, focus: { ticker: 'DEMO' }, intent: 'overview' });
+const identity = { id: 'demo', name: 'Demo Fixture', ticker: 'DEMO' };
 if (
-  JSON.stringify(primerObj) === JSON.stringify(objectIdentity(primerStore.object))
-  && !primerObj.summary
-  && !primerObj.stance
-  && !primerObj.role_in_theses
+  JSON.stringify(primerObj) === JSON.stringify(identity)
+  && JSON.stringify(primerObj) === JSON.stringify(objectIdentity(primerStore.object))
   && !JSON.stringify(primerPack).includes('BACKGROUND-CANARY')
   && !primerMd.includes('BACKGROUND-CANARY')
   && !primerMd.includes('## Company —')
+  && !stuffedMd.includes('BACKGROUND-CANARY')
+  && !stuffedMd.includes('## Company —')
 ) {
   ok('JS assemble omits pre-stuffed background');
 } else bad(`JS assemble still stuffs background ${JSON.stringify(primerObj)}`);
