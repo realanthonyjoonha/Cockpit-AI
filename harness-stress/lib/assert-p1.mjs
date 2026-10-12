@@ -16,7 +16,9 @@ import {
   OVERVIEW_BUDGET_CHARS,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../../memory-cockpit-v2/server/assistContext.js';
+import { latestFilingSlots, mappedLatestFacts, parseCompanyfacts } from '../../memory-cockpit-v2/server/companyfacts.js';
 import { loadSectors } from './sector-check.mjs';
+import { loadIndex } from './review-check.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../..');
@@ -425,5 +427,92 @@ export function assertP1() {
   if (!alias || alias.error || alias.ticker !== 'MU') errors.push(`micron alias ${alias?.error || alias?.ticker}`);
 
   errors.push(...sectorBudgetErrors());
+  errors.push(...labeledPeriodsSurviveCap(rules));
+  return errors;
+}
+
+function periodKeyOf(val) {
+  const period = (val && val.period) || {};
+  return `${period.start ?? ''}|${period.end ?? ''}`;
+}
+
+function labeledPeriodsSurviveCap(rules) {
+  const errors = [];
+  const index = loadIndex();
+  const cfDir = path.join(REPO, 'harness-stress/fixtures/companyfacts');
+  let checked = 0;
+  for (const row of index.issuers || []) {
+    if (row.kind !== 'extract' && row.kind !== 'constructed') continue;
+    const doc = JSON.parse(readFileSync(path.join(cfDir, row.id, 'companyfacts.json'), 'utf8'));
+    const allFacts = parseCompanyfacts(doc, { sourceId: `companyfacts/${row.id}` }).facts;
+    const { slots } = latestFilingSlots(allFacts);
+    const want = {};
+    for (const [mid, slot] of Object.entries(slots)) {
+      const values = slot.values || [];
+      let latestEnd = '';
+      for (const v of values) {
+        const end = String((v.period || {}).end || '');
+        if (end > latestEnd) latestEnd = end;
+      }
+      const periods = new Set(
+        values.filter((v) => String((v.period || {}).end || '') === latestEnd).map(periodKeyOf),
+      );
+      if (periods.size) want[mid] = periods;
+    }
+    if (!Object.keys(want).length) continue;
+    const fat = Array.from({ length: 12 }, (_, i) => claim(
+      `sent-${i}`,
+      `Gross margin was ${40 + i} percent. ${'WORD '.repeat(80)}`,
+      `2026-01-${String(i + 1).padStart(2, '0')}`,
+    ));
+    const store = baseStore(fat, {
+      ticker: row.id.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12),
+      id: row.id,
+      house_prior: { notes: 'N'.repeat(20_000), view_excerpt: 'E'.repeat(5000) },
+      gaps: [],
+    });
+    store.facts = mappedLatestFacts(allFacts);
+    const assembled = assembleAgentPack(store, rules);
+    const live = liveClaims(fat, rules, 8, null, { facts: store.facts });
+    const snapshot = {
+      available: true,
+      ticker: store.focus.ticker,
+      house_prior: { status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'E'.repeat(5000), notes: 'N'.repeat(20_000) },
+      claims: live.map((c) => ({
+        text: c.text,
+        grade: c.grade,
+        as_of: c.as_of,
+        source_id: c.source_id,
+        metric_id: c.metric_id || null,
+        confidence: c.confidence || null,
+        origin: c.origin,
+        values: c.values,
+      })),
+      gaps: [],
+    };
+    enforceCharBudget(snapshot, OVERVIEW_BUDGET_CHARS, (row) => JSON.stringify(row, null, 2).length);
+    if (JSON.stringify(snapshot, null, 2).length > OVERVIEW_BUDGET_CHARS) {
+      errors.push(`${row.id} pretty snapshot over cap`);
+    }
+    for (const pack of [assembled, snapshot]) {
+      const byMid = {};
+      for (const c of pack.claims || []) {
+        if (c.origin === 'companyfacts' || c.origin === 'xbrl') byMid[c.metric_id] = c;
+      }
+      for (const [mid, periods] of Object.entries(want)) {
+        const claimRow = byMid[mid];
+        if (!claimRow) {
+          errors.push(`${row.id} lost ${mid} under the cap`);
+          continue;
+        }
+        const got = new Set((claimRow.values || []).map(periodKeyOf));
+        for (const key of periods) {
+          if (!got.has(key)) errors.push(`${row.id} ${mid} lost labeled period ${key}`);
+        }
+      }
+    }
+    checked += 1;
+  }
+  if (checked < 1) errors.push('no live-shaped extracts to check labeled periods');
   return errors;
 }

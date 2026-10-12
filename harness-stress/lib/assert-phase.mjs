@@ -18,6 +18,7 @@ import {
   parseAsOf,
   riskMetric,
   sentenceHasAmount,
+  staleTripwires,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { sectorBudgetErrors } from './assert-p1.mjs';
 import { sectorGoErrors } from './assert-p2.mjs';
@@ -32,6 +33,7 @@ import {
 import {
   FACT_SETS,
   checkCompanyfactsExact,
+  checkHonestyFixes,
   checkReview,
   checkReviewerCases,
   checkTaggedSectors,
@@ -78,6 +80,7 @@ function makeApi(rules) {
     claimGaps,
     riskMetric,
     sentenceHasAmount,
+    staleTripwires,
     parseCompanyfacts,
     structuredMetric,
     taggedSlots,
@@ -132,6 +135,9 @@ export function assertSectors() {
   const reviewer = checkReviewerCases(api);
   if (reviewer.length) errors.push(...reviewer.slice(0, 20), `reviewer ${reviewer.length} problem(s)`);
   else console.log('reviewer constructed unique/two-periods/disagree/none held');
+  const honesty = checkHonestyFixes(api);
+  if (honesty.length) errors.push(...honesty.slice(0, 20), `honesty ${honesty.length} problem(s)`);
+  else console.log('honesty latest-filing-only / undated as_of / tripwire periods held');
   const rulesText = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
   const xbrlText = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
   for (const hit of bannedWordHits(rulesText)) errors.push(`metrics JSON contains ${hit}`);

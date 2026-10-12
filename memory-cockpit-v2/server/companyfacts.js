@@ -289,6 +289,16 @@ export function latestAccession(facts) {
   return best ? best.accession : null;
 }
 
+export function latestFilingFacts(facts) {
+  const accn = latestAccession(facts || []);
+  if (!accn) return [];
+  return (facts || []).filter((f) => f.accession === accn);
+}
+
+export function mappedLatestFacts(facts, taxonomy = null) {
+  return mappedFacts(latestFilingFacts(facts), taxonomy);
+}
+
 export function periodKey(fact) {
   const period = (fact && fact.period) || {};
   return [period.start ?? null, period.end ?? null];
@@ -498,7 +508,7 @@ export function loadCompanyfacts(cfg, wikiRoot, slug) {
   }
   const parsed = loadCompanyfactsFile(filePath, { sourceId: filePath });
   const { slots, gaps } = latestFilingSlots(parsed.facts);
-  const kept = mappedFacts(parsed.facts);
+  const kept = mappedLatestFacts(parsed.facts);
   const notes = [...(parsed.notes || [])];
   const statusGap = cacheStatusGap(filePath);
   if (statusGap && !notes.includes(statusGap)) notes.unshift(statusGap);

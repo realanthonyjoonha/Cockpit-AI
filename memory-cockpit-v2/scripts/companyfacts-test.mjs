@@ -2,8 +2,16 @@
 import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { headlineGaps, latestFilingSlots, loadCompanyfactsFile } from '../server/companyfacts.js';
-import { CONSTRUCTED, slotPropertyErrors } from '../../harness-stress/lib/review-check.mjs';
+import {
+  headlineGaps,
+  latestAccession,
+  latestFilingSlots,
+  loadCompanyfactsFile,
+  mappedLatestFacts,
+  parseCompanyfacts,
+  taggedSlots,
+} from '../server/companyfacts.js';
+import { CONSTRUCTED, amendmentAssetsOnlyDoc, slotPropertyErrors } from '../../harness-stress/lib/review-check.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.resolve(HERE, '../../harness-stress/fixtures/companyfacts');
@@ -41,5 +49,15 @@ if (clash.slots.company_revenue || !(clash.gaps || []).some((g) => g.includes('d
 }
 const none = latestFilingSlots(loadCompanyfactsFile(path.join(FIX, 'none', 'companyfacts.json')).facts);
 if (none.slots.company_revenue) fail('none filled company_revenue');
+
+const { older, later, doc } = amendmentAssetsOnlyDoc();
+const amendment = parseCompanyfacts(doc, { sourceId: 'companyfacts/amendment-assets-only' });
+if (latestAccession(amendment.facts) !== later) fail('amendment latest accession');
+const amendmentSlots = latestFilingSlots(amendment.facts);
+if (amendmentSlots.slots.company_revenue) fail('amendment resurrected company_revenue');
+if (!(amendmentSlots.gaps || []).some((g) => g.includes('company_revenue') && g.includes(later) && !g.includes(older))) {
+  fail('amendment gap did not name later accession');
+}
+if (taggedSlots(mappedLatestFacts(amendment.facts)).company_revenue) fail('mappedLatest kept older revenue');
 
 if (!process.exitCode) console.log(`companyfacts JS properties ${dirs.length} fixtures`);

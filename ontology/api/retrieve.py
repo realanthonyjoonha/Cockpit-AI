@@ -148,11 +148,97 @@ def _slim_claim_values(pack: dict[str, Any]) -> bool:
     return changed
 
 
-def _drop_claim_values(pack: dict[str, Any]) -> bool:
+_LABEL_VALUE_KEYS = ("value_text", "unit", "period", "span")
+
+
+def _label_period(val: dict[str, Any]) -> dict[str, Any]:
+    period = val.get("period") if isinstance(val.get("period"), dict) else {}
+    return {
+        "value_text": val.get("value_text"),
+        "unit": val.get("unit"),
+        "period": {"start": period.get("start"), "end": period.get("end")},
+        "span": val.get("span"),
+    }
+
+
+def _slim_claim_values_hard(pack: dict[str, Any]) -> bool:
+    """Drop optional value keys. Keep period labels for the latest filing."""
     changed = False
     out: list[Any] = []
     for claim in pack.get("claims") or []:
-        if isinstance(claim, dict) and claim.get("values"):
+        if not isinstance(claim, dict) or not claim.get("values"):
+            out.append(claim)
+            continue
+        slim = [_label_period(v) for v in claim.get("values") or [] if isinstance(v, dict)]
+        next_row = dict(claim)
+        if slim != claim.get("values"):
+            next_row["values"] = slim
+            changed = True
+        out.append(next_row)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _drop_older_claim_periods(pack: dict[str, Any]) -> bool:
+    """Drop comparative periods. Keep values that share the latest period.end."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not _is_tagged_claim(claim):
+            out.append(claim)
+            continue
+        values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+        if len(values) <= 1:
+            out.append(claim)
+            continue
+        latest_end = max((str((v.get("period") or {}).get("end") or "") for v in values), default="")
+        kept = [v for v in values if str((v.get("period") or {}).get("end") or "") == latest_end]
+        if not kept or kept == values:
+            out.append(claim)
+            continue
+        row = dict(claim)
+        row["values"] = kept
+        out.append(row)
+        changed = True
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _blank_tagged_texts(pack: dict[str, Any]) -> bool:
+    """Text is redundant once values[] carry the labels."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if (
+            isinstance(claim, dict)
+            and _is_tagged_claim(claim)
+            and claim.get("values")
+            and isinstance(claim.get("text"), str)
+            and claim.get("text")
+        ):
+            row = dict(claim)
+            row["text"] = ""
+            out.append(row)
+            changed = True
+        else:
+            out.append(claim)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _drop_claim_values(pack: dict[str, Any]) -> bool:
+    """Drop values[] on untagged rows only. Latest-filing labels stay."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if (
+            isinstance(claim, dict)
+            and claim.get("values")
+            and not _is_tagged_claim(claim)
+        ):
             row = dict(claim)
             row.pop("values", None)
             out.append(row)
@@ -164,7 +250,13 @@ def _drop_claim_values(pack: dict[str, Any]) -> bool:
     return changed
 
 
-def _clip_claim_texts(pack: dict[str, Any], n: int, metric_id: str | None) -> bool:
+def _clip_claim_texts(
+    pack: dict[str, Any],
+    n: int,
+    metric_id: str | None,
+    *,
+    skip_tagged: bool = False,
+) -> bool:
     changed = False
     out: list[Any] = []
     for claim in pack.get("claims") or []:
@@ -172,6 +264,9 @@ def _clip_claim_texts(pack: dict[str, Any], n: int, metric_id: str | None) -> bo
             out.append(claim)
             continue
         row = dict(claim)
+        if skip_tagged and _is_tagged_claim(row):
+            out.append(row)
+            continue
         if metric_id is None or row.get("metric_id") == metric_id:
             text = row.get("text")
             if isinstance(text, str) and len(text) > n:
@@ -180,6 +275,23 @@ def _clip_claim_texts(pack: dict[str, Any], n: int, metric_id: str | None) -> bo
         out.append(row)
     if changed:
         pack["claims"] = out
+    return changed
+
+
+def _clip_gaps(pack: dict[str, Any], n: int) -> bool:
+    gaps = pack.get("gaps")
+    if not isinstance(gaps, list):
+        return False
+    changed = False
+    out: list[Any] = []
+    for gap in gaps:
+        if isinstance(gap, str) and len(gap) > n:
+            out.append(gap[:n])
+            changed = True
+        else:
+            out.append(gap)
+    if changed:
+        pack["gaps"] = out
     return changed
 
 
@@ -315,7 +427,7 @@ def _drop_tail_claim(pack: dict[str, Any]) -> bool:
         return False
     idx = next((i for i in range(len(claims) - 1, -1, -1) if not _is_tagged_claim(claims[i])), None)
     if idx is None:
-        idx = len(claims) - 1
+        return False
     dropped = claims[idx]
     pack["claims"] = [c for i, c in enumerate(claims) if i != idx]
     ident = dropped.get("id") or dropped.get("metric_id") or "claim"
@@ -352,7 +464,21 @@ def _stub_pack(pack: dict[str, Any], limit: int, measure) -> dict[str, Any]:
             "date": str(hp.get("date") or "")[:32],
         },
         "gaps": gaps[:12],
-        "claims": [],
+        "claims": [
+            {
+                "id": c.get("id"),
+                "metric_id": c.get("metric_id"),
+                "origin": c.get("origin"),
+                "confidence": c.get("confidence"),
+                "values": [
+                    _label_period(v)
+                    for v in (c.get("values") or [])
+                    if isinstance(v, dict)
+                ],
+            }
+            for c in (pack.get("claims") or [])
+            if isinstance(c, dict) and _is_tagged_claim(c)
+        ],
         "budget": {"limit_chars": limit, "used_chars": 0, "trimmed": True},
     }
     if measure(stub) > limit:
@@ -390,7 +516,7 @@ def enforce_char_budget(
         lambda: _clear_list(pack, "context_claims"),
         lambda: _slim_claim_values(pack),
         lambda: _clip_claim_texts(pack, 480, "other"),
-        lambda: _clip_claim_texts(pack, 480, None),
+        lambda: _clip_claim_texts(pack, 480, None, skip_tagged=True),
         lambda: _clip_object(pack, 300),
         lambda: _clip_risks(pack, 160, 2),
         lambda: _clip_pin(pack, 160),
@@ -401,10 +527,14 @@ def enforce_char_budget(
         lambda: _take_list(pack, "sources", 4),
         lambda: _clip_excerpt(pack, 200),
         lambda: _clip_claim_texts(pack, 160, "other"),
-        lambda: _clip_claim_texts(pack, 160, None),
+        lambda: _clip_claim_texts(pack, 160, None, skip_tagged=True),
         lambda: _drop_other_claims(pack),
         lambda: _drop_claim_values(pack),
-        lambda: _clip_claim_texts(pack, 80, None),
+        lambda: _slim_claim_values_hard(pack),
+        lambda: _clip_claim_texts(pack, 80, None, skip_tagged=True),
+        lambda: _clip_claim_texts(pack, 160, None),
+        lambda: _blank_tagged_texts(pack),
+        lambda: _drop_older_claim_periods(pack),
         lambda: _clip_excerpt(pack, 80),
         lambda: _clear_list(pack, "catalysts"),
         lambda: _clear_list(pack, "series_snapshot"),
@@ -417,7 +547,11 @@ def enforce_char_budget(
         lambda: _drop_untagged_claims(pack),
         lambda: _drop_tail_claim(pack),
         lambda: _drop_tail_claim(pack),
-        lambda: _clear_list(pack, "claims"),
+        lambda: _clip_gaps(pack, 180),
+        lambda: _take_list(pack, "gaps", 8),
+        lambda: _take_list(pack, "gaps", 4),
+        lambda: _take_list(pack, "gaps", 2),
+        lambda: _clear_list(pack, "gaps"),
         lambda: _clear_list(pack, "risks"),
         lambda: _clear_list(pack, "stale_tripwires"),
     ]
