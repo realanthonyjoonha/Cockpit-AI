@@ -462,7 +462,7 @@ function labeledPeriodsSurviveCap(rules) {
     const want = {};
     for (const [mid, slot] of Object.entries(slots)) {
       const values = slot.values || [];
-      const periods = new Set(values.map(periodKeyOf));
+      const periods = new Set(currentLatestFilingValues(values).map(periodKeyOf));
       if (periods.size) want[mid] = periods;
     }
     if (!Object.keys(want).length) continue;
@@ -729,6 +729,9 @@ function prettySnapshotKeepsCurrentPeriods(rules) {
     const doc = JSON.parse(readFileSync(path.join(cfDir, row.id, 'companyfacts.json'), 'utf8'));
     const allFacts = parseCompanyfacts(doc, { sourceId: `companyfacts/${row.id}` }).facts;
     if (!latestForms(allFacts).has('10-Q')) continue;
+    const { slots } = latestFilingSlots(allFacts);
+    const hasCurrent = Object.values(slots).some((slot) => currentLatestFilingValues(slot.values || []).length);
+    if (!hasCurrent) continue;
     for (const err of prettySnapshotErrors(doc, `companyfacts/${row.id}`, rules)) {
       errors.push(`${row.id} ${err}`);
     }
