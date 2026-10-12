@@ -511,14 +511,66 @@ def _conflict_gap(mid: str, accn: str, start: str | None, end: str | None, rows:
     return lines
 
 
-def _sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Newest period first so visible text leads with the current filing period."""
     return sorted(
         values,
         key=lambda v: (
             str((v.get("period") or {}).get("end") or ""),
             str((v.get("period") or {}).get("start") or ""),
         ),
+        reverse=True,
     )
+
+
+_sort_values = sort_values
+
+
+def labeled_period_line(lab: dict[str, Any]) -> str:
+    """One visible line for a kept labeled period. Works after hard slim."""
+    period = lab.get("period") if isinstance(lab.get("period"), dict) else {}
+    if lab.get("concept") and lab.get("value_text") is not None and lab.get("unit") is not None:
+        try:
+            return _value_block(lab)
+        except (KeyError, TypeError, AttributeError):
+            pass
+    start, end = period.get("start"), period.get("end")
+    when = f"{start} to {end}" if start else (str(end) if end else "")
+    bits = [lab.get("span"), lab.get("unit"), lab.get("value_text"), when]
+    return " ".join(str(b) for b in bits if b not in (None, ""))
+
+
+def claim_period_lines(claim: dict[str, Any]) -> list[str]:
+    """Every kept labeled period, newest first. Falls back to claim text."""
+    values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+    if values:
+        return [labeled_period_line(v) for v in sort_values(values)]
+    text = claim.get("text")
+    return [text] if isinstance(text, str) and text else []
+
+
+def _span_group(val: dict[str, Any]) -> str:
+    span = val.get("span")
+    if span:
+        return str(span)
+    period = val.get("period") if isinstance(val.get("period"), dict) else {}
+    return "instant" if not period.get("start") else "other"
+
+
+def current_latest_filing_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Current period of each span on the latest filing. Quarter and YTD both stay."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for val in values or []:
+        if not isinstance(val, dict):
+            continue
+        groups.setdefault(_span_group(val), []).append(val)
+    kept: list[dict[str, Any]] = []
+    for rows in groups.values():
+        latest_end = max((str((v.get("period") or {}).get("end") or "") for v in rows), default="")
+        kept.extend(
+            v for v in rows if str((v.get("period") or {}).get("end") or "") == latest_end
+        )
+    return sort_values(kept)
 
 
 def _slot(mid: str, accn: str, values: list[dict[str, Any]]) -> dict[str, Any]:

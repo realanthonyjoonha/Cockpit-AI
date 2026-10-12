@@ -94,8 +94,9 @@ function readAllowlistedMarkdownFile(filePath) {
 }
 
 const { loadPack } = await import(path.join(ROOT, 'server', 'pack.js'));
+const { enforceCharBudget, OVERVIEW_BUDGET_CHARS } = await import(path.join(ROOT, 'server', 'contextpack.js'));
 const { readHouseMarkdown } = await import(path.join(ROOT, 'server', 'thinHouseSave.js'));
-const { buildHouseAssistContext } = await import(path.join(ROOT, 'server', 'assistContext.js'));
+const { buildHouseAssistContext, assistToolTrailer } = await import(path.join(ROOT, 'server', 'assistContext.js'));
 const { getLiveThinDeskProfiles } = await import(path.join(ROOT, 'server', 'thinDeskProfiles.js'));
 
 /**
@@ -301,7 +302,7 @@ server.tool(
     const sorLag = risks.some((r) => r.status_source === 'sor');
     const packSummary = pack.risk_summary || {};
 
-    return textResult({
+    const snapshot = {
       available: true,
       ticker,
       slug: d.slug,
@@ -324,6 +325,7 @@ server.tool(
         source_id: c.source_id,
         metric_id: c.metric_id || null,
         confidence: c.confidence || null,
+        ...(Array.isArray(c.values) ? { values: c.values } : {}),
       })),
       contextpack: 'v2',
       gaps: (pack.gaps || []).slice(0, 15),
@@ -332,7 +334,13 @@ server.tool(
         ? 'SoR risk status ahead of pack — risk_summary.watch is SoR-aware. COMPILE BOOK to sync store.'
         : 'Pack and SoR status aligned. COMPILE BOOK after house/risk SoR edits.',
       decision_support_only: true,
-    });
+    };
+    enforceCharBudget(
+      snapshot,
+      OVERVIEW_BUDGET_CHARS,
+      (row) => JSON.stringify(row, null, 2).length,
+    );
+    return textResult(snapshot);
   },
 );
 
@@ -356,9 +364,11 @@ server.tool(
     return {
       content: [{
         type: 'text',
-        text: ctx.clipboard_text
-          + '\n\n---\n'
-          + JSON.stringify({ chars: ctx.chars, house_exists: ctx.house_exists, compiled_at: ctx.compiled_at }),
+        text: ctx.clipboard_text + assistToolTrailer({
+          chars: ctx.chars,
+          house_exists: ctx.house_exists,
+          compiled_at: ctx.compiled_at,
+        }),
       }],
     };
   },

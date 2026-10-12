@@ -4,7 +4,7 @@
 // metric, only with an amount of that slot's kind, and is marked low confidence.
 import { readFileSync } from 'fs';
 import path from 'path';
-import { canonicalMetric, conceptIndex, loadTaxonomy, sentenceFillAllowed, structuredMetric, taggedSlots } from './companyfacts.js';
+import { canonicalMetric, claimPeriodLines, conceptIndex, currentLatestFilingValues, loadTaxonomy, sentenceFillAllowed, sortValues, structuredMetric, taggedSlots } from './companyfacts.js';
 
 const GRADE_W = { A: 3, B: 2, C: 1 };
 export const FISCAL_GAP = 'as_of is a fiscal label without a period-end date';
@@ -565,6 +565,17 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
   return indexed.map((item) => item.row);
 }
 
+const PACKED_VALUE_KEYS = [
+  'concept', 'tags', 'value_text', 'unit', 'period', 'span',
+  'form', 'fp', 'fy', 'filed', 'accession',
+];
+
+function slimLabeledValue(val) {
+  const row = {};
+  for (const key of PACKED_VALUE_KEYS) row[key] = val ? val[key] : null;
+  return row;
+}
+
 export function packClaim(c) {
   const row = {
     id: c.id,
@@ -579,9 +590,10 @@ export function packClaim(c) {
     row.confidence = c.confidence;
   }
   if (c.origin === 'companyfacts' || c.origin === 'xbrl') {
-    for (const key of ['concept', 'value', 'value_text', 'unit', 'values']) {
+    for (const key of ['concept', 'value', 'value_text', 'unit']) {
       if (Object.prototype.hasOwnProperty.call(c, key)) row[key] = c[key];
     }
+    if (Array.isArray(c.values)) row.values = c.values.filter((v) => v && typeof v === 'object').map(slimLabeledValue);
   }
   return row;
 }
@@ -722,7 +734,7 @@ export function assembleAgentPack(store, rules) {
   const merged = storeGaps.slice();
   for (const g of gaps) if (!merged.includes(g)) merged.push(g);
   for (const g of staleGaps) if (!merged.includes(g)) merged.push(g);
-  return {
+  const pack = {
     schema: 'contextpack.v2',
     intent: 'agent',
     compiled_at: store.compiled_at || null,
@@ -745,4 +757,619 @@ export function assembleAgentPack(store, rules) {
     gaps: merged,
     decision_support_only: true,
   };
+  return enforceCharBudget(pack, OVERVIEW_BUDGET_CHARS);
+}
+
+/** Same cap as ontology/paths.py OVERVIEW_BUDGET_CHARS. Not raised per ticker. */
+export const OVERVIEW_BUDGET_CHARS = 10000;
+
+const HOUSE_PRIOR_KEYS = ['play', 'status', 'date', 'view_excerpt'];
+const PACK_KEYS = new Set([
+  'schema', 'intent', 'focus', 'compiled_at', 'house_prior', 'object', 'claims',
+  'risk_summary', 'risks', 'series_snapshot', 'catalysts', 'sources', 'related',
+  'gaps', 'provenance', 'pin', 'superseded_count', 'stale_tripwires', 'store_claims',
+  'context_claims', 'decision_support_only', 'budget', 'available', 'ticker', 'slug', 'pack_path',
+  'contextpack', 'sor_ahead_of_pack', 'note',
+]);
+
+function addGap(pack, msg) {
+  const gaps = Array.isArray(pack.gaps) ? pack.gaps.slice() : [];
+  if (!gaps.includes(msg)) gaps.push(msg);
+  pack.gaps = gaps;
+}
+
+function seal(pack, limit, trimmed, measure) {
+  pack.budget = { limit_chars: limit, used_chars: 0, trimmed: !!trimmed };
+  let n = 0;
+  for (let i = 0; i < 4; i++) {
+    n = measure(pack);
+    if (pack.budget.used_chars === n) return n;
+    pack.budget.used_chars = n;
+  }
+  return measure(pack);
+}
+
+function allowlist(pack) {
+  let changed = false;
+  const hp = pack.house_prior;
+  if (hp && typeof hp === 'object' && !Array.isArray(hp)) {
+    const dropped = Object.keys(hp).filter((k) => !HOUSE_PRIOR_KEYS.includes(k));
+    const kept = {};
+    for (const key of HOUSE_PRIOR_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(hp, key)) kept[key] = hp[key];
+    }
+    pack.house_prior = kept;
+    for (const key of dropped) addGap(pack, `dropped house_prior.${key}`);
+    if (dropped.length) changed = true;
+  }
+  for (const key of Object.keys(pack)) {
+    if (!PACK_KEYS.has(key)) {
+      delete pack[key];
+      addGap(pack, `dropped key ${key}`);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+function slimClaimValues(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !Array.isArray(claim.values)) {
+      out.push(claim);
+      continue;
+    }
+    const slim = claim.values.filter((v) => v && typeof v === 'object').map(slimLabeledValue);
+    if (JSON.stringify(slim) !== JSON.stringify(claim.values)) {
+      out.push({ ...claim, values: slim });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+const LABEL_VALUE_KEYS = ['value_text', 'unit', 'period', 'span'];
+
+function labelPeriod(val) {
+  const period = val && val.period && typeof val.period === 'object' ? val.period : {};
+  return {
+    value_text: val ? val.value_text : null,
+    unit: val ? val.unit : null,
+    period: { start: period.start ?? null, end: period.end ?? null },
+    span: val ? val.span : null,
+  };
+}
+
+function slimClaimValuesHard(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !claim.values) {
+      out.push(claim);
+      continue;
+    }
+    const slim = claim.values.filter((v) => v && typeof v === 'object').map(labelPeriod);
+    if (JSON.stringify(slim) !== JSON.stringify(claim.values)) {
+      out.push({ ...claim, values: slim });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function claimLatestAccession(claim) {
+  if (claim && claim.accession) return String(claim.accession);
+  let best = null;
+  for (const val of claim.values || []) {
+    if (!val || !val.accession) continue;
+    const filed = String(val.filed || '');
+    const accn = String(val.accession);
+    if (!best || filed > best.filed || (filed === best.filed && accn > best.accession)) {
+      best = { filed, accession: accn };
+    }
+  }
+  return best ? best.accession : '';
+}
+
+function rebuildTaggedClaim(claim, values) {
+  const ordered = sortValues(values);
+  return {
+    ...claim,
+    values: ordered,
+    text: claimPeriodLines({ values: ordered }).join('\n'),
+  };
+}
+
+function keepCurrentClaimPeriods(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !isTaggedClaim(claim)) {
+      out.push(claim);
+      continue;
+    }
+    const values = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (!values.length) {
+      out.push(claim);
+      continue;
+    }
+    const kept = currentLatestFilingValues(values);
+    if (JSON.stringify(kept) === JSON.stringify(values)) {
+      out.push(claim);
+      continue;
+    }
+    out.push(rebuildTaggedClaim(claim, kept));
+    changed = true;
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function dropOlderClaimPeriods(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !isTaggedClaim(claim)) {
+      out.push(claim);
+      continue;
+    }
+    const values = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (!values.length) {
+      out.push(claim);
+      continue;
+    }
+    const accn = claimLatestAccession(claim);
+    const kept = accn && values.some((v) => v.accession)
+      ? values.filter((v) => !v.accession || String(v.accession) === accn)
+      : values;
+    if (!kept.length) {
+      out.push(claim);
+      continue;
+    }
+    const row = rebuildTaggedClaim(claim, kept);
+    if (accn) row.accession = accn;
+    if (JSON.stringify(row.values) !== JSON.stringify(values) || row.text !== claim.text) {
+      changed = true;
+    }
+    out.push(row);
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function blankTaggedTexts(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (claim && typeof claim === 'object' && isTaggedClaim(claim) && claim.values && typeof claim.text === 'string' && claim.text) {
+      out.push({ ...claim, text: '' });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function dropClaimValues(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (claim && typeof claim === 'object' && claim.values && !isTaggedClaim(claim)) {
+      const row = { ...claim };
+      delete row.values;
+      out.push(row);
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function clipClaimTexts(pack, n, metricId, opts = {}) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object') {
+      out.push(claim);
+      continue;
+    }
+    const row = { ...claim };
+    if (opts.skipTagged && isTaggedClaim(row)) {
+      out.push(row);
+      continue;
+    }
+    if (metricId == null || row.metric_id === metricId) {
+      if (typeof row.text === 'string' && row.text.length > n) {
+        row.text = row.text.slice(0, n);
+        changed = true;
+      }
+    }
+    out.push(row);
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function clipGaps(pack, n) {
+  const gaps = pack.gaps;
+  if (!Array.isArray(gaps)) return false;
+  let changed = false;
+  const out = gaps.map((gap) => {
+    if (typeof gap === 'string' && gap.length > n) {
+      changed = true;
+      return gap.slice(0, n);
+    }
+    return gap;
+  });
+  if (changed) pack.gaps = out;
+  return changed;
+}
+
+function clipObject(pack, n) {
+  const obj = pack.object;
+  if (!obj || typeof obj !== 'object') return false;
+  const row = { ...obj };
+  let changed = false;
+  for (const key of ['summary', 'role_in_theses']) {
+    if (typeof row[key] === 'string' && row[key].length > n) {
+      row[key] = row[key].slice(0, n);
+      changed = true;
+    }
+  }
+  if (Array.isArray(row.stance) && row.stance.length > 4) {
+    row.stance = row.stance.slice(0, 4);
+    changed = true;
+  }
+  if (changed) pack.object = row;
+  return changed;
+}
+
+function clipRisks(pack, summaryN, tripN) {
+  if (!Array.isArray(pack.risks)) return false;
+  let changed = false;
+  const out = pack.risks.map((risk) => {
+    if (!risk || typeof risk !== 'object') return risk;
+    const row = { ...risk };
+    if (typeof row.summary === 'string' && row.summary.length > summaryN) {
+      row.summary = row.summary.slice(0, summaryN);
+      changed = true;
+    }
+    if (tripN != null && Array.isArray(row.tripwires) && row.tripwires.length > tripN) {
+      row.tripwires = row.tripwires.slice(0, tripN);
+      changed = true;
+    }
+    return row;
+  });
+  if (changed) pack.risks = out;
+  return changed;
+}
+
+function clipPin(pack, n) {
+  const pin = pack.pin;
+  if (!pin || typeof pin !== 'object' || !Array.isArray(pin.risks)) return false;
+  let changed = false;
+  const risks = pin.risks.map((risk) => {
+    if (!risk || typeof risk !== 'object') return risk;
+    const row = { ...risk };
+    if (typeof row.summary === 'string' && row.summary.length > n) {
+      row.summary = row.summary.slice(0, n);
+      changed = true;
+    }
+    return row;
+  });
+  if (!changed) return false;
+  pack.pin = { ...pin, risks };
+  return true;
+}
+
+function clipExcerpt(pack, n) {
+  const hp = pack.house_prior;
+  if (!hp || typeof hp !== 'object') return false;
+  if (typeof hp.view_excerpt !== 'string' || hp.view_excerpt.length <= n) return false;
+  pack.house_prior = { ...hp, view_excerpt: hp.view_excerpt.slice(0, n) };
+  return true;
+}
+
+function clipProvenance(pack, n) {
+  const prov = pack.provenance;
+  if (!prov || typeof prov !== 'object') return false;
+  if (typeof prov.note !== 'string' || prov.note.length <= n) return false;
+  pack.provenance = { note: prov.note.slice(0, n), pack_config: prov.pack_config || '' };
+  return true;
+}
+
+function takeList(pack, key, n) {
+  if (!Array.isArray(pack[key]) || pack[key].length <= n) return false;
+  pack[key] = pack[key].slice(0, n);
+  return true;
+}
+
+function clearList(pack, key) {
+  if (!Array.isArray(pack[key]) || !pack[key].length) return false;
+  pack[key] = [];
+  return true;
+}
+
+function dropOtherClaims(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  const kept = claims.filter((c) => c.metric_id !== 'other');
+  const dropped = claims.length - kept.length;
+  if (!dropped) return false;
+  pack.claims = kept;
+  addGap(pack, `${dropped} residual claims omitted`);
+  return true;
+}
+
+function isTaggedClaim(claim) {
+  return !!(claim && (claim.origin === 'companyfacts' || claim.origin === 'xbrl' || claim.confidence === 'tagged'));
+}
+
+function dropTailClaim(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  if (!claims.length) return false;
+  let idx = -1;
+  for (let i = claims.length - 1; i >= 0; i--) {
+    if (!isTaggedClaim(claims[i])) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) return false;
+  const dropped = claims[idx];
+  pack.claims = claims.filter((_, i) => i !== idx);
+  addGap(pack, `dropped claim ${dropped.id || dropped.metric_id || 'claim'}`);
+  return true;
+}
+
+function dropUntaggedClaims(pack) {
+  const claims = (pack.claims || []).filter((c) => c && typeof c === 'object');
+  const kept = claims.filter(isTaggedClaim);
+  const dropped = claims.length - kept.length;
+  if (!dropped) return false;
+  pack.claims = kept;
+  addGap(pack, `${dropped} untagged claims omitted`);
+  return true;
+}
+
+function stubPack(pack, limit, measure) {
+  const focus = pack.focus && typeof pack.focus === 'object' ? pack.focus : {};
+  const hp = pack.house_prior && typeof pack.house_prior === 'object' ? pack.house_prior : {};
+  const gaps = (pack.gaps || []).filter((g) => typeof g === 'string' && g.length <= 180);
+  const stub = {
+    focus: { id: String(focus.id || '').slice(0, 64), ticker: String(focus.ticker || '').slice(0, 16) },
+    intent: String(pack.intent || 'overview').slice(0, 32),
+    house_prior: {
+      status: String(hp.status || '').slice(0, 32),
+      date: String(hp.date || '').slice(0, 32),
+    },
+    gaps: gaps.slice(0, 12),
+    claims: (pack.claims || []).filter(isTaggedClaim).map((c) => ({
+      id: c.id,
+      metric_id: c.metric_id,
+      origin: c.origin,
+      confidence: c.confidence,
+      values: (c.values || []).filter((v) => v && typeof v === 'object').map(labelPeriod),
+    })),
+    budget: { limit_chars: limit, used_chars: 0, trimmed: true },
+  };
+  if (measure(stub) > limit) {
+    for (const row of stub.claims) {
+      row.values = currentLatestFilingValues(row.values || []).map(labelPeriod);
+    }
+    stub.gaps = stub.gaps.filter((g) => g !== 'pack was over budget').slice(0, 4);
+    stub.focus = {
+      id: String(focus.id || '').slice(0, 32),
+      ticker: String(focus.ticker || '').slice(0, 12),
+    };
+  }
+  if (measure(stub) > limit) {
+    stub.house_prior = {};
+    stub.gaps = [];
+  }
+  if (measure(stub) > limit) {
+    stub.gaps = ['pack was over budget'];
+    stub.focus = { ticker: String(stub.focus.ticker || '').slice(0, 12) };
+    delete stub.claims;
+  }
+  seal(stub, limit, true, measure);
+  return stub;
+}
+
+export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure = null) {
+  const size = measure || ((p) => JSON.stringify(p).length);
+  const cap = Number(limit);
+  let trimmed = allowlist(pack);
+  const fits = () => seal(pack, cap, trimmed, size) <= cap;
+  if (fits()) return pack;
+  trimmed = true;
+  const steps = [
+    () => clearList(pack, 'related'),
+    () => clearList(pack, 'context_claims'),
+    () => slimClaimValues(pack),
+    () => clipClaimTexts(pack, 480, 'other'),
+    () => clipClaimTexts(pack, 480, null, { skipTagged: true }),
+    () => clipObject(pack, 300),
+    () => clipRisks(pack, 160, 2),
+    () => clipPin(pack, 160),
+    () => clipExcerpt(pack, 500),
+    () => clipProvenance(pack, 120),
+    () => takeList(pack, 'catalysts', 4),
+    () => takeList(pack, 'series_snapshot', 4),
+    () => takeList(pack, 'sources', 4),
+    () => clipExcerpt(pack, 200),
+    () => clipClaimTexts(pack, 160, 'other'),
+    () => clipClaimTexts(pack, 160, null, { skipTagged: true }),
+    () => dropOtherClaims(pack),
+    () => dropClaimValues(pack),
+    () => dropOlderClaimPeriods(pack),
+    () => slimClaimValuesHard(pack),
+    () => blankTaggedTexts(pack),
+    () => clipClaimTexts(pack, 80, null, { skipTagged: true }),
+    () => clipClaimTexts(pack, 160, null),
+    () => keepCurrentClaimPeriods(pack),
+    () => clipExcerpt(pack, 80),
+    () => clearList(pack, 'catalysts'),
+    () => clearList(pack, 'series_snapshot'),
+    () => clearList(pack, 'sources'),
+    () => takeList(pack, 'risks', 2),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => dropUntaggedClaims(pack),
+    () => dropTailClaim(pack),
+    () => dropTailClaim(pack),
+    () => clipGaps(pack, 180),
+    () => takeList(pack, 'gaps', 8),
+    () => takeList(pack, 'gaps', 4),
+    () => takeList(pack, 'gaps', 2),
+    () => clearList(pack, 'gaps'),
+    () => clearList(pack, 'risks'),
+    () => clearList(pack, 'stale_tripwires'),
+  ];
+  for (const step of steps) {
+    if (fits()) return pack;
+    step();
+  }
+  if (fits()) return pack;
+  const stub = stubPack(pack, cap, size);
+  for (const key of Object.keys(pack)) delete pack[key];
+  Object.assign(pack, stub);
+  if (size(pack) > cap) {
+    for (const key of Object.keys(pack)) delete pack[key];
+    Object.assign(pack, {
+      gaps: ['pack was over budget'],
+      budget: { limit_chars: cap, used_chars: 0, trimmed: true },
+    });
+    seal(pack, cap, true, size);
+  }
+  return pack;
+}
+
+function renderClaimPeriods(claim, head, sourceId) {
+  const periods = claimPeriodLines(claim);
+  const lines = [];
+  if (periods.length) {
+    lines.push(`${head} ${periods[0]}${sourceId != null ? ` ← ${sourceId}` : ''}`);
+    for (const extra of periods.slice(1)) lines.push(`  ${extra}`);
+  } else {
+    lines.push(sourceId != null ? `${head} ← ${sourceId}` : head);
+  }
+  return lines;
+}
+
+export function toAgentMarkdown(pack) {
+  const lines = [];
+  const f = pack.focus || {};
+  lines.push(`# ${f.ticker || '?'} — agent ContextPack v2`);
+  lines.push(`compiled_at: ${pack.compiled_at || '?'}`);
+  lines.push(
+    `store_claims: ${pack.store_claims ?? '?'} · live: ${(pack.claims || []).length} · `
+    + `superseded: ${pack.superseded_count || 0}`,
+  );
+  lines.push('');
+  const hp = pack.house_prior || {};
+  if (hp.play || hp.view_excerpt) {
+    lines.push(`## House (pinned) — ${hp.status || ''} · ${hp.date || 'n.d.'}`);
+    lines.push(hp.view_excerpt || '');
+    lines.push('');
+  }
+  const pin = pack.pin || {};
+  lines.push(`## WATCH (pinned) — ${(pin.watch || ['—']).join(', ')}`);
+  if (pin.fired && pin.fired.length) lines.push(`FIRED: ${pin.fired.join(', ')}`);
+  for (const r of pin.risks || []) {
+    lines.push(`- **${r.name}** [${r.status}] — ${r.summary || ''}`);
+  }
+  lines.push('');
+  const stale = pack.stale_tripwires || [];
+  if (stale.length) {
+    lines.push('## Stale tripwires (live claim disagrees)');
+    for (const s of stale) {
+      lines.push(
+        `- ${s.risk_name}: wire \`${s.tripwire_state}\` vs `
+        + `[${s.live_claim_as_of}] ${s.live_claim_text}`,
+      );
+    }
+    lines.push('');
+  }
+  const claims = pack.claims || [];
+  if (claims.length) {
+    lines.push('## Live claims (one per metric)');
+    for (const c of claims) {
+      let tag = '';
+      if (c.origin === 'companyfacts' || c.origin === 'xbrl') tag = ' · tagged';
+      else if (c.confidence === 'low') tag = ' · sentence, low confidence';
+      const head = `- \`${c.metric_id}\`${tag} [${c.grade}] (${c.as_of})`;
+      lines.push(...renderClaimPeriods(c, head, c.source_id));
+    }
+    lines.push('');
+  }
+  const context = pack.context_claims || [];
+  if (context.length) {
+    lines.push('## Context sentences (not live values)');
+    for (const c of context) {
+      lines.push(`- \`${c.metric_id}\` (${c.as_of}) ${c.text} — ${c.reason}`);
+    }
+    lines.push('');
+  }
+  const gaps = pack.gaps || [];
+  lines.push('## Gaps');
+  if (!gaps.length) lines.push('- (none listed)');
+  else for (const g of gaps) lines.push(`- ${g}`);
+  lines.push('');
+  lines.push('_Decision-support only. No buy/sell/hold/target/sizing._');
+  return lines.join('\n');
+}
+
+export function toMarkdown(pack) {
+  const lines = [];
+  const f = pack.focus || {};
+  lines.push(`# ${f.ticker || '?'} — ${pack.intent || 'overview'}`);
+  lines.push(`compiled_at: ${pack.compiled_at || '?'}`);
+  if (pack.budget) {
+    const b = pack.budget;
+    lines.push(`budget: ${b.used_chars}/${b.limit_chars} chars${b.trimmed ? ' (trimmed)' : ''}`);
+  }
+  lines.push('');
+  const hp = pack.house_prior;
+  if (hp) {
+    lines.push(`## House prior — ${hp.play} (${hp.status} · ${hp.date || 'n.d.'})`);
+    lines.push(String(hp.view_excerpt || '').slice(0, 900));
+    lines.push('');
+  }
+  const obj = pack.object || {};
+  if (obj.summary || obj.stance) {
+    lines.push(`## Company — ${obj.name} (${obj.ticker})`);
+    if (obj.summary) lines.push(obj.summary);
+    for (const s of obj.stance || []) lines.push(`- **${s.label}:** ${s.text}`);
+    lines.push('');
+  }
+  const claims = pack.claims || [];
+  if (claims.length) {
+    lines.push('## Claims (graded)');
+    for (const c of claims) {
+      const head = `- [${c.grade}] (${c.as_of})`;
+      lines.push(...renderClaimPeriods(c, head, c.source_id));
+    }
+    lines.push('');
+  }
+  const rs = pack.risk_summary || {};
+  const risks = pack.risks || [];
+  if (risks.length || Object.keys(rs).length) {
+    lines.push(`## Risks — ${rs.count ?? risks.length} total; WATCH: ${(rs.watch || ['—']).join(', ')}`);
+    for (const r of risks) lines.push(`- **${r.name}** [${r.status}] — ${r.summary}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }

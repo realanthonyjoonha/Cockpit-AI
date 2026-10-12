@@ -36,7 +36,7 @@ def resolve_ticker(focus: str) -> str:
     cand = focus.strip().upper()
     if (paths.BY_TICKER / f"{cand}.json").exists():
         return cand
-    raise KeyError(f"Unknown focus '{focus}'. Known: {sorted(set(FOCUS_ALIASES.values()))}")
+    raise KeyError("no compiled pack for this focus")
 
 
 def load_store(ticker: str) -> dict[str, Any]:
@@ -48,102 +48,621 @@ def load_store(ticker: str) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _trim_claims(claims: list[dict], n: int = 12) -> list[dict]:
-    # Prefer newer as_of, then grade A > B > C
-    grade_rank = {"A": 0, "B": 1, "C": 2}
+# House fields the markdown renderer reads. Anything else is not an overview field.
+HOUSE_PRIOR_KEYS = ("play", "status", "date", "view_excerpt")
 
-    def key(c: dict):
-        return (
-            c.get("as_of") or "",
-            -grade_rank.get(c.get("grade") or "C", 9),
-        )
+# Keys that may appear in an overview, agent, or snapshot pack. No per-ticker extras.
+PACK_KEYS = {
+    "schema",
+    "intent",
+    "focus",
+    "compiled_at",
+    "house_prior",
+    "object",
+    "claims",
+    "risk_summary",
+    "risks",
+    "series_snapshot",
+    "catalysts",
+    "sources",
+    "related",
+    "gaps",
+    "provenance",
+    "pin",
+    "superseded_count",
+    "stale_tripwires",
+    "store_claims",
+    "context_claims",
+    "decision_support_only",
+    "budget",
+    "available",
+    "ticker",
+    "slug",
+    "pack_path",
+    "contextpack",
+    "sor_ahead_of_pack",
+    "note",
+}
 
-    ordered = sorted(claims, key=key, reverse=True)
-    return ordered[:n]
 
-
-def _pack_size(pack: dict[str, Any]) -> int:
+def _measure_pack(pack: dict[str, Any]) -> int:
     return len(json.dumps(pack, ensure_ascii=False))
 
 
-def _budget_cut(pack: dict[str, Any], limit: int) -> dict[str, Any]:
-    """Shrink pack until JSON size <= limit (including budget metadata)."""
-    trimmed = False
+def _add_gap(pack: dict[str, Any], msg: str) -> None:
+    gaps = list(pack.get("gaps") or [])
+    if msg not in gaps:
+        gaps.append(msg)
+    pack["gaps"] = gaps
 
-    def apply_budget_meta(used: int) -> None:
-        pack["budget"] = {
-            "limit_chars": limit,
-            "used_chars": used,
-            "trimmed": trimmed,
-        }
 
-    # Aim below limit before attaching budget metadata (~100 chars)
-    soft = max(limit - 100, 500)
+def _seal(pack: dict[str, Any], limit: int, trimmed: bool, measure) -> int:
+    pack["budget"] = {
+        "limit_chars": limit,
+        "used_chars": 0,
+        "trimmed": bool(trimmed),
+    }
+    for _ in range(4):
+        n = measure(pack)
+        if pack["budget"]["used_chars"] == n:
+            return n
+        pack["budget"]["used_chars"] = n
+    return measure(pack)
 
-    steps = [
-        lambda p: p.__setitem__("related", []),
-        lambda p: p.__setitem__("claims", (p.get("claims") or [])[:8]),
-        lambda p: p.__setitem__("claims", (p.get("claims") or [])[:5]),
-        lambda p: [
-            r.__setitem__("tripwires", (r.get("tripwires") or [])[:2])
-            for r in (p.get("risks") or [])
+
+def _allowlist(pack: dict[str, Any]) -> bool:
+    """Drop unknown house_prior fields and unknown top-level keys. Copy, do not mutate the store."""
+    changed = False
+    hp = pack.get("house_prior")
+    if isinstance(hp, dict):
+        dropped = [k for k in hp.keys() if k not in HOUSE_PRIOR_KEYS]
+        pack["house_prior"] = {k: hp[k] for k in HOUSE_PRIOR_KEYS if k in hp}
+        for key in dropped:
+            _add_gap(pack, f"dropped house_prior.{key}")
+        if dropped:
+            changed = True
+    for key in [k for k in list(pack.keys()) if k not in PACK_KEYS]:
+        pack.pop(key, None)
+        _add_gap(pack, f"dropped key {key}")
+        changed = True
+    return changed
+
+
+def _slim_claim_values(pack: dict[str, Any]) -> bool:
+    from api.contextpack import _slim_labeled_value
+
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not claim.get("values"):
+            out.append(claim)
+            continue
+        slim = [_slim_labeled_value(v) for v in claim.get("values") or [] if isinstance(v, dict)]
+        row = dict(claim)
+        if slim != claim.get("values"):
+            row["values"] = slim
+            changed = True
+        out.append(row)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+_LABEL_VALUE_KEYS = ("value_text", "unit", "period", "span")
+
+
+def _label_period(val: dict[str, Any]) -> dict[str, Any]:
+    period = val.get("period") if isinstance(val.get("period"), dict) else {}
+    return {
+        "value_text": val.get("value_text"),
+        "unit": val.get("unit"),
+        "period": {"start": period.get("start"), "end": period.get("end")},
+        "span": val.get("span"),
+    }
+
+
+def _slim_claim_values_hard(pack: dict[str, Any]) -> bool:
+    """Drop optional value keys. Keep period labels for the latest filing."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not claim.get("values"):
+            out.append(claim)
+            continue
+        slim = [_label_period(v) for v in claim.get("values") or [] if isinstance(v, dict)]
+        next_row = dict(claim)
+        if slim != claim.get("values"):
+            next_row["values"] = slim
+            changed = True
+        out.append(next_row)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _claim_latest_accession(claim: dict[str, Any]) -> str:
+    accn = claim.get("accession")
+    if accn:
+        return str(accn)
+    best: tuple[tuple[str, str], str] | None = None
+    for val in claim.get("values") or []:
+        if not isinstance(val, dict) or not val.get("accession"):
+            continue
+        key = (str(val.get("filed") or ""), str(val.get("accession")))
+        if best is None or key > best[0]:
+            best = (key, str(val.get("accession")))
+    return best[1] if best else ""
+
+
+def _rebuild_tagged_claim(claim: dict[str, Any], values: list[dict[str, Any]]) -> dict[str, Any]:
+    from api.companyfacts import claim_period_lines, sort_values
+
+    ordered = sort_values(values)
+    row = dict(claim)
+    row["values"] = ordered
+    row["text"] = "\n".join(claim_period_lines({"values": ordered}))
+    return row
+
+
+def _keep_current_claim_periods(pack: dict[str, Any]) -> bool:
+    """Keep the current period of each span. Older comparatives on the same filing drop."""
+    from api.companyfacts import current_latest_filing_values
+
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not _is_tagged_claim(claim):
+            out.append(claim)
+            continue
+        values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+        if not values:
+            out.append(claim)
+            continue
+        kept = current_latest_filing_values(values)
+        if kept == values:
+            out.append(claim)
+            continue
+        out.append(_rebuild_tagged_claim(claim, kept))
+        changed = True
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _drop_older_claim_periods(pack: dict[str, Any]) -> bool:
+    """Keep every period from the latest filing. Rebuild text newest-first."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not _is_tagged_claim(claim):
+            out.append(claim)
+            continue
+        values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+        if not values:
+            out.append(claim)
+            continue
+        accn = _claim_latest_accession(claim)
+        if accn and any(v.get("accession") for v in values):
+            kept = [
+                v
+                for v in values
+                if not v.get("accession") or str(v.get("accession")) == accn
+            ]
+        else:
+            kept = values
+        if not kept:
+            out.append(claim)
+            continue
+        row = _rebuild_tagged_claim(claim, kept)
+        if accn:
+            row["accession"] = accn
+        if row.get("values") != values or row.get("text") != claim.get("text"):
+            changed = True
+        out.append(row)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _blank_tagged_texts(pack: dict[str, Any]) -> bool:
+    """Text is redundant once values[] carry the labels."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if (
+            isinstance(claim, dict)
+            and _is_tagged_claim(claim)
+            and claim.get("values")
+            and isinstance(claim.get("text"), str)
+            and claim.get("text")
+        ):
+            row = dict(claim)
+            row["text"] = ""
+            out.append(row)
+            changed = True
+        else:
+            out.append(claim)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _drop_claim_values(pack: dict[str, Any]) -> bool:
+    """Drop values[] on untagged rows only. Latest-filing labels stay."""
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if (
+            isinstance(claim, dict)
+            and claim.get("values")
+            and not _is_tagged_claim(claim)
+        ):
+            row = dict(claim)
+            row.pop("values", None)
+            out.append(row)
+            changed = True
+        else:
+            out.append(claim)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _clip_claim_texts(
+    pack: dict[str, Any],
+    n: int,
+    metric_id: str | None,
+    *,
+    skip_tagged: bool = False,
+) -> bool:
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict):
+            out.append(claim)
+            continue
+        row = dict(claim)
+        if skip_tagged and _is_tagged_claim(row):
+            out.append(row)
+            continue
+        if metric_id is None or row.get("metric_id") == metric_id:
+            text = row.get("text")
+            if isinstance(text, str) and len(text) > n:
+                row["text"] = text[:n]
+                changed = True
+        out.append(row)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _clip_gaps(pack: dict[str, Any], n: int) -> bool:
+    gaps = pack.get("gaps")
+    if not isinstance(gaps, list):
+        return False
+    changed = False
+    out: list[Any] = []
+    for gap in gaps:
+        if isinstance(gap, str) and len(gap) > n:
+            out.append(gap[:n])
+            changed = True
+        else:
+            out.append(gap)
+    if changed:
+        pack["gaps"] = out
+    return changed
+
+
+def _clip_object(pack: dict[str, Any], n: int) -> bool:
+    obj = pack.get("object")
+    if not isinstance(obj, dict):
+        return False
+    row = dict(obj)
+    changed = False
+    for key in ("summary", "role_in_theses"):
+        val = row.get(key)
+        if isinstance(val, str) and len(val) > n:
+            row[key] = val[:n]
+            changed = True
+    stance = row.get("stance")
+    if isinstance(stance, list) and len(stance) > 4:
+        row["stance"] = stance[:4]
+        changed = True
+    if changed:
+        pack["object"] = row
+    return changed
+
+
+def _clip_risks(pack: dict[str, Any], summary_n: int, trip_n: int | None) -> bool:
+    risks = pack.get("risks")
+    if not isinstance(risks, list):
+        return False
+    changed = False
+    out: list[Any] = []
+    for risk in risks:
+        if not isinstance(risk, dict):
+            out.append(risk)
+            continue
+        row = dict(risk)
+        summary = row.get("summary")
+        if isinstance(summary, str) and len(summary) > summary_n:
+            row["summary"] = summary[:summary_n]
+            changed = True
+        wires = row.get("tripwires")
+        if trip_n is not None and isinstance(wires, list) and len(wires) > trip_n:
+            row["tripwires"] = wires[:trip_n]
+            changed = True
+        out.append(row)
+    if changed:
+        pack["risks"] = out
+    return changed
+
+
+def _clip_pin(pack: dict[str, Any], n: int) -> bool:
+    pin = pack.get("pin")
+    if not isinstance(pin, dict) or not isinstance(pin.get("risks"), list):
+        return False
+    changed = False
+    risks = []
+    for risk in pin["risks"]:
+        if not isinstance(risk, dict):
+            risks.append(risk)
+            continue
+        row = dict(risk)
+        summary = row.get("summary")
+        if isinstance(summary, str) and len(summary) > n:
+            row["summary"] = summary[:n]
+            changed = True
+        risks.append(row)
+    if changed:
+        pinned = dict(pin)
+        pinned["risks"] = risks
+        pack["pin"] = pinned
+    return changed
+
+
+def _clip_excerpt(pack: dict[str, Any], n: int) -> bool:
+    hp = pack.get("house_prior")
+    if not isinstance(hp, dict):
+        return False
+    val = hp.get("view_excerpt")
+    if not isinstance(val, str) or len(val) <= n:
+        return False
+    row = dict(hp)
+    row["view_excerpt"] = val[:n]
+    pack["house_prior"] = row
+    return True
+
+
+def _clip_provenance(pack: dict[str, Any], n: int) -> bool:
+    prov = pack.get("provenance")
+    if not isinstance(prov, dict):
+        return False
+    note = prov.get("note")
+    if not isinstance(note, str) or len(note) <= n:
+        return False
+    pack["provenance"] = {
+        "note": note[:n],
+        "pack_config": prov.get("pack_config") or "",
+    }
+    return True
+
+
+def _take_list(pack: dict[str, Any], key: str, n: int) -> bool:
+    rows = pack.get(key)
+    if not isinstance(rows, list) or len(rows) <= n:
+        return False
+    pack[key] = rows[:n]
+    return True
+
+
+def _clear_list(pack: dict[str, Any], key: str) -> bool:
+    rows = pack.get(key)
+    if not isinstance(rows, list) or not rows:
+        return False
+    pack[key] = []
+    return True
+
+
+def _drop_other_claims(pack: dict[str, Any]) -> bool:
+    claims = [c for c in (pack.get("claims") or []) if isinstance(c, dict)]
+    kept = [c for c in claims if c.get("metric_id") != "other"]
+    dropped = len(claims) - len(kept)
+    if not dropped:
+        return False
+    pack["claims"] = kept
+    _add_gap(pack, f"{dropped} residual claims omitted")
+    return True
+
+
+def _is_tagged_claim(claim: dict[str, Any]) -> bool:
+    return claim.get("origin") in ("companyfacts", "xbrl") or claim.get("confidence") == "tagged"
+
+
+def _drop_tail_claim(pack: dict[str, Any]) -> bool:
+    claims = [c for c in (pack.get("claims") or []) if isinstance(c, dict)]
+    if not claims:
+        return False
+    idx = next((i for i in range(len(claims) - 1, -1, -1) if not _is_tagged_claim(claims[i])), None)
+    if idx is None:
+        return False
+    dropped = claims[idx]
+    pack["claims"] = [c for i, c in enumerate(claims) if i != idx]
+    ident = dropped.get("id") or dropped.get("metric_id") or "claim"
+    _add_gap(pack, f"dropped claim {ident}")
+    return True
+
+
+def _drop_untagged_claims(pack: dict[str, Any]) -> bool:
+    claims = [c for c in (pack.get("claims") or []) if isinstance(c, dict)]
+    kept = [c for c in claims if _is_tagged_claim(c)]
+    dropped = len(claims) - len(kept)
+    if not dropped:
+        return False
+    pack["claims"] = kept
+    _add_gap(pack, f"{dropped} untagged claims omitted")
+    return True
+
+
+def _stub_pack(pack: dict[str, Any], limit: int, measure) -> dict[str, Any]:
+    """Last resort. Identity, house status and date, and the over-budget gap stay."""
+    focus = pack.get("focus") if isinstance(pack.get("focus"), dict) else {}
+    hp = pack.get("house_prior") if isinstance(pack.get("house_prior"), dict) else {}
+    gaps = [g for g in (pack.get("gaps") or []) if isinstance(g, str) and len(g) <= 180]
+    stub: dict[str, Any] = {
+        "focus": {
+            "id": str(focus.get("id") or "")[:64],
+            "ticker": str(focus.get("ticker") or "")[:16],
+        },
+        "intent": str(pack.get("intent") or "overview")[:32],
+        "house_prior": {
+            "status": str(hp.get("status") or "")[:32],
+            "date": str(hp.get("date") or "")[:32],
+        },
+        "gaps": gaps[:12],
+        "claims": [
+            {
+                "id": c.get("id"),
+                "metric_id": c.get("metric_id"),
+                "origin": c.get("origin"),
+                "confidence": c.get("confidence"),
+                "values": [
+                    _label_period(v)
+                    for v in (c.get("values") or [])
+                    if isinstance(v, dict)
+                ],
+            }
+            for c in (pack.get("claims") or [])
+            if isinstance(c, dict) and _is_tagged_claim(c)
         ],
-        lambda p: p.__setitem__("risks", (p.get("risks") or [])[:5]),
-        lambda p: p.__setitem__("catalysts", (p.get("catalysts") or [])[:3]),
-        lambda p: p.get("object", {}).__setitem__(
-            "role_in_theses", ((p.get("object") or {}).get("role_in_theses") or "")[:300]
-        ),
-        lambda p: p.get("object", {}).__setitem__(
-            "stance", ((p.get("object") or {}).get("stance") or [])[:4]
-        ),
-        lambda p: (p.get("house_prior") or {}).__setitem__(
-            "view_excerpt", ((p.get("house_prior") or {}).get("view_excerpt") or "")[:500]
-        ),
-        lambda p: p.__setitem__("claims", (p.get("claims") or [])[:3]),
-        lambda p: p.__setitem__("series_snapshot", (p.get("series_snapshot") or [])[:3]),
-        lambda p: p.__setitem__("risks", (p.get("risks") or [])[:3]),
-        lambda p: p.__setitem__("provenance", {
-            "note": (p.get("provenance") or {}).get("note", ""),
-            "pack_config": (p.get("provenance") or {}).get("pack_config", ""),
-        }),
-        lambda p: (p.get("house_prior") or {}).__setitem__(
-            "view_excerpt", ((p.get("house_prior") or {}).get("view_excerpt") or "")[:350]
-        ),
-        lambda p: p.__setitem__("claims", (p.get("claims") or [])[:2]),
+        "budget": {"limit_chars": limit, "used_chars": 0, "trimmed": True},
+    }
+    if measure(stub) > limit:
+        from api.companyfacts import current_latest_filing_values
+
+        for row in stub["claims"]:
+            row["values"] = [
+                _label_period(v) for v in current_latest_filing_values(row.get("values") or [])
+            ]
+        stub["gaps"] = [g for g in stub["gaps"] if g != "pack was over budget"][:4]
+        stub["focus"] = {
+            "id": str(focus.get("id") or "")[:32],
+            "ticker": str(focus.get("ticker") or "")[:12],
+        }
+    if measure(stub) > limit:
+        stub["house_prior"] = {}
+        stub["gaps"] = []
+    if measure(stub) > limit:
+        stub["gaps"] = ["pack was over budget"]
+        stub["focus"] = {"ticker": stub["focus"].get("ticker", "")[:12]}
+        stub.pop("claims", None)
+    _seal(stub, limit, True, measure)
+    return stub
+
+
+def enforce_char_budget(
+    pack: dict[str, Any],
+    limit: int,
+    measure=None,
+) -> dict[str, Any]:
+    """Allowlist cutter. Post-condition: measured size <= limit, including budget metadata.
+
+    The same limit is used for every focus. Unknown house_prior fields are dropped.
+    Claim text shrinks before gaps, focus identity, and house status/date.
+    Residual metric_id "other" is dropped before named metrics when the live set
+    itself does not fit. trimmed=true with used_chars over the limit is not returned.
+    """
+    if measure is None:
+        measure = _measure_pack
+    limit = int(limit)
+    trimmed = _allowlist(pack)
+
+    def fits() -> bool:
+        return _seal(pack, limit, trimmed, measure) <= limit
+
+    if fits():
+        return pack
+    trimmed = True
+    steps = [
+        lambda: _clear_list(pack, "related"),
+        lambda: _clear_list(pack, "context_claims"),
+        lambda: _slim_claim_values(pack),
+        lambda: _clip_claim_texts(pack, 480, "other"),
+        lambda: _clip_claim_texts(pack, 480, None, skip_tagged=True),
+        lambda: _clip_object(pack, 300),
+        lambda: _clip_risks(pack, 160, 2),
+        lambda: _clip_pin(pack, 160),
+        lambda: _clip_excerpt(pack, 500),
+        lambda: _clip_provenance(pack, 120),
+        lambda: _take_list(pack, "catalysts", 4),
+        lambda: _take_list(pack, "series_snapshot", 4),
+        lambda: _take_list(pack, "sources", 4),
+        lambda: _clip_excerpt(pack, 200),
+        lambda: _clip_claim_texts(pack, 160, "other"),
+        lambda: _clip_claim_texts(pack, 160, None, skip_tagged=True),
+        lambda: _drop_other_claims(pack),
+        lambda: _drop_claim_values(pack),
+        lambda: _drop_older_claim_periods(pack),
+        lambda: _slim_claim_values_hard(pack),
+        lambda: _blank_tagged_texts(pack),
+        lambda: _clip_claim_texts(pack, 80, None, skip_tagged=True),
+        lambda: _clip_claim_texts(pack, 160, None),
+        lambda: _keep_current_claim_periods(pack),
+        lambda: _clip_excerpt(pack, 80),
+        lambda: _clear_list(pack, "catalysts"),
+        lambda: _clear_list(pack, "series_snapshot"),
+        lambda: _clear_list(pack, "sources"),
+        lambda: _take_list(pack, "risks", 2),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_untagged_claims(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _drop_tail_claim(pack),
+        lambda: _clip_gaps(pack, 180),
+        lambda: _take_list(pack, "gaps", 8),
+        lambda: _take_list(pack, "gaps", 4),
+        lambda: _take_list(pack, "gaps", 2),
+        lambda: _clear_list(pack, "gaps"),
+        lambda: _clear_list(pack, "risks"),
+        lambda: _clear_list(pack, "stale_tripwires"),
     ]
     for step in steps:
-        if _pack_size(pack) <= soft:
-            break
-        step(pack)
-        trimmed = True
-
-    # Attach budget; re-trim if metadata pushed us over
-    apply_budget_meta(_pack_size(pack))
-    hard_steps = [
-        lambda p: p.__setitem__("catalysts", (p.get("catalysts") or [])[:2]),
-        lambda p: p.__setitem__("series_snapshot", (p.get("series_snapshot") or [])[:2]),
-        lambda p: p.__setitem__("risks", (p.get("risks") or [])[:2]),
-        lambda p: p.get("object", {}).__setitem__("stance", ((p.get("object") or {}).get("stance") or [])[:2]),
-    ]
-    for step in hard_steps:
-        if _pack_size(pack) <= limit:
-            break
-        step(pack)
-        trimmed = True
-        apply_budget_meta(_pack_size(pack))
-
-    if _pack_size(pack) > limit:
-        gaps = list(pack.get("gaps") or [])
-        msg = f"pack over budget after trim ({_pack_size(pack)} > {limit})"
-        if msg not in gaps:
-            gaps.append(msg)
-        pack["gaps"] = gaps
-        # drop provenance entirely if needed
-        pack.pop("provenance", None)
-        apply_budget_meta(_pack_size(pack))
-
-    apply_budget_meta(_pack_size(pack))
+        if fits():
+            return pack
+        step()
+    if fits():
+        return pack
+    stub = _stub_pack(pack, limit, measure)
+    pack.clear()
+    pack.update(stub)
+    if measure(pack) > limit:
+        pack.clear()
+        pack.update({
+            "gaps": ["pack was over budget"],
+            "budget": {"limit_chars": limit, "used_chars": 0, "trimmed": True},
+        })
+        _seal(pack, limit, True, measure)
     return pack
+
+
+def _budget_cut(pack: dict[str, Any], limit: int) -> dict[str, Any]:
+    return enforce_char_budget(pack, limit)
+
+
+def _overview_claims(store: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
+    """One live claim per metric. Newest-12 is not the overview rule."""
+    from api.contextpack import live_claims, load_rules, pack_claim
+
+    extra: list[str] = []
+    live, _superseded = live_claims(
+        list(store.get("claims") or []),
+        load_rules(),
+        gaps_out=extra,
+        facts=list(store.get("facts") or []),
+    )
+    return [pack_claim(c) for c in live], extra
 
 
 def retrieve(
@@ -158,12 +677,13 @@ def retrieve(
     ticker = resolve_ticker(focus)
     store = load_store(ticker)
     limit = budget if budget is not None else paths.OVERVIEW_BUDGET_CHARS
+    house = store.get("house_prior")
 
     base = {
         "focus": store.get("focus"),
         "compiled_at": store.get("compiled_at"),
         "intent": intent,
-        "house_prior": store.get("house_prior"),
+        "house_prior": dict(house) if isinstance(house, dict) else house,
         "gaps": list(store.get("gaps") or []),
         "provenance": store.get("provenance"),
     }
@@ -173,12 +693,7 @@ def retrieve(
             **base,
             "risk_summary": store.get("risk_summary"),
             "risks": store.get("risks") or [],
-            "series_snapshot": [
-                s for s in (store.get("series_snapshot") or [])
-                if s.get("id", "").startswith("mu") or s.get("id") in (
-                    "price-mu", "micron-capex", "dram-spot-ddr5", "price-dram-etf"
-                )
-            ],
+            "series_snapshot": list(store.get("series_snapshot") or []),
         }
         return _budget_cut(pack, limit)
 
@@ -212,10 +727,15 @@ def retrieve(
         for s in (store.get("sources") or [])[:15]
     ]
 
+    claims, extra_gaps = _overview_claims(store)
+    for gap in extra_gaps:
+        if gap not in base["gaps"]:
+            base["gaps"].append(gap)
+
     pack = {
         **base,
         "object": obj,
-        "claims": _trim_claims(list(store.get("claims") or []), 12),
+        "claims": claims,
         "risk_summary": store.get("risk_summary"),
         "risks": [
             {
@@ -269,12 +789,18 @@ def to_markdown(pack: dict[str, Any]) -> str:
 
     claims = pack.get("claims") or []
     if claims:
+        from api.companyfacts import claim_period_lines
+
         lines.append("## Claims (graded)")
         for c in claims:
-            lines.append(
-                f"- [{c.get('grade')}] ({c.get('as_of')}) {c.get('text')} "
-                f"← {c.get('source_id')}"
-            )
+            periods = claim_period_lines(c)
+            head = f"- [{c.get('grade')}] ({c.get('as_of')})"
+            if periods:
+                lines.append(f"{head} {periods[0]} ← {c.get('source_id')}")
+                for extra in periods[1:]:
+                    lines.append(f"  {extra}")
+            else:
+                lines.append(f"{head} ← {c.get('source_id')}")
         lines.append("")
 
     rs = pack.get("risk_summary") or {}

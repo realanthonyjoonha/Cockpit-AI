@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+import paths
 from api.ask import answer
 from compile.run import write_pack
 
@@ -15,8 +16,8 @@ from compile.run import write_pack
 class TestAsk(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if not (ROOT / "packs" / "MU.json").exists():
-            raise unittest.SkipTest("MU pack config not on disk")
+        if not (paths.ENTITIES / "micron.md").is_file():
+            raise unittest.SkipTest("no MU entity on this tree")
         write_pack("MU")
 
     def test_house_view(self):

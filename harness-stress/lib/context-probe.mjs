@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   assembleAgentPack,
+  claimGaps,
   liveClaims,
   loadContextpackRules,
 } from '../../memory-cockpit-v2/server/contextpack.js';
@@ -154,6 +155,7 @@ export function contextProbe() {
     kept: residualLive.length,
     kept_ids: ids(residualLive),
     cap: 8,
+    gaps: claimGaps(residual, rules),
   });
 
   const missingGrade = [

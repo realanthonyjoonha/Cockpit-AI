@@ -2,7 +2,56 @@
 // No model calls. No writes. Decision-support only.
 import { loadPack } from './pack.js';
 import { readHouseMarkdown } from './thinHouseSave.js';
-import { loadContextpackRules, liveClaims, compareClaimsNewestFirst } from './contextpack.js';
+import { loadContextpackRules, liveClaims, compareClaimsNewestFirst, OVERVIEW_BUDGET_CHARS } from './contextpack.js';
+import { claimPeriodLines } from './companyfacts.js';
+
+export const HOUSE_FILE_POINTER = 'Full file is get_house_view.';
+
+/** Status object the MCP tool appends after the clipboard. */
+export function assistToolTrailer({ chars = 0, house_exists = false, compiled_at = null } = {}) {
+  return `\n\n---\n${JSON.stringify({
+    chars: Number(chars) || 0,
+    house_exists: !!house_exists,
+    compiled_at: compiled_at == null ? null : String(compiled_at),
+  })}`;
+}
+
+/** Worst-case trailer so clipboard + MCP suffix stay inside the 10k cap. */
+export function reservedAssistTrailerLength(compiledAt = '2026-12-31T23:59:59.999Z') {
+  return assistToolTrailer({ chars: 99999, house_exists: true, compiled_at: compiledAt }).length;
+}
+
+/** Cap the assist clipboard. A shortened house names get_house_view as the full file. */
+export function capAssistClipboard(text, limit = OVERVIEW_BUDGET_CHARS, reserve = reservedAssistTrailerLength()) {
+  const raw = String(text || '');
+  const cap = Math.max(0, Number(limit) - Number(reserve || 0));
+  if (raw.length <= cap) return raw;
+  const pointer = HOUSE_FILE_POINTER;
+  const fence = /```markdown\n[\s\S]*?\n```/;
+  if (fence.test(raw)) {
+    const match = raw.match(fence);
+    const fenceText = match ? match[0] : '';
+    const bodyMatch = fenceText.match(/```markdown\n([\s\S]*?)\n```/);
+    const body = bodyMatch ? bodyMatch[1] : '';
+    const overhead = raw.length - fenceText.length;
+    const fenceWrap = '```markdown\n'.length + '\n```\n'.length + pointer.length;
+    const keep = cap - overhead - fenceWrap;
+    let excerpt = '';
+    if (keep > 0) {
+      const sliceAt = body.lastIndexOf('\n', keep);
+      excerpt = body.slice(0, sliceAt > 0 ? sliceAt : keep);
+    }
+    const block = excerpt ? `\`\`\`markdown\n${excerpt}\n\`\`\`\n${pointer}` : pointer;
+    const out = raw.replace(fence, block);
+    if (out.length <= cap && out.includes(pointer)) return out;
+  }
+  const tail = `\n${pointer}`;
+  if (tail.length >= cap) return pointer.slice(0, cap);
+  const room = cap - tail.length;
+  const cut = raw.lastIndexOf('\n', room);
+  const head = raw.slice(0, cut > 0 ? cut : room);
+  return head + tail;
+}
 
 const RULES = `You are Anthony's research assistant for a single-name house view (decision-support OS).
 
@@ -121,7 +170,14 @@ export function buildHouseAssistContext(opts) {
     for (const c of rankedClaims) {
       const low = c.confidence === 'low' ? 'sentence, low confidence ' : '';
       const mid = c.metric_id ? `\`${c.metric_id}\` ${low}` : '';
-      sections.push(`- ${mid}[${c.grade || '?'}] (${c.as_of || '—'}) ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
+      const head = `- ${mid}[${c.grade || '?'}] (${c.as_of || '—'})`;
+      const periods = claimPeriodLines(c);
+      if (periods.length) {
+        sections.push(`${head} ${periods[0]}`);
+        for (const extra of periods.slice(1)) sections.push(`  ${extra}`);
+      } else {
+        sections.push(`${head} ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
+      }
     }
   }
   sections.push('');
@@ -143,7 +199,7 @@ export function buildHouseAssistContext(opts) {
   sections.push('2. Optional full house in ```house-view.md fence.');
   sections.push('3. Remind: paste → glass EDIT → SAVE → COMPILE BOOK → REFRESH.');
 
-  const clipboard_text = sections.join('\n');
+  const clipboard_text = capAssistClipboard(sections.join('\n'));
   return {
     available: true,
     mode: 'agent_host_context',

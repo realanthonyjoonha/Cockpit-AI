@@ -780,6 +780,16 @@ def stale_tripwires(
     return out
 
 
+_PACKED_VALUE_KEYS = (
+    "concept", "tags", "value_text", "unit", "period", "span",
+    "form", "fp", "fy", "filed", "accession",
+)
+
+
+def _slim_labeled_value(val: dict[str, Any]) -> dict[str, Any]:
+    return {k: val.get(k) for k in _PACKED_VALUE_KEYS}
+
+
 def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
     row = {
         "id": c.get("id"),
@@ -793,9 +803,11 @@ def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
         row["origin"] = c.get("origin")
         row["confidence"] = c.get("confidence")
     if c.get("origin") in ("companyfacts", "xbrl"):
-        for key in ("concept", "value", "value_text", "unit", "values"):
+        for key in ("concept", "value", "value_text", "unit"):
             if key in c:
                 row[key] = c.get(key)
+        if c.get("values"):
+            row["values"] = [_slim_labeled_value(v) for v in c.get("values") or [] if isinstance(v, dict)]
     return row
 
 
@@ -851,7 +863,7 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
     for g in extra + cc:
         if g not in gaps:
             gaps.append(g)
-    return {
+    built = {
         "schema": "contextpack.v2",
         "intent": "agent",
         "focus": store.get("focus"),
@@ -883,9 +895,14 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
         "store_claims": len(claims),
         "decision_support_only": True,
     }
+    from api.retrieve import enforce_char_budget
+    import paths as _paths
+
+    return enforce_char_budget(built, _paths.OVERVIEW_BUDGET_CHARS)
 
 
 def to_agent_markdown(pack: dict[str, Any]) -> str:
+    """Render the packed fields only. Do not read the store or restore a cut field."""
     lines: list[str] = []
     f = pack.get("focus") or {}
     lines.append(f"# {f.get('ticker', '?')} — agent ContextPack v2")
@@ -898,7 +915,7 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
     hp = pack.get("house_prior") or {}
     if hp.get("play") or hp.get("view_excerpt"):
         lines.append(f"## House (pinned) — {hp.get('status') or ''} · {hp.get('date') or 'n.d.'}")
-        lines.append((hp.get("view_excerpt") or "")[:1200])
+        lines.append(hp.get("view_excerpt") or "")
         lines.append("")
     pin = pack.get("pin") or {}
     lines.append(
@@ -920,6 +937,8 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
         lines.append("")
     claims = pack.get("claims") or []
     if claims:
+        from api.companyfacts import claim_period_lines
+
         lines.append("## Live claims (one per metric)")
         for c in claims:
             tag = ""
@@ -927,10 +946,14 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
                 tag = " · tagged"
             elif c.get("confidence") == "low":
                 tag = " · sentence, low confidence"
-            lines.append(
-                f"- `{c.get('metric_id')}`{tag} [{c.get('grade')}] ({c.get('as_of')}) {c.get('text')} "
-                f"← {c.get('source_id')}"
-            )
+            periods = claim_period_lines(c)
+            head = f"- `{c.get('metric_id')}`{tag} [{c.get('grade')}] ({c.get('as_of')})"
+            if periods:
+                lines.append(f"{head} {periods[0]} ← {c.get('source_id')}")
+                for extra in periods[1:]:
+                    lines.append(f"  {extra}")
+            else:
+                lines.append(f"{head} ← {c.get('source_id')}")
         lines.append("")
     context = pack.get("context_claims") or []
     if context:

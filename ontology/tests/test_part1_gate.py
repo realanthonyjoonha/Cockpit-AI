@@ -19,9 +19,8 @@ class TestPart1GateLivePacks(unittest.TestCase):
     """Live vault packs (MSFT after Part 1; NBIS if present)."""
 
     def test_msft_structural_pass(self):
-        cfg = ROOT / "packs" / "MSFT.json"
-        if not cfg.exists():
-            self.skipTest("MSFT pack config not on disk")
+        if not (paths.PACKS / "MSFT.json").is_file():
+            self.skipTest("MSFT pack config not on this tree")
         r = verify_part1("MSFT")
         self.assertEqual(r.exit_code, 0, r.report_text())
         self.assertTrue(r.ok)
@@ -29,9 +28,8 @@ class TestPart1GateLivePacks(unittest.TestCase):
         self.assertGreaterEqual(r.summary.get("risks", 0), MIN_RISKS)
 
     def test_msft_human_gates_pass_when_locked(self):
-        cfg = ROOT / "packs" / "MSFT.json"
-        if not cfg.exists():
-            self.skipTest("MSFT pack config not on disk")
+        if not (paths.PACKS / "MSFT.json").is_file():
+            self.skipTest("MSFT pack config not on this tree")
         r = verify_part1(
             "MSFT",
             require_confirmed=True,

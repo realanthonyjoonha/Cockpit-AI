@@ -447,16 +447,63 @@ function conflictGap(mid, accn, start, end, rows) {
   return lines;
 }
 
-function sortValues(values) {
+export function sortValues(values) {
   return [...values].sort((a, b) => {
     const ae = (a.period && a.period.end) || '';
     const be = (b.period && b.period.end) || '';
-    if (ae !== be) return ae < be ? -1 : 1;
+    if (ae !== be) return ae < be ? 1 : -1;
     const as = (a.period && a.period.start) || '';
     const bs = (b.period && b.period.start) || '';
-    if (as !== bs) return as < bs ? -1 : 1;
+    if (as !== bs) return as < bs ? 1 : -1;
     return 0;
   });
+}
+
+export function labeledPeriodLine(lab) {
+  const period = lab && lab.period && typeof lab.period === 'object' ? lab.period : {};
+  if (lab && lab.concept && lab.value_text != null && lab.unit != null) {
+    try {
+      return valueBlock(lab);
+    } catch {
+      /* slim rows still print */
+    }
+  }
+  const start = period.start;
+  const end = period.end;
+  const when = start ? `${start} to ${end}` : (end ? String(end) : '');
+  return [lab && lab.span, lab && lab.unit, lab && lab.value_text, when].filter((b) => b != null && b !== '').join(' ');
+}
+
+export function claimPeriodLines(claim) {
+  const values = ((claim && claim.values) || []).filter((v) => v && typeof v === 'object');
+  if (values.length) return sortValues(values).map(labeledPeriodLine);
+  return claim && typeof claim.text === 'string' && claim.text ? [claim.text] : [];
+}
+
+function spanGroup(val) {
+  if (val && val.span) return String(val.span);
+  const period = val && val.period && typeof val.period === 'object' ? val.period : {};
+  return period.start ? 'other' : 'instant';
+}
+
+export function currentLatestFilingValues(values) {
+  const groups = new Map();
+  for (const val of values || []) {
+    if (!val || typeof val !== 'object') continue;
+    const key = spanGroup(val);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(val);
+  }
+  const kept = [];
+  for (const rows of groups.values()) {
+    let latestEnd = '';
+    for (const v of rows) {
+      const end = String((v.period || {}).end || '');
+      if (end > latestEnd) latestEnd = end;
+    }
+    kept.push(...rows.filter((v) => String((v.period || {}).end || '') === latestEnd));
+  }
+  return sortValues(kept);
 }
 
 function slot(mid, accn, values) {
