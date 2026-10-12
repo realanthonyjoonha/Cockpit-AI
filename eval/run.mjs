@@ -369,7 +369,14 @@ function gapSelfTest() {
   const desk = cfg.desks.desks[cfg.companies[0].id];
   const packBlocked = isGapPair(first, { ...desk, implied_multiple: '12x' }, cfg.questions.questions.find((q) => q.id === 'house_implied_multiple'));
   if (packBlocked) errors.push('rule kept house_implied_multiple after pack field was populated');
-  const { scoreItem } = scoreMod;
+  const { scoreItem, numbersInText } = scoreMod;
+  const scales = cfg.pilot.scoring.scale_words;
+  if ((numbersInText('GAP accession 0000070858-26-000394', scales) || []).length) {
+    errors.push('accession ids must not parse as figures');
+  }
+  if ((numbersInText('annual 20-F basis', scales) || []).length) {
+    errors.push('form tokens such as 20-F must not parse as figures');
+  }
   const gapOk = scoreItem({ answer: 'GAP — not tagged', gap: true, numbers: [] }, { expect: 'gap' }, 'GAP — not tagged');
   if (!gapOk.accuracy || !gapOk.honest_gap) errors.push('honest gap should pass');
   const gapBad = scoreItem({ answer: 'headcount was 50000', number: 50000, gap: false }, { expect: 'gap' }, 'headcount was 50000');

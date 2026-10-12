@@ -36,7 +36,11 @@ export function parseScaledNumber(raw, scales) {
 export function numbersInText(text, scales) {
   const out = [];
   const re = /[+-]?\d[\d,]*(?:\.\d+)?(?:\s*(?:trillion|billion|bn|million|mm|thousand|k|m)\b)?/gi;
-  const t = String(text || '').replace(/\d{4}-\d{2}-\d{2}/g, ' ');
+  const t = String(text || '')
+    .replace(/\b\d{10}-\d{2}-\d{6}\b/g, ' ')
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+    .replace(/\b000\d{7}\b/g, ' ')
+    .replace(/\b(?:20-F|10-K|10-Q|8-K|6-K)\b/gi, ' ');
   let m;
   while ((m = re.exec(t))) {
     const n = parseScaledNumber(m[0], scales);

@@ -83,7 +83,7 @@ export function selectGapItems(answerKey, cfg) {
       question_id: ask.id,
       needed_slot: ask.needed_slot,
       needed_pack_fields: ask.needed_pack_fields || [],
-      reason: reason || why.join('; '),
+      reason: [reason, ...why].filter(Boolean).join('; '),
     });
     seen.add(itemId);
     return true;

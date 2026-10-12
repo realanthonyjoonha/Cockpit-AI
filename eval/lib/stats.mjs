@@ -116,7 +116,7 @@ export function rollup(scoredItems, traces, cfg) {
     };
   }
   const diffs = {};
-  const baseline = '0';
+  const baseline = (cfg.arms.some((a) => a.id === '0') ? '0' : cfg.arms[0]?.id) || '0';
   const baseRows = scoredItems.filter((r) => r.arm === baseline);
   const baseByTask = new Map();
   for (const [task, group] of clusterBy(baseRows, 'item_id')) {
@@ -144,7 +144,7 @@ export function rollup(scoredItems, traces, cfg) {
     const bigEnough = Math.abs(accGapPts) >= scoring.keep_min_accuracy_pts;
     const baseTok = byArm[baseline]?.tokens_per_correct;
     const armTok = byArm[arm.id]?.tokens_per_correct;
-    const equalAcc = byArm[arm.id].accuracy >= (byArm[baseline].accuracy || 0) - 1e-9;
+    const equalAcc = byArm[arm.id].accuracy >= ((byArm[baseline]?.accuracy) || 0) - 1e-9;
     const costRatio = (baseTok && armTok && equalAcc) ? armTok / baseTok : null;
     const costSignal = costRatio != null && costRatio <= (1 / scoring.keep_min_cost_ratio);
     const keep = (excludes0 && bigEnough) || costSignal;

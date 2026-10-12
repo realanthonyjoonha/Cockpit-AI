@@ -94,9 +94,13 @@ export function renderGapReport({
     lines.push(`Volume: ${quote.n_traces || 0} traces, ${quote.n_items || 0} items, tokens in/out/cached ${quote.tokens_in || 0}/${quote.tokens_out || 0}/${quote.tokens_cached || 0}.`);
     lines.push('');
   }
-  lines.push('## Why B fills gaps');
+  lines.push('## Why B fills gaps (PR #13 vs this check)');
   lines.push('');
   lines.push(summarizeWhyBFills(reads || []));
+  lines.push('');
+  lines.push('PR #13 measured honest-gap across a mixed set: numeric items (some tagged, some trap) plus open steelman / risk_propose. Bare arms GAP on steelman/risk when no house is provided; `full` answers those from the vault. That is why honest-gap fell from 52.7% (bare) to 12.3% (`full`) without a matching accuracy lift.');
+  lines.push('');
+  lines.push('This check holds the item set to **true gaps for both arms** (rule above). If `full` still invented figures, pack fields would be the fill source. If both arms abstain, the PR #13 drop is pack-answerable open items, not invented numbers on missing facts.');
   lines.push('');
   for (const read of reads || []) {
     const label = alias[read.arm] || read.arm;
@@ -106,10 +110,25 @@ export function renderGapReport({
     if (!fields.length) lines.push('- (no pack-field needles in invented answers)');
     else for (const [f, n] of fields) lines.push(`- ${f}: ${n}`);
     lines.push('');
+    const gapFields = Object.entries(read.gap_field_counts || {}).sort((a, b) => b[1] - a[1]);
+    if (gapFields.length) {
+      lines.push('Pack-field needles in honest GAP answers (not invented numbers):');
+      lines.push('');
+      for (const [f, n] of gapFields) lines.push(`- ${f}: ${n}`);
+      lines.push('');
+    }
     if (read.invented_excerpts?.length) {
       lines.push('Invented excerpts:');
       lines.push('');
       for (const ex of read.invented_excerpts.slice(0, 8)) {
+        lines.push(`- \`${ex.item_id}\` r${ex.repeat} fields=${(ex.fields || []).join(',') || '—'} — ${String(ex.excerpt).replace(/\n/g, ' ').slice(0, 220)}`);
+      }
+      lines.push('');
+    }
+    if (read.gap_pack_excerpts?.length) {
+      lines.push('GAP answers that still name pack fields:');
+      lines.push('');
+      for (const ex of read.gap_pack_excerpts.slice(0, 6)) {
         lines.push(`- \`${ex.item_id}\` r${ex.repeat} fields=${(ex.fields || []).join(',') || '—'} — ${String(ex.excerpt).replace(/\n/g, ' ').slice(0, 220)}`);
       }
       lines.push('');
