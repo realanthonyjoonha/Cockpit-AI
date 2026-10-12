@@ -9,6 +9,13 @@ export {
   mappedFacts,
   taggedSlots,
   headlineGaps,
+  latestAccession,
+  latestFilingSlots,
+  periodKey,
+  spanLabel,
+  candidatesFor,
+  groupByPeriod,
+  agree,
   valueText,
   groupDigits,
 } from './companyfacts.js';

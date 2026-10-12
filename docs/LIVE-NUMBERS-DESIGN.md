@@ -1,4 +1,6 @@
-# Live numbers from SEC companyfacts
+# Live numbers from SEC companyfacts (V1, superseded)
+
+**Superseded by [`LIVE-NUMBERS-V2.md`](./LIVE-NUMBERS-V2.md).** Do not implement from this file. V1 ranking, stale cutoff, lease special case, and frozen `expected.json` dollars are deleted.
 
 Design only. Anthony approved this source-of-truth change after three wording-rule rounds and one iXBRL-instance round failed PR #5 review. This file is committed before the implementation. It does not change product code, the empty desk registry, or the vault.
 
