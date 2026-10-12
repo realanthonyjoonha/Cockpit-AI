@@ -36,7 +36,7 @@ export function parseScaledNumber(raw, scales) {
 export function numbersInText(text, scales) {
   const out = [];
   const re = /[+-]?\d[\d,]*(?:\.\d+)?(?:\s*(?:trillion|billion|bn|million|mm|thousand|k|m)\b)?/gi;
-  const t = String(text || '');
+  const t = String(text || '').replace(/\d{4}-\d{2}-\d{2}/g, ' ');
   let m;
   while ((m = re.exec(t))) {
     const n = parseScaledNumber(m[0], scales);
@@ -219,7 +219,7 @@ export function scoreYtd(itemAnswer, spec, rawText, cfg = loadConfig()) {
   const tags = [];
   const q = spec.quarter;
   const y = spec.ytd;
-  const extraBeyondQuarter = (q.expect === 'number')
+  const extraBeyondQuarter = (q.expect !== 'gap' && q.value != null)
     ? nums.some((n) => !withinTolerance(n, q.value, scoring))
     : nums.length > 0;
   const qOk = q.expect === 'gap'

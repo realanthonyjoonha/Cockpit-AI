@@ -82,14 +82,18 @@ export async function prepareLive(cfg) {
   return { key, jobs, index, pin, keyPath };
 }
 
-export function prepareOfflineConstructed(cfg) {
+export function prepareOfflineConstructed(cfg, destDir = path.join(EVAL_ROOT, 'results-offline')) {
+  const isolated = {
+    ...cfg,
+    pilot: { ...cfg.pilot, paths: { ...cfg.pilot.paths, results: path.relative(EVAL_ROOT, destDir) } },
+  };
   const doc = JSON.parse(readFileSync(path.join(EVAL_ROOT, 'fixtures/constructed-companyfacts.json'), 'utf8'));
   const docs = {};
   for (const company of cfg.companies) docs[company.ticker] = doc;
-  const key = buildAnswerKey(docs, cfg);
-  persistAnswerKey(key, cfg);
-  const jobs = buildJobs(key, cfg);
-  persistJobs(jobs, cfg);
+  const key = buildAnswerKey(docs, isolated);
+  persistAnswerKey(key, isolated);
+  const jobs = buildJobs(key, isolated);
+  persistJobs(jobs, isolated);
   return { key, jobs };
 }
 
@@ -268,6 +272,10 @@ function selfTestPatched() {
   if (withinTolerance(102e6, 100e6, scoring)) errors.push('2% should fail');
   if (!numbersInText('$100 million', scoring.scale_words).includes(100000000)) errors.push('scale parse failed');
   const { key, jobs } = prepareOfflineConstructed(cfg);
+  const isolated = {
+    ...cfg,
+    pilot: { ...cfg.pilot, paths: { ...cfg.pilot.paths, results: 'results-offline' } },
+  };
   const jpm = key.companies.find((c) => c.company_id === 'jpm');
   if (jpm.tasks.latest_quarter.expect !== 'number' || Number(jpm.tasks.latest_quarter.value) !== 42000000) {
     errors.push(`constructed NII quarter expected 42000000 got ${JSON.stringify(jpm.tasks.latest_quarter)}`);
@@ -302,12 +310,12 @@ function selfTestPatched() {
   );
   if (mixedBad.accuracy || !mixedBad.hallucination) errors.push('invented YTD on untagged span should hallucinate');
   const arm0 = jobs.find((j) => j.arm === '0');
-  const md0 = readFileSync(path.join(jobsDir(cfg), `${String(arm0.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
+  const md0 = readFileSync(path.join(jobsDir(isolated), `${String(arm0.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
   if (md0.includes('42000000') || md0.includes('190000000') || md0.includes('Tagged SEC companyfacts')) {
     errors.push('arm 0 prompt leaked tagged numbers');
   }
   const arma = jobs.find((j) => j.arm === '0+a');
-  const mda = readFileSync(path.join(jobsDir(cfg), `${String(arma.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
+  const mda = readFileSync(path.join(jobsDir(isolated), `${String(arma.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
   if (!mda.includes('Tagged SEC companyfacts')) errors.push('0+a should inject tagged facts');
   const { pairedClusterDiff, bootstrapMeanCI } = statsMod;
   const pairs = cfg.companies.map((c) => ({ company_id: c.id, base: 0.4, treat: 0.9 }));
