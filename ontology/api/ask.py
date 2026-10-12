@@ -145,7 +145,7 @@ def answer(focus: str, question: str) -> str:
                 lines.append(f"- {s.get('id')}: {s.get('latest')} as of {s.get('as_of')}")
         return "\n".join(lines)
 
-    if _match(q, "stance", "advantaged", "exposed", "contested", "what is micron"):
+    if _match(q, "stance", "advantaged", "exposed", "contested"):
         obj = store.get("object") or {}
         lines.append(f"**{obj.get('name')} ({obj.get('ticker')})**")
         if obj.get("summary"):
@@ -154,38 +154,35 @@ def answer(focus: str, question: str) -> str:
             lines.append(f"- **{s.get('label')}:** {s.get('text')}")
         return "\n".join(lines)
 
-    # Contract / backlog / SCA-style claims (works for MU SCAs and NBIS MSFT/Meta/RPO)
+    # Contract / backlog / remaining-performance claims. Generic words only.
     if _match(
         q,
         "sca",
         "strategic customer",
         "backlog",
         "take-or-pay",
-        "100b",
-        "$100",
         "rpo",
-        "microsoft",
-        "meta agreement",
         "committed revenue",
         "contingent",
     ):
         contract_re = re.compile(
-            r"100\s*B|\$100|strategic customer|\bSCAs?\b|minimum revenue|"
-            r"Microsoft|Meta|RPO|backlog|take-or-pay|tranche|upfront|"
-            r"17,?392|33,?585|deferred revenue|commitment",
+            r"strategic customer|\bSCAs?\b|minimum revenue|"
+            r"\bRPO\b|remaining performance obligations?|"
+            r"backlog|take-or-pay|tranche|upfront|deferred revenue|"
+            r"purchase commitments?|customer commitments?",
             re.I,
         )
 
         def _contract_score(c: dict) -> int:
             t = c.get("text") or ""
             score = 0
-            if re.search(r"Microsoft|take-or-pay|tranche", t, re.I):
+            if re.search(r"take-or-pay|tranche", t, re.I):
                 score += 50
-            if re.search(r"Meta|RPO|backlog", t, re.I):
+            if re.search(r"\bRPO\b|remaining performance obligations?|backlog", t, re.I):
                 score += 40
-            if re.search(r"100\s*B|\$100|strategic customer|\bSCAs?\b", t, re.I):
+            if re.search(r"strategic customer|\bSCAs?\b", t, re.I):
                 score += 50
-            if re.search(r"commitment|upfront|deferred", t, re.I):
+            if re.search(r"upfront|deferred revenue|purchase commitments?|customer commitments?", t, re.I):
                 score += 10
             if c.get("grade") == "A":
                 score += 5
@@ -206,7 +203,7 @@ def answer(focus: str, question: str) -> str:
         # deep link long research
         try:
             sources = list_sources(focus)
-            # prefer nebius handoff/claim-bank/master or MU earnings master
+            # prefer a handoff, claim bank, filing, or earnings source
             prefer = (
                 "handoff",
                 "claim-bank",
@@ -220,7 +217,7 @@ def answer(focus: str, question: str) -> str:
                 if sid:
                     break
             if sid:
-                for query in ("take-or-pay", "Microsoft", "RPO", "SCA", "strategic customer"):
+                for query in ("take-or-pay", "remaining performance obligations", "RPO", "SCA", "strategic customer", "backlog"):
                     deep = get_source(focus, sid, mode="search", query=query)
                     if deep.get("hit_count"):
                         lines.append("")
@@ -247,13 +244,9 @@ def answer(focus: str, question: str) -> str:
         "eps",
         "sca",
         "backlog",
-        "hbm",
         "margin",
         "number",
         "fact",
-        "mehrotra",
-        "nvidia",
-        "lpdram",
         "what do we know",
     ) or len(q.split()) <= 12:
         hits = _search_claims(store.get("claims") or [], q)

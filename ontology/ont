@@ -19,8 +19,9 @@ case "$cmd" in
     echo "  ont source MU list         Long research MD catalog"
     echo "  ont source MU get <id>     Open a long file (meta/outline/section/search)"
     echo "  ont agent MU <question>    Agent context block (ontology → LLM/Grok)"
-    echo "  ont compile MU             Rebuild pack from research-wiki"
-    echo "  ont verify MSFT            Part 1 structural gate (fail-closed)"
+  echo "  ont compile MU             Rebuild pack from research-wiki"
+  echo "  ont facts-fetch MU         Fetch SEC companyfacts cache (desk add/refresh)"
+  echo "  ont verify MSFT            Part 1 structural gate (fail-closed)"
     echo "  ont verify MSFT --require-confirmed --require-risks-accepted"
     echo "  ont test                   Run unit tests + gates"
     echo ""
@@ -57,6 +58,9 @@ case "$cmd" in
   compile)
     focus="${1:-MU}"
     exec python3 -m api.cli compile "$focus"
+    ;;
+  facts-fetch)
+    exec python3 -m api.cli facts-fetch "$@"
     ;;
   verify)
     # ont verify MSFT [--require-confirmed] [--require-risks-accepted] [--json]

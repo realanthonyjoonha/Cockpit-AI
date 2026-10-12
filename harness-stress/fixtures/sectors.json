@@ -1,0 +1,1945 @@
+{
+  "comment": "Harness constants in the wording of public-filing line items. Not a house view, not a desk, not a vault note. Ten sectors, one rule file. Each issuer has a trimmed companyfacts fixture under companyfacts/<id>/. live/gaps/context are the sentence-only run. Structured metrics never fill from sentences. risk_metric rows are the review tripwire names.",
+  "risk_metric": [
+    {
+      "name": "Operating margin pressure",
+      "metric_id": null
+    },
+    {
+      "name": "Customer lawsuit",
+      "metric_id": null
+    },
+    {
+      "name": "The board sanctions the capital plan",
+      "metric_id": null
+    },
+    {
+      "name": "Gross margin",
+      "metric_id": "gross_margin"
+    },
+    {
+      "name": "Gross margins",
+      "metric_id": "gross_margin"
+    },
+    {
+      "name": "Customer concentration",
+      "metric_id": "concentration"
+    },
+    {
+      "name": "Largest customer",
+      "metric_id": "concentration"
+    },
+    {
+      "name": "Trade sanctions",
+      "metric_id": "export_controls"
+    },
+    {
+      "name": "Export sanctions",
+      "metric_id": "export_controls"
+    },
+    {
+      "name": "Indemnify",
+      "metric_id": "guarantees"
+    },
+    {
+      "name": "Operating leverage in the software model",
+      "metric_id": null
+    },
+    {
+      "name": "Water supply interruption",
+      "metric_id": null
+    },
+    {
+      "name": "Regulatory commitment to the rate case",
+      "metric_id": null
+    },
+    {
+      "name": "Bad debt on the card book",
+      "metric_id": null
+    },
+    {
+      "name": "Crude exports",
+      "metric_id": "export_controls"
+    },
+    {
+      "name": "Net interest margin compression",
+      "metric_id": null
+    }
+  ],
+  "issuers": [
+    {
+      "id": "bank",
+      "sector": "bank",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "gaps": [
+        "as_of is a fiscal label without a period-end date",
+        "net_interest_income: not reported in structured data",
+        "credit_loss_provision: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [
+        {
+          "id": "deposits",
+          "metric_id": "other"
+        }
+      ],
+      "claims": [
+        {
+          "id": "nii-new",
+          "text": "Net interest income was $4,200 million.",
+          "as_of": "year ended December 31, 2025",
+          "grade": "A",
+          "classify": "net_interest_income",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4200000000
+            }
+          ]
+        },
+        {
+          "id": "nii-old",
+          "text": "Net interest income was $3,900 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "net_interest_income",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 3900000000
+            }
+          ]
+        },
+        {
+          "id": "nii-fy",
+          "text": "Net interest income was $1 million.",
+          "as_of": "FY2026",
+          "grade": "A",
+          "classify": "net_interest_income",
+          "sort_key": null,
+          "precision": "fiscal_label",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
+        },
+        {
+          "id": "nii-xbrl",
+          "text": "Refer to the average balance sheet.",
+          "as_of": "2023-12-31",
+          "grade": "A",
+          "concept": "us-gaap:InterestIncomeExpenseNet",
+          "classify": "net_interest_income",
+          "sort_key": "2023-12-31",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "pcl",
+          "text": "Provision for credit losses was $310 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": "credit_loss_provision",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 310000000
+            }
+          ]
+        },
+        {
+          "id": "deposits",
+          "text": "Total deposits were $88,000 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 88000000000
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "nii-new",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "pcl",
+          "metric_id": "credit_loss_provision",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "nii-old",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "nii-xbrl",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "nii-fy",
+          "metric_id": "net_interest_income",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "bank"
+    },
+    {
+      "id": "insurer",
+      "sector": "insurer",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "gaps": [
+        "company_revenue: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [
+        {
+          "id": "claims",
+          "metric_id": "other"
+        }
+      ],
+      "claims": [
+        {
+          "id": "prem-new",
+          "text": "Premiums earned were $9,500 million.",
+          "as_of": "year ended December 31, 2025",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 9500000000
+            }
+          ]
+        },
+        {
+          "id": "prem-old",
+          "text": "Premiums earned were $9,100 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 9100000000
+            }
+          ]
+        },
+        {
+          "id": "claims",
+          "text": "Claims and claim adjustment expense was $6,100 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 6100000000
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "prem-new",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "prem-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "insurer"
+    },
+    {
+      "id": "reit",
+      "sector": "reit",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "gaps": [
+        "unmapped_concept: us-gaap:FundsFromOperations",
+        "company_revenue: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [
+        {
+          "id": "realestate",
+          "metric_id": "other"
+        },
+        {
+          "id": "ffo",
+          "metric_id": "other"
+        }
+      ],
+      "claims": [
+        {
+          "id": "rent",
+          "text": "Rental revenue was $1,240 million.",
+          "as_of": "year ended December 31, 2025",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1240000000
+            }
+          ]
+        },
+        {
+          "id": "rent-old",
+          "text": "Rental revenue was $1,100 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1100000000
+            }
+          ]
+        },
+        {
+          "id": "realestate",
+          "text": "Real estate assets, at cost, were $8,400 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 8400000000
+            }
+          ]
+        },
+        {
+          "id": "ffo",
+          "text": "Funds from operations were $620 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "concept": "us-gaap:FundsFromOperations",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 620000000
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "rent",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rent-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "reit"
+    },
+    {
+      "id": "utility",
+      "sector": "utility",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "gaps": [
+        "company_revenue: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [
+        {
+          "id": "regasset",
+          "metric_id": "other"
+        }
+      ],
+      "claims": [
+        {
+          "id": "oprev",
+          "text": "Operating revenues were $14,800 million.",
+          "as_of": "year ended December 31, 2025",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 14800000000
+            }
+          ]
+        },
+        {
+          "id": "oprev-old",
+          "text": "Operating revenues were $13,900 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 13900000000
+            }
+          ]
+        },
+        {
+          "id": "regasset",
+          "text": "Regulatory assets were $2,100 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 2100000000
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "oprev",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "oprev-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "utility"
+    },
+    {
+      "id": "biotech",
+      "sector": "biotech",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "forbid_phrases": [
+        "net sales"
+      ],
+      "gaps": [
+        "company_revenue: not reported in structured data",
+        "rnd_expense: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [],
+      "claims": [
+        {
+          "id": "collab",
+          "text": "Collaboration revenue was $480 million.",
+          "as_of": "year ended December 31, 2025",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 480000000
+            }
+          ]
+        },
+        {
+          "id": "collab-old",
+          "text": "Collaboration revenue was $410 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 410000000
+            }
+          ]
+        },
+        {
+          "id": "rnd",
+          "text": "Research and development expense was $910 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": "rnd_expense",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 910000000
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "collab",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rnd",
+          "metric_id": "rnd_expense",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "collab-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "biotech"
+    },
+    {
+      "id": "retail",
+      "sector": "retail",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "53 weeks ended January 28, 2026",
+      "gaps": [
+        "company_revenue: not reported in structured data",
+        "inventory: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [
+        {
+          "id": "pct",
+          "metric_id": "other"
+        }
+      ],
+      "claims": [
+        {
+          "id": "sales",
+          "text": "Net sales were $52,000 million.",
+          "as_of": "53 weeks ended January 28, 2026",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2026-01-28",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 52000000000
+            }
+          ]
+        },
+        {
+          "id": "sales-old",
+          "text": "Net sales were $49,000 million.",
+          "as_of": "2026-01-27",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2026-01-27",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 49000000000
+            }
+          ]
+        },
+        {
+          "id": "inv",
+          "text": "Inventory was $6,400 million.",
+          "as_of": "January 28, 2026",
+          "grade": "A",
+          "classify": "inventory",
+          "sort_key": "2026-01-28",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 6400000000
+            }
+          ]
+        },
+        {
+          "id": "pct",
+          "text": "The merchandise margin rate was 45 percent.",
+          "as_of": "January 28, 2026",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-01-28",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "percent",
+              "currency": null,
+              "scale": null,
+              "value": 45
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "sales",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "inv",
+          "metric_id": "inventory",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "sales-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "retail"
+    },
+    {
+      "id": "energy",
+      "sector": "energy",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended October 1, 2025",
+      "gaps": [
+        "company_revenue: not reported in structured data",
+        "capex: not reported in structured data"
+      ],
+      "absent": [
+        "barrels"
+      ],
+      "live": [],
+      "claims": [
+        {
+          "id": "rev-oct",
+          "text": "Total revenues were $18,200 million.",
+          "as_of": "2025-10-01",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-10-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 18200000000
+            }
+          ]
+        },
+        {
+          "id": "rev-sep",
+          "text": "Total revenues were $17,400 million.",
+          "as_of": "2025-9-30",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-09-30",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 17400000000
+            }
+          ]
+        },
+        {
+          "id": "capex",
+          "text": "Capital expenditures were $3,400 million.",
+          "as_of": "2025-10-01",
+          "grade": "A",
+          "classify": "capex",
+          "sort_key": "2025-10-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 3400000000
+            }
+          ]
+        },
+        {
+          "id": "barrels",
+          "text": "Production was 12 million barrels of oil equivalent per day.",
+          "as_of": "2025-10-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-10-01",
+          "precision": "day",
+          "units": []
+        }
+      ],
+      "context": [
+        {
+          "id": "rev-oct",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "capex",
+          "metric_id": "capex",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-sep",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "energy"
+    },
+    {
+      "id": "industrial",
+      "sector": "industrial",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "gaps": [
+        "as_of is a fiscal label without a period-end date",
+        "rpo_backlog: not reported in structured data",
+        "operating_income: not reported in structured data",
+        "purchase_commitments: not reported in structured data",
+        "goodwill_impairment: not reported in structured data",
+        "impairment: not reported in structured data",
+        "operating_cash_flow: not reported in structured data",
+        "company_revenue: not reported in structured data",
+        "guarantees: not reported in structured data",
+        "net_income: not reported in structured data",
+        "cash: not reported in structured data",
+        "dividends: not reported in structured data",
+        "interest_revenue: not reported in structured data",
+        "no companyfacts value; live value is sentence-derived (low confidence): gross_margin, revenue_guide"
+      ],
+      "absent": [
+        "ocf-weather",
+        "ocf-qual",
+        "guid",
+        "guidelines",
+        "bps",
+        "barrels",
+        "fy"
+      ],
+      "live": [
+        {
+          "id": "see-guide",
+          "metric_id": "revenue_guide"
+        },
+        {
+          "id": "registers",
+          "metric_id": "other"
+        },
+        {
+          "id": "ocf-lease",
+          "metric_id": "other"
+        },
+        {
+          "id": "gm-blank",
+          "metric_id": "gross_margin"
+        },
+        {
+          "id": "unearned",
+          "metric_id": "other"
+        },
+        {
+          "id": "deposits",
+          "metric_id": "other"
+        },
+        {
+          "id": "deferred",
+          "metric_id": "other"
+        },
+        {
+          "id": "ffo",
+          "metric_id": "other"
+        },
+        {
+          "id": "inventor",
+          "metric_id": "other"
+        },
+        {
+          "id": "sanctions",
+          "metric_id": "other"
+        }
+      ],
+      "claims": [
+        {
+          "id": "backlog",
+          "text": "Backlog was $9,800 million.",
+          "as_of": "year ended December 31, 2025",
+          "grade": "A",
+          "classify": "rpo_backlog",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 9800000000
+            }
+          ]
+        },
+        {
+          "id": "backlog-old",
+          "text": "Backlog was $8,200 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "rpo_backlog",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 8200000000
+            }
+          ]
+        },
+        {
+          "id": "oi",
+          "text": "Operating income was $2,150 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": "operating_income",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 2150000000
+            }
+          ]
+        },
+        {
+          "id": "commit",
+          "text": "Purchase commitments were $740 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": "purchase_commitments",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 740000000
+            }
+          ]
+        },
+        {
+          "id": "gw-real",
+          "text": "Goodwill impairment was $4 million.",
+          "as_of": "2024-06-01",
+          "grade": "A",
+          "classify": "goodwill_impairment",
+          "sort_key": "2024-06-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
+        },
+        {
+          "id": "gw-other",
+          "text": "Impairment of intangible assets other than goodwill was $4 million.",
+          "as_of": "2026-06-01",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-06-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
+        },
+        {
+          "id": "ocf-2024",
+          "text": "Net cash provided by operating activities was $500 million.",
+          "as_of": "2024-12-31",
+          "grade": "A",
+          "classify": "operating_cash_flow",
+          "sort_key": "2024-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 500000000
+            }
+          ]
+        },
+        {
+          "id": "ocf-weather",
+          "text": "Operating activities may be affected by weather.",
+          "as_of": "2026-06-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-06-01",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "ocf-qual",
+          "text": "Net cash provided by operating activities may be affected by weather.",
+          "as_of": "2026-07-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-07-01",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "rev-total",
+          "text": "Total revenue was $10 billion.",
+          "as_of": "2023-12-01",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2023-12-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
+        },
+        {
+          "id": "rev-word",
+          "text": "Revenue was $10 billion.",
+          "as_of": "2024-01-01",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-01-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
+        },
+        {
+          "id": "rev-plural",
+          "text": "Revenues were $10 billion.",
+          "as_of": "2024-02-01",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-02-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
+        },
+        {
+          "id": "rev-tnr",
+          "text": "Total net revenue was $10 billion.",
+          "as_of": "2024-03-01",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2024-03-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 10000000000
+            }
+          ]
+        },
+        {
+          "id": "sales-see",
+          "text": "Net sales were $10 million. See guidance in Note 2.",
+          "as_of": "2025-06-01",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-06-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 10000000
+            }
+          ]
+        },
+        {
+          "id": "outlook",
+          "text": "Outlook for next quarter revenue is $100 million",
+          "as_of": "2026-06-01",
+          "grade": "A",
+          "classify": "revenue_guide",
+          "sort_key": "2026-06-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 100000000
+            }
+          ]
+        },
+        {
+          "id": "trade-sanctions",
+          "text": "The company is subject to trade sanctions.",
+          "as_of": "2025-01-01",
+          "grade": "A",
+          "classify": "export_controls",
+          "sort_key": "2025-01-01",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "sanctions",
+          "text": "The board sanctions the capital plan of $5 billion.",
+          "as_of": "2025-06-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-06-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 5000000000
+            }
+          ]
+        },
+        {
+          "id": "indemnify",
+          "text": "The company does indemnify customers for $5 million.",
+          "as_of": "2025-06-02",
+          "grade": "A",
+          "classify": "guarantees",
+          "sort_key": "2025-06-02",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 5000000
+            }
+          ]
+        },
+        {
+          "id": "bps",
+          "text": "$12 bps",
+          "as_of": "2025-07-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-07-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "bps",
+              "currency": null,
+              "scale": null,
+              "value": 12
+            }
+          ]
+        },
+        {
+          "id": "eps",
+          "text": "Net income was $12, or $0.12 per share, in millions except per share.",
+          "as_of": "2025-08-01",
+          "grade": "A",
+          "classify": "net_income",
+          "sort_key": "2025-08-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 12000000
+            },
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": null,
+              "value": 0.12
+            }
+          ]
+        },
+        {
+          "id": "inventor",
+          "text": "The inventor was paid $1 million",
+          "as_of": "2025-08-02",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-08-02",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
+        },
+        {
+          "id": "guid",
+          "text": "The guid is stored in the filing.",
+          "as_of": "2025-08-03",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-08-03",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "guidelines",
+          "text": "The guidelines were updated.",
+          "as_of": "2025-08-04",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-08-04",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "cash-see",
+          "text": "Cash was $222 million. See guidance.",
+          "as_of": "2026-06-01",
+          "grade": "A",
+          "classify": "cash",
+          "sort_key": "2026-06-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 222000000
+            }
+          ]
+        },
+        {
+          "id": "cash-sep",
+          "text": "Cash and cash equivalents were $10 million",
+          "as_of": "2026-9-30",
+          "grade": "A",
+          "classify": "cash",
+          "sort_key": "2026-09-30",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 10000000
+            }
+          ]
+        },
+        {
+          "id": "cash-oct",
+          "text": "Cash and cash equivalents were $11 million",
+          "as_of": "2026-10-01",
+          "grade": "A",
+          "classify": "cash",
+          "sort_key": "2026-10-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 11000000
+            }
+          ]
+        },
+        {
+          "id": "cash-iso",
+          "text": "Cash and cash equivalents were $12 million",
+          "as_of": "2026-10-01T23:30:00-10:00",
+          "grade": "A",
+          "classify": "cash",
+          "sort_key": "2026-10-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 12000000
+            }
+          ]
+        },
+        {
+          "id": "gm-blank",
+          "text": "Gross margin was 40 percent.",
+          "as_of": "2026-08-01",
+          "grade": "",
+          "classify": "gross_margin",
+          "sort_key": "2026-08-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "percent",
+              "currency": null,
+              "scale": null,
+              "value": 40
+            }
+          ]
+        },
+        {
+          "id": "gm-c",
+          "text": "Gross margin was 41 percent.",
+          "as_of": "2026-08-01",
+          "grade": "C",
+          "classify": "gross_margin",
+          "sort_key": "2026-08-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "percent",
+              "currency": null,
+              "scale": null,
+              "value": 41
+            }
+          ]
+        },
+        {
+          "id": "div-fy",
+          "text": "Dividends were $1 million.",
+          "as_of": "fiscal year ended 31 March 2026",
+          "grade": "A",
+          "classify": "dividends",
+          "sort_key": "2026-03-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
+        },
+        {
+          "id": "fy",
+          "text": "A fiscal label is not a period-end date.",
+          "as_of": "FY2026",
+          "grade": "A",
+          "classify": null,
+          "sort_key": null,
+          "precision": "fiscal_label",
+          "units": []
+        },
+        {
+          "id": "deposits",
+          "text": "Total deposits were $88,000 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 88000000000
+            }
+          ]
+        },
+        {
+          "id": "deferred",
+          "text": "Deferred revenue was $4,050 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4050000000
+            }
+          ]
+        },
+        {
+          "id": "barrels",
+          "text": "Production was 12 million barrels of oil equivalent per day.",
+          "as_of": "2025-10-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-10-01",
+          "precision": "day",
+          "units": []
+        },
+        {
+          "id": "ffo",
+          "text": "Funds from operations were $620 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 620000000
+            }
+          ]
+        },
+        {
+          "id": "gw-non",
+          "text": "Impairment of non-goodwill intangible assets was $4 million.",
+          "as_of": "2026-12-01",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-12-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
+        },
+        {
+          "id": "gw-article",
+          "text": "Impairment of intangible assets other than the goodwill was $3 million.",
+          "as_of": "2026-03-01",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-03-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 3000000
+            }
+          ]
+        },
+        {
+          "id": "gw-excl",
+          "text": "Impairment excluding the goodwill balance was $2 million.",
+          "as_of": "2026-03-02",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-03-02",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 2000000
+            }
+          ]
+        },
+        {
+          "id": "gw-for",
+          "text": "Impairment of assets other than for goodwill was $1 million.",
+          "as_of": "2026-03-03",
+          "grade": "A",
+          "classify": "impairment",
+          "sort_key": "2026-03-03",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 1000000
+            }
+          ]
+        },
+        {
+          "id": "unearned",
+          "text": "Unearned revenue was $40 million.",
+          "as_of": "2026-01-15",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-01-15",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 40000000
+            }
+          ]
+        },
+        {
+          "id": "interest",
+          "text": "Interest revenue was $8 billion.",
+          "as_of": "2026-02-01",
+          "grade": "A",
+          "classify": "interest_revenue",
+          "sort_key": "2026-02-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 8000000000
+            }
+          ]
+        },
+        {
+          "id": "see-guide",
+          "text": "See guidance: revenue of $12 billion.",
+          "as_of": "2026-09-01",
+          "grade": "A",
+          "classify": "revenue_guide",
+          "sort_key": "2026-09-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "billion",
+              "value": 12000000000
+            }
+          ]
+        },
+        {
+          "id": "ocf-lease",
+          "text": "Cash flow from operating leases was $90 million.",
+          "as_of": "2026-08-01",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-08-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 90000000
+            }
+          ]
+        },
+        {
+          "id": "registers",
+          "text": "Operating cash in the registers was $4 million.",
+          "as_of": "2026-08-02",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2026-08-02",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4000000
+            }
+          ]
+        },
+        {
+          "id": "eps-header",
+          "text": "in millions, except per share data, net income was $0.12.",
+          "as_of": "2025-07-01",
+          "grade": "A",
+          "classify": "net_income",
+          "sort_key": "2025-07-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": null,
+              "value": 0.12
+            }
+          ]
+        },
+        {
+          "id": "eps-pair",
+          "text": "In millions, except per share data, net income was $400 and diluted earnings per share were $1.25.",
+          "as_of": "2026-11-01",
+          "grade": "A",
+          "classify": "net_income",
+          "sort_key": "2026-11-01",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 400000000
+            },
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": null,
+              "value": 1.25
+            }
+          ]
+        }
+      ],
+      "context": [
+        {
+          "id": "gw-non",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "eps-pair",
+          "metric_id": "net_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "cash-oct",
+          "metric_id": "cash",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "cash-iso",
+          "metric_id": "cash",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "cash-sep",
+          "metric_id": "cash",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-other",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "cash-see",
+          "metric_id": "cash",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "div-fy",
+          "metric_id": "dividends",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-for",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-excl",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-article",
+          "metric_id": "impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "interest",
+          "metric_id": "interest_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "backlog",
+          "metric_id": "rpo_backlog",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "oi",
+          "metric_id": "operating_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "commit",
+          "metric_id": "purchase_commitments",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "eps",
+          "metric_id": "net_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "eps-header",
+          "metric_id": "net_income",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "indemnify",
+          "metric_id": "guarantees",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "sales-see",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "trade-sanctions",
+          "metric_id": "export_controls",
+          "reason": "no_amount"
+        },
+        {
+          "id": "backlog-old",
+          "metric_id": "rpo_backlog",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "ocf-2024",
+          "metric_id": "operating_cash_flow",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "gw-real",
+          "metric_id": "goodwill_impairment",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-tnr",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-plural",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-word",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-total",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "industrial"
+    },
+    {
+      "id": "software",
+      "sector": "software",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD",
+      "period": "year ended December 31, 2025",
+      "gaps": [
+        "company_revenue: not reported in structured data",
+        "rpo_backlog: not reported in structured data",
+        "no companyfacts value; live value is sentence-derived (low confidence): operating_segments"
+      ],
+      "absent": [],
+      "live": [
+        {
+          "id": "deferred",
+          "metric_id": "other"
+        },
+        {
+          "id": "segs",
+          "metric_id": "operating_segments"
+        }
+      ],
+      "claims": [
+        {
+          "id": "rev",
+          "text": "Total revenues were $8,800 million.",
+          "as_of": "December 31, 2025",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 8800000000
+            }
+          ]
+        },
+        {
+          "id": "rev-old",
+          "text": "Total revenues were $6,200 million.",
+          "as_of": "2025-9-30",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2025-09-30",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 6200000000
+            }
+          ]
+        },
+        {
+          "id": "rpo",
+          "text": "Remaining performance obligations were $11,600 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": "rpo_backlog",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 11600000000
+            }
+          ]
+        },
+        {
+          "id": "deferred",
+          "text": "Deferred revenue was $4,050 million.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": null,
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "USD",
+              "scale": "million",
+              "value": 4050000000
+            }
+          ]
+        },
+        {
+          "id": "segs",
+          "text": "The company has 3 reportable segments.",
+          "as_of": "2025-12-31",
+          "grade": "A",
+          "classify": "operating_segments",
+          "sort_key": "2025-12-31",
+          "precision": "day",
+          "units": []
+        }
+      ],
+      "context": [
+        {
+          "id": "rev",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rpo",
+          "metric_id": "rpo_backlog",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "software"
+    },
+    {
+      "id": "fpi",
+      "sector": "foreign private issuer",
+      "form": "20-F",
+      "reporting": "ifrs-full",
+      "currency": "EUR",
+      "period": "fiscal year ended 31 March 2026",
+      "gaps": [
+        "company_revenue: not reported in structured data",
+        "cash: not reported in structured data"
+      ],
+      "absent": [],
+      "live": [],
+      "claims": [
+        {
+          "id": "rev",
+          "text": "Total revenues were \u20ac 1,200 in millions.",
+          "as_of": "fiscal year ended 31 March 2026",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2026-03-31",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "EUR",
+              "scale": "million",
+              "value": 1200000000
+            }
+          ]
+        },
+        {
+          "id": "rev-old",
+          "text": "Total revenues were \u20ac 1,050 million.",
+          "as_of": "2026-3-15",
+          "grade": "A",
+          "classify": "company_revenue",
+          "sort_key": "2026-03-15",
+          "precision": "day",
+          "units": [
+            {
+              "unit": "currency",
+              "currency": "EUR",
+              "scale": "million",
+              "value": 1050000000
+            }
+          ]
+        },
+        {
+          "id": "cash-ifrs",
+          "text": "The statement of financial position includes this carrying amount.",
+          "as_of": "2026-3-31",
+          "grade": "A",
+          "concept": "ifrs-full:CashAndCashEquivalents",
+          "classify": "cash",
+          "sort_key": "2026-03-31",
+          "precision": "day",
+          "units": []
+        }
+      ],
+      "context": [
+        {
+          "id": "rev",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "cash-ifrs",
+          "metric_id": "cash",
+          "reason": "no_structured_fact"
+        },
+        {
+          "id": "rev-old",
+          "metric_id": "company_revenue",
+          "reason": "no_structured_fact"
+        }
+      ],
+      "companyfacts": "fpi"
+    }
+  ]
+}

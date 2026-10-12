@@ -2,7 +2,7 @@
 // No model calls. No writes. Decision-support only.
 import { loadPack } from './pack.js';
 import { readHouseMarkdown } from './thinHouseSave.js';
-import { loadContextpackRules, liveClaims } from './contextpack.js';
+import { loadContextpackRules, liveClaims, compareClaimsNewestFirst } from './contextpack.js';
 
 const RULES = `You are Anthony's research assistant for a single-name house view (decision-support OS).
 
@@ -57,16 +57,17 @@ export function buildHouseAssistContext(opts) {
       || (process.env.COCKPIT_REPO && `${process.env.COCKPIT_REPO}/ontology`)
       || null;
     if (ontologyRoot) {
-      rankedClaims = liveClaims(claims, loadContextpackRules(ontologyRoot));
+      rankedClaims = liveClaims(claims, loadContextpackRules(ontologyRoot), 8, null, {
+        facts: available && Array.isArray(pack?.facts) ? pack.facts : [],
+      });
     }
   } catch { /* fall through */ }
   if (!rankedClaims.length) {
-    rankedClaims = [...claims].sort((a, b) => {
-      const ga = a.grade === 'A' ? 0 : a.grade === 'B' ? 1 : 2;
-      const gb = b.grade === 'A' ? 0 : b.grade === 'B' ? 1 : 2;
-      if (ga !== gb) return ga - gb;
-      return String(b.as_of || '').localeCompare(String(a.as_of || ''));
-    }).slice(0, 10);
+    rankedClaims = claims
+      .map((c, i) => ({ c, i }))
+      .sort((x, y) => compareClaimsNewestFirst(x.c, y.c, x.i, y.i))
+      .map((x) => x.c)
+      .slice(0, 10);
   }
 
   const watch = (rs?.watch || []).slice(0, 12);
@@ -118,7 +119,8 @@ export function buildHouseAssistContext(opts) {
   if (!rankedClaims.length) sections.push('_No claims._');
   else {
     for (const c of rankedClaims) {
-      const mid = c.metric_id ? `\`${c.metric_id}\` ` : '';
+      const low = c.confidence === 'low' ? 'sentence, low confidence ' : '';
+      const mid = c.metric_id ? `\`${c.metric_id}\` ${low}` : '';
       sections.push(`- ${mid}[${c.grade || '?'}] (${c.as_of || '—'}) ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
     }
   }

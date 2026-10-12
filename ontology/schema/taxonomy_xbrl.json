@@ -1,0 +1,195 @@
+{
+  "version": "4",
+  "comment": "Companyfacts true-total tags to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). List order is unused. The parser groups the latest periodic filing by period start/end and shows each unique period. sentence_fill is always false for structured metrics. Totals only. No stale window, ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "namespaces": {
+    "us-gaap": ["http://fasb.org/us-gaap/"],
+    "ifrs-full": ["http://xbrl.ifrs.org/taxonomy/", "https://xbrl.ifrs.org/taxonomy/"],
+    "dei": ["http://xbrl.sec.gov/dei/"]
+  },
+  "metrics": {
+    "company_revenue": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:Revenues",
+        "us-gaap:SalesRevenueNet",
+        "us-gaap:RegulatedAndUnregulatedOperatingRevenue",
+        "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+        "us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax",
+        "ifrs-full:Revenue",
+        "ifrs-full:RevenueFromContractsWithCustomers",
+        "us-gaap:PremiumsEarnedNet",
+        "us-gaap:RevenuesNetOfInterestExpense"
+      ]
+    },
+    "operating_income": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:OperatingIncomeLoss", "ifrs-full:ProfitLossFromOperatingActivities"]
+    },
+    "net_income": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:NetIncomeLoss", "us-gaap:ProfitLoss", "ifrs-full:ProfitLoss"]
+    },
+    "diluted_eps": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "per_share",
+      "concepts": [
+        "us-gaap:EarningsPerShareDiluted",
+        "us-gaap:IncomeLossFromContinuingOperationsPerDilutedShare",
+        "ifrs-full:DilutedEarningsLossPerShare",
+        "ifrs-full:BasicAndDilutedEarningsLossPerShare"
+      ]
+    },
+    "cash": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+        "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+        "ifrs-full:CashAndCashEquivalents"
+      ]
+    },
+    "operating_cash_flow": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+        "us-gaap:NetCashProvidedByUsedInOperatingActivitiesContinuingOperations",
+        "ifrs-full:CashFlowsFromUsedInOperatingActivities"
+      ]
+    },
+    "total_debt": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:LongTermDebt",
+        "us-gaap:LongTermDebtAndCapitalLeaseObligations",
+        "us-gaap:LongTermDebtNoncurrent",
+        "ifrs-full:LongtermBorrowings",
+        "ifrs-full:Borrowings"
+      ]
+    },
+    "long_term_debt": { "alias_of": "total_debt" },
+    "goodwill_impairment": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:GoodwillImpairmentLoss",
+        "ifrs-full:ImpairmentLossRecognisedInProfitOrLossGoodwill"
+      ]
+    },
+    "impairment": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:AssetImpairmentCharges",
+        "us-gaap:ImpairmentOfIntangibleAssetsExcludingGoodwill",
+        "us-gaap:ImpairmentOfIntangibleAssetsFinitelived",
+        "us-gaap:ImpairmentOfIntangibleAssetsIndefinitelivedExcludingGoodwill",
+        "us-gaap:ImpairmentOfLongLivedAssetsHeldForUse",
+        "us-gaap:ImpairmentOfRealEstate",
+        "us-gaap:ImpairmentOfOilAndGasProperties",
+        "ifrs-full:ImpairmentLossRecognisedInProfitOrLossIntangibleAssetsOtherThanGoodwill",
+        "ifrs-full:ImpairmentLossRecognisedInProfitOrLossPropertyPlantAndEquipment"
+      ]
+    },
+    "goodwill": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": ["us-gaap:Goodwill", "ifrs-full:Goodwill"]
+    },
+    "inventory": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": ["us-gaap:InventoryNet", "ifrs-full:Inventories"]
+    },
+    "net_interest_income": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:InterestIncomeExpenseNet", "ifrs-full:InterestRevenueExpense"]
+    },
+    "interest_revenue": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:InterestAndDividendIncomeOperating"]
+    },
+    "credit_loss_provision": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:ProvisionForLoanLeaseAndOtherLosses", "us-gaap:ProvisionForLoanAndLeaseLosses"]
+    },
+    "rnd_expense": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:ResearchAndDevelopmentExpense", "ifrs-full:ResearchAndDevelopmentExpense"]
+    },
+    "rpo_backlog": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": ["us-gaap:RevenueRemainingPerformanceObligation"]
+    },
+    "purchase_commitments": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": ["us-gaap:PurchaseObligation", "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount"]
+    },
+    "capex": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": [
+        "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+        "ifrs-full:PurchaseOfPropertyPlantAndEquipmentClassifiedAsInvestingActivities"
+      ]
+    },
+    "diluted_shares": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "shares",
+      "concepts": ["us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding"]
+    },
+    "guarantees": {
+      "sentence_fill": false,
+      "period": "instant",
+      "unit": "currency",
+      "concepts": ["us-gaap:GuaranteeObligationsMaximumExposure"]
+    },
+    "share_repurchase": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:PaymentsForRepurchaseOfCommonStock"]
+    },
+    "dividends": {
+      "sentence_fill": false,
+      "period": "duration",
+      "unit": "currency",
+      "concepts": ["us-gaap:PaymentsOfDividends", "ifrs-full:DividendsPaidClassifiedAsFinancingActivities"]
+    },
+    "gross_margin": { "unit": "currency_or_percent", "concepts": [] },
+    "revenue_guide": { "unit": "currency", "concepts": [] },
+    "concentration": { "unit": "currency_or_percent", "concepts": [] },
+    "export_controls": { "unit": "currency_or_percent", "concepts": [] },
+    "headcount": { "unit": "count", "concepts": [] },
+    "operating_segments": { "unit": "count", "concepts": [] }
+  }
+}

@@ -3,7 +3,28 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { loadContextpackRules, liveClaims, classifyMetric } from '../server/contextpack.js';
+import {
+  claimGaps,
+  classifyClaim,
+  classifyMetric,
+  liveClaims,
+  loadContextpackRules,
+  parseAmounts,
+  parseAsOf,
+  riskMetric,
+  sentenceHasAmount,
+  staleTripwires,
+} from '../server/contextpack.js';
+import { headlineGaps, parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
+import { checkCompanyfactsExact } from '../../harness-stress/lib/review-check.mjs';
+import {
+  bannedNeedles,
+  bannedWordHits,
+  checkDemo,
+  checkSectors,
+  loadSectors,
+} from '../../harness-stress/lib/sector-check.mjs';
+import { checkHonestyFixes, checkReview, checkReviewerCases, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(ROOT, '..');
@@ -40,15 +61,49 @@ if (!hits.length) ok('metrics JSON has no issuer/sector names');
 else bad(`metrics desk-tuned: ${hits}`);
 
 const acme = liveClaims([
-  { id: 'n', text: 'Net sales were $12.4 billion in the quarter', as_of: '2026-08-15', grade: 'A' },
-  { id: 'o', text: 'Net sales were $11.0 billion in the quarter', as_of: '2026-05-15', grade: 'A' },
+  { id: 'n', text: 'Gross margin was 41 percent in the quarter', as_of: '2026-08-15', grade: 'A' },
+  { id: 'o', text: 'Gross margin was 40 percent in the quarter', as_of: '2026-05-15', grade: 'A' },
 ], rules);
-const acmeRev = acme.filter((c) => c.metric_id === 'company_revenue');
-if (acmeRev.length === 1 && /12\.4/.test(acmeRev[0].text)) ok('JS retailer net sales latest wins');
+const acmeRev = acme.filter((c) => c.metric_id === 'gross_margin');
+if (acmeRev.length === 1 && acmeRev[0].id === 'n') ok('JS retailer latest sentence wins a non-headline slot');
 else bad(`JS acme ${JSON.stringify(acmeRev)}`);
-if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) == null) {
-  ok('JS does not special-case data-center revenue');
-} else bad('JS still has dc_revenue');
+if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) === 'company_revenue') {
+  ok('JS files a revenue line as company_revenue');
+} else bad('JS still special-cases data-center revenue');
+
+const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric, staleTripwires };
+const demoErrors = checkDemo(api);
+if (!demoErrors.length) ok('JS DEMO repros (dates, cash, guidance, goodwill, drops, grade)');
+else demoErrors.forEach((e) => bad(e));
+const sectorErrors = checkSectors(loadSectors(), api);
+if (!sectorErrors.length) ok('JS ten-sector fixture');
+else sectorErrors.forEach((e) => bad(e));
+
+const rulesFile = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
+const xbrlFile = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
+const bannedHits = [...bannedWordHits(rulesFile), ...bannedWordHits(xbrlFile)];
+if (!bannedHits.length) ok('metrics JSON and XBRL map have no issuer tokens');
+else bad(`issuer tokens: ${bannedHits.join(', ')}`);
+const stems = bannedNeedles(rules);
+if (!stems.length) ok('no guid or inventor stems');
+else bad(`stems: ${stems.join(', ')}`);
+
+const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots, headlineGaps };
+const exactErrors = checkCompanyfactsExact(xApi);
+if (!exactErrors.length) ok('JS companyfacts properties + constructed documents');
+else exactErrors.forEach((e) => bad(e));
+const taggedErrors = checkTaggedSectors(loadSectors(), xApi);
+if (!taggedErrors.length) ok('JS companyfacts slots own the ten-sector live values');
+else taggedErrors.forEach((e) => bad(e));
+const reviewRun = checkReview(xApi);
+if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave structured slots alone`);
+else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
+const reviewerErrors = checkReviewerCases(xApi);
+if (!reviewerErrors.length) ok('JS constructed unique / two-periods / disagree / none');
+else reviewerErrors.forEach((e) => bad(e));
+const honestyErrors = checkHonestyFixes({ ...xApi, staleTripwires });
+if (!honestyErrors.length) ok('JS latest-filing-only / undated as_of / tripwire periods');
+else honestyErrors.forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,23 @@
+{
+  "comment": "Cached companyfacts used as parser input. Tests assert properties, not frozen dollars. Constructed documents are synthetic. Sector extracts are optional property inputs. Not a desk. Not a house view.",
+  "constructed": ["unique", "two-periods", "same-period-disagree", "none"],
+  "issuers": [
+    { "id": "unique", "kind": "constructed" },
+    { "id": "two-periods", "kind": "constructed" },
+    { "id": "same-period-disagree", "kind": "constructed" },
+    { "id": "none", "kind": "constructed" },
+    { "id": "bank", "kind": "extract" },
+    { "id": "insurer", "kind": "extract" },
+    { "id": "reit", "kind": "extract" },
+    { "id": "utility", "kind": "extract" },
+    { "id": "biotech", "kind": "extract" },
+    { "id": "retail", "kind": "extract" },
+    { "id": "energy", "kind": "extract" },
+    { "id": "industrial", "kind": "extract" },
+    { "id": "software", "kind": "extract" },
+    { "id": "fpi", "kind": "extract" },
+    { "id": "asml", "kind": "extract" },
+    { "id": "qtd", "kind": "extract" },
+    { "id": "restate", "kind": "extract" }
+  ]
+}

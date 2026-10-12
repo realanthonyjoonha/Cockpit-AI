@@ -1,6 +1,6 @@
 {
-  "version": "2",
-  "comment": "Universal 10-K/10-Q spine. No issuer, product, geography, or sector names. Desk N must match with no rule edits.",
+  "version": "3",
+  "comment": "Universal filing spine. First matching rule wins. Patterns are positive phrases: the head noun is the thing named, and an exclusion scope (other than, excluding, except, non-) rejects that match. No issuer, product, geography, or sector names.",
   "boilerplate": [
     "central index key",
     "commission file number",
@@ -10,7 +10,6 @@
     "trading symbol",
     "nasdaq global",
     "new york stock exchange",
-    "number of employees",
     "principal executive offices",
     "irs employer",
     "registrant's telephone",
@@ -19,123 +18,308 @@
   ],
   "metrics": [
     {
-      "id": "revenue_guide",
-      "any": ["outlook", "guid"]
+      "id": "goodwill_impairment",
+      "head": "goodwill",
+      "patterns": [
+        "\\bgoodwill impairments?\\b",
+        "\\bimpairments? of (?:the |its |a )?goodwill\\b",
+        "\\bimpairment charges? (?:related|attributable) to (?:the |its )?goodwill\\b",
+        "\\bgoodwill (?:was|were) impaired\\b"
+      ]
     },
     {
-      "id": "company_revenue",
-      "regex": "net sales|consolidated (net )?revenue|total (net )?revenue|company revenue|(?:q[1-4]|fy\\d{4}|fiscal year \\d{4})(?:\\s+fy\\d{4})?\\s+revenue (?:was|were|of)",
-      "none": ["outlook", "guid"]
+      "id": "impairment",
+      "any": ["impairment", "impairments"]
+    },
+    {
+      "id": "goodwill",
+      "any": ["goodwill"],
+      "head": "goodwill",
+      "none": ["impairment", "impairments"]
+    },
+    {
+      "id": "inventory",
+      "any": ["inventory", "inventories"],
+      "none": ["impairment", "impairments"]
+    },
+    {
+      "id": "operating_cash_flow",
+      "patterns": [
+        "\\bnet cash provided by operating activities\\b",
+        "\\bnet cash used in operating activities\\b",
+        "\\boperating cash flows?\\b",
+        "\\bcash flows from operating activities\\b",
+        "\\bcash flow from operating activities\\b"
+      ],
+      "requires_figure": true
+    },
+    {
+      "id": "cash",
+      "any": [
+        "cash and cash equivalents",
+        "cash and equivalents",
+        "cash was",
+        "cash were",
+        "cash balance"
+      ],
+      "none": ["cash flow", "cash flows"]
+    },
+    {
+      "id": "revenue_guide",
+      "patterns": [
+        "\\b(?:revenue|revenues|sales|net sales) guidance\\b",
+        "\\bguidance\\s*:\\s*(?:revenue|revenues|sales|net sales)\\b",
+        "\\bguidance\\b(?:\\s+\\w+){0,8}\\s+(?:for\\s+)?(?:revenue|revenues|sales|net sales)\\b",
+        "\\boutlook\\b(?:\\s+\\w+){0,10}\\s+(?:revenue|revenues|sales|net sales)\\b"
+      ]
+    },
+    {
+      "id": "concentration",
+      "any": [
+        "largest customer",
+        "customer concentration",
+        "percent of revenue from",
+        "% of revenue from",
+        "no customer accounted"
+      ]
     },
     {
       "id": "net_interest_income",
       "any": ["net interest income"]
     },
     {
+      "id": "credit_loss_provision",
+      "any": ["provision for credit", "credit loss", "credit losses"]
+    },
+    {
       "id": "gross_margin",
-      "any": ["gross margin"]
+      "any": ["gross margin", "gross margins"]
     },
     {
       "id": "operating_income",
-      "any": ["operating income", "operating profit", "operating loss"]
+      "any": ["operating income", "operating profit", "operating loss", "operating losses"]
     },
     {
       "id": "net_income",
-      "any": ["net income", "net loss", "net earnings"]
+      "any": ["net income", "net loss", "net losses", "net earnings"]
     },
     {
-      "id": "operating_cash_flow",
-      "any": ["operating activities", "operating cash"]
+      "id": "rnd_expense",
+      "any": ["research and development", "r&d"]
     },
     {
-      "id": "cash",
-      "any": ["cash and cash equivalents", "cash and equivalents"]
+      "id": "rpo_backlog",
+      "any": [
+        "remaining performance obligation",
+        "remaining performance obligations",
+        "rpo",
+        "rpos",
+        "backlog",
+        "backlogs"
+      ]
     },
     {
-      "id": "inventory",
-      "any": ["inventor"]
+      "id": "purchase_commitments",
+      "any": [
+        "purchase commitment",
+        "purchase commitments",
+        "purchase obligation",
+        "purchase obligations",
+        "supply commitment",
+        "supply commitments",
+        "capacity agreement",
+        "capacity agreements",
+        "long-term supply",
+        "long-term purchase"
+      ]
+    },
+    {
+      "id": "capex",
+      "any": [
+        "capital expenditure",
+        "capital expenditures",
+        "purchases of property",
+        "capex"
+      ]
     },
     {
       "id": "long_term_debt",
       "any": ["long-term debt", "long term debt", "notes payable", "convertible notes"]
     },
     {
+      "id": "total_debt",
+      "any": ["total debt"]
+    },
+    {
+      "id": "diluted_eps",
+      "any": ["diluted earnings per share", "diluted eps"]
+    },
+    {
       "id": "diluted_shares",
-      "any": ["diluted share", "weighted-average share", "share count"]
-    },
-    {
-      "id": "concentration",
-      "any": ["largest customer", "customer concentration", "percent of revenue from", "% of revenue from", "no customer accounted"]
-    },
-    {
-      "id": "purchase_commitments",
-      "any": ["purchase commitment", "purchase obligation", "supply commitment", "capacity agreement", "long-term supply", "long-term purchase"]
-    },
-    {
-      "id": "rpo_backlog",
-      "any": ["remaining performance obligation", " rpo ", "backlog"]
-    },
-    {
-      "id": "capex",
-      "any": ["capital expenditure", "purchases of property", "capex"]
+      "any": [
+        "diluted share",
+        "diluted shares",
+        "weighted-average share",
+        "weighted-average shares",
+        "share count"
+      ]
     },
     {
       "id": "guarantees",
-      "any": ["guarantee", "guaranty", "indemnit"]
+      "any": [
+        "guarantee",
+        "guarantees",
+        "guaranty",
+        "guaranties",
+        "indemnity",
+        "indemnities",
+        "indemnification",
+        "indemnifications",
+        "indemnify",
+        "indemnifies",
+        "indemnified"
+      ]
     },
     {
       "id": "share_repurchase",
-      "any": ["share repurchase", "stock repurchase", "buyback"]
+      "any": [
+        "share repurchase",
+        "share repurchases",
+        "stock repurchase",
+        "stock repurchases",
+        "buyback",
+        "buybacks"
+      ]
     },
     {
       "id": "dividends",
-      "any": ["dividend"]
-    },
-    {
-      "id": "goodwill_impairment",
-      "any": ["goodwill", "impairment"]
-    },
-    {
-      "id": "credit_loss_provision",
-      "any": ["provision for credit", "credit loss"]
-    },
-    {
-      "id": "rnd_expense",
-      "any": ["research and development"]
+      "any": ["dividend", "dividends"]
     },
     {
       "id": "export_controls",
-      "any": ["export control", "export restriction", "sanction", "embargo"]
+      "any": [
+        "export control",
+        "export controls",
+        "export restriction",
+        "export restrictions",
+        "economic sanctions",
+        "trade sanctions",
+        "export sanctions",
+        "subject to sanctions",
+        "sanctions program",
+        "sanctions regime",
+        "embargo",
+        "embargoes"
+      ]
+    },
+    {
+      "id": "interest_revenue",
+      "head": "revenue",
+      "patterns": [
+        "\\binterest revenues?\\b"
+      ]
+    },
+    {
+      "id": "company_revenue",
+      "head": "revenue",
+      "qualifier_block": [
+        "unearned",
+        "deferred",
+        "interest",
+        "other",
+        "finance",
+        "financing",
+        "non-operating",
+        "nonoperating"
+      ],
+      "patterns": [
+        "\\btotal net revenues?\\b",
+        "\\btotal revenues?\\b",
+        "\\bnet revenues?\\b",
+        "\\bnet sales\\b",
+        "\\boperating revenues?\\b",
+        "\\bpremiums earned\\b",
+        "\\brental revenues?\\b",
+        "\\bcollaboration revenues?\\b",
+        "\\bconsolidated(?: net)? revenues?\\b",
+        "\\bcompany revenues?\\b",
+        "\\b(?:q[1-4]|fy\\d{4}|fiscal year \\d{4})(?:\\s+fy\\d{4})?\\s+revenues? (?:was|were|of)\\b",
+        "\\brevenues? (?:was|were|of)\\b"
+      ]
+    },
+    {
+      "id": "headcount",
+      "any": ["number of employees"],
+      "regex": "\\b\\d[\\d,]*(?:\\.\\d+)?\\s+thousand\\s+employees\\b",
+      "requires_count": true
+    },
+    {
+      "id": "operating_segments",
+      "any": [
+        "operating segment",
+        "operating segments",
+        "reportable segment",
+        "reportable segments"
+      ],
+      "requires_count": true
     }
   ],
   "risk_metric": [
-    ["commitment", "purchase_commitments"],
-    ["supply", "purchase_commitments"],
-    ["purchase obligation", "purchase_commitments"],
+    ["goodwill impairment", "goodwill_impairment"],
+    ["impairment", "impairment"],
+    ["impairments", "impairment"],
+    ["inventory", "inventory"],
+    ["inventories", "inventory"],
+    ["operating cash flow", "operating_cash_flow"],
+    ["cash flows from operating activities", "operating_cash_flow"],
+    ["cash flow from operating activities", "operating_cash_flow"],
+    ["net cash provided by operating", "operating_cash_flow"],
     ["cash", "cash"],
-    ["margin", "gross_margin"],
+    ["gross margins", "gross_margin"],
+    ["gross margin", "gross_margin"],
+    ["customer concentration", "concentration"],
+    ["largest customer", "concentration"],
     ["concentration", "concentration"],
-    ["customer", "concentration"],
-    ["inventor", "inventory"],
-    ["debt", "long_term_debt"],
-    ["convertible", "long_term_debt"],
-    ["leverage", "long_term_debt"],
+    ["purchase commitments", "purchase_commitments"],
+    ["purchase commitment", "purchase_commitments"],
+    ["purchase obligations", "purchase_commitments"],
+    ["purchase obligation", "purchase_commitments"],
+    ["supply commitments", "purchase_commitments"],
+    ["supply commitment", "purchase_commitments"],
+    ["long-term debt", "total_debt"],
+    ["long term debt", "total_debt"],
+    ["convertible", "total_debt"],
+    ["export sanctions", "export_controls"],
+    ["trade sanctions", "export_controls"],
+    ["economic sanctions", "export_controls"],
+    ["subject to sanctions", "export_controls"],
+    ["export controls", "export_controls"],
+    ["export control", "export_controls"],
+    ["exports", "export_controls"],
     ["export", "export_controls"],
-    ["sanction", "export_controls"],
     ["embargo", "export_controls"],
+    ["indemnification", "guarantees"],
+    ["indemnity", "guarantees"],
+    ["indemnifies", "guarantees"],
+    ["indemnified", "guarantees"],
+    ["indemnify", "guarantees"],
     ["guarantee", "guarantees"],
-    ["indemnit", "guarantees"],
-    ["backlog", "rpo_backlog"],
+    ["guarantees", "guarantees"],
+    ["guaranty", "guarantees"],
+    ["remaining performance obligations", "rpo_backlog"],
+    ["remaining performance obligation", "rpo_backlog"],
     ["performance obligation", "rpo_backlog"],
-    ["capex", "capex"],
+    ["backlog", "rpo_backlog"],
+    ["capital expenditures", "capex"],
     ["capital expenditure", "capex"],
+    ["capex", "capex"],
     ["repurchase", "share_repurchase"],
     ["buyback", "share_repurchase"],
+    ["dividends", "dividends"],
     ["dividend", "dividends"],
-    ["impairment", "goodwill_impairment"],
-    ["goodwill", "goodwill_impairment"],
     ["credit loss", "credit_loss_provision"],
     ["research and development", "rnd_expense"],
-    ["r&d", "rnd_expense"]
+    ["r&d", "rnd_expense"],
+    ["goodwill", "goodwill"]
   ]
 }

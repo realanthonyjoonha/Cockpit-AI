@@ -1,0 +1,40 @@
+{
+  "cik": 3,
+  "entityName": "Constructed Same Period Disagree",
+  "facts": {
+    "us-gaap": {
+      "Revenues": {
+        "units": {
+          "USD": [
+            {
+              "start": "2025-04-01",
+              "end": "2025-06-30",
+              "val": 31,
+              "accn": "0000000003-25-000003",
+              "fy": 2025,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2025-08-01"
+            }
+          ]
+        }
+      },
+      "RevenuesNetOfInterestExpense": {
+        "units": {
+          "USD": [
+            {
+              "start": "2025-04-01",
+              "end": "2025-06-30",
+              "val": 32,
+              "accn": "0000000003-25-000003",
+              "fy": 2025,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2025-08-01"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
