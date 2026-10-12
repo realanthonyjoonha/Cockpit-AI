@@ -13,6 +13,8 @@ import {
   assertNoXai, EVAL_ROOT, jobsDir, keysDir, loadConfig, REPO_ROOT, tracesDir,
 } from './lib/load-config.mjs';
 import { writeReport } from './lib/report.mjs';
+import { persistBlindBatch, applyGrades, collectOpenEnded } from './lib/grader.mjs';
+import { persistTrace } from './lib/persist-trace.mjs';
 import { extractJsonArray, scoreTrace } from './lib/score.mjs';
 import { fetchCompanyfacts, readCachedFacts, writeJson } from './lib/sec.mjs';
 import { estimateCost, rollup } from './lib/stats.mjs';
@@ -30,7 +32,9 @@ function gitCommit() {
 }
 
 function parseArgs(argv) {
-  const args = new Set(argv.slice(2));
+  const raw = argv.slice(2);
+  const args = new Set(raw);
+  const persistAt = raw.indexOf('--persist');
   return {
     selfTest: args.has('--self-test'),
     prepare: args.has('--prepare') || args.size === 0 || args.has('--all'),
@@ -38,6 +42,8 @@ function parseArgs(argv) {
     report: args.has('--report') || args.size === 0 || args.has('--all'),
     jobsOnly: args.has('--jobs'),
     offline: args.has('--offline'),
+    persistJob: persistAt >= 0 ? raw[persistAt + 1] : null,
+    persistPath: persistAt >= 0 ? raw[persistAt + 2] : null,
   };
 }
 
@@ -132,12 +138,20 @@ export function scoreAll(cfg) {
     trace.cost_usd = estimateCost(promptTokens, trace.completion_tokens, cached, cfg.pilot.pricing);
     scored.push(...scoreTrace({ ...trace, item_ids: itemIds, answers: rawAnswers }, key, cfg));
   }
-  const rolled = rollup(scored, traces, cfg);
-  const spot = markSpotCheck(scored, cfg);
-  writeJson(path.join(keysDir(cfg), '..', 'scored.json'), { n: scored.length, items: scored });
+  let graded = scored;
+  const open = collectOpenEnded(scored);
+  const blind = persistBlindBatch(open, cfg);
+  const gradePath = path.join(keysDir(cfg), '..', 'grader', 'grades.json');
+  if (existsSync(gradePath)) {
+    const grades = JSON.parse(readFileSync(gradePath, 'utf8'));
+    graded = applyGrades(scored, Array.isArray(grades) ? grades : grades.items || [], blind.map);
+  }
+  const rolled = rollup(graded, traces, cfg);
+  const spot = markSpotCheck(graded, cfg);
+  writeJson(path.join(keysDir(cfg), '..', 'scored.json'), { n: graded.length, items: graded });
   writeJson(path.join(keysDir(cfg), '..', 'rollup.json'), rolled);
   writeJson(path.join(keysDir(cfg), '..', 'spot-check.json'), spot);
-  return { key, traces, scored, rolled, spot };
+  return { key, traces, scored: graded, rolled, spot, blind };
 }
 
 export function quoteFrom(traces, rolled, cfg) {
@@ -172,6 +186,13 @@ async function main() {
   const args = parseArgs(process.argv);
   const cfg = loadConfig();
   mkdirSync(path.join(HERE, 'results'), { recursive: true });
+
+  if (args.persistJob) {
+    const raw = readFileSync(args.persistPath, 'utf8');
+    const dest = persistTrace(args.persistJob, raw, { latency_ms: 0 });
+    console.log(JSON.stringify({ persisted: dest }, null, 2));
+    return;
+  }
 
   if (args.selfTest) {
     // bind real helpers for the test body
@@ -268,6 +289,18 @@ function selfTestPatched() {
   if (!numHit.accuracy || !numHit.period_ok) errors.push('numeric+period should pass');
   const ytd = scoreYtd({ answer: 'YTD 190000000 (2025-01-01 to 2025-06-30) vs quarter 100000000 (2025-04-01 to 2025-06-30)' }, aapl.tasks.ytd_vs_quarter, '');
   if (!ytd.accuracy) errors.push('ytd vs quarter should pass');
+  const mixed = scoreYtd(
+    { answer: 'Quarter 100000000 for 2025-04-01 to 2025-06-30. GAP: YTD span is not tagged.', number: 100000000, gap: true },
+    { quarter: { value: 100000000, start: '2025-04-01', end: '2025-06-30' }, ytd: { expect: 'gap' } },
+    '',
+  );
+  if (!mixed.accuracy || !mixed.honest_gap) errors.push('mixed YTD gap should pass when quarter hits');
+  const mixedBad = scoreYtd(
+    { answer: 'YTD 201000000 and quarter 116000000', number: 201000000, gap: false },
+    { quarter: { value: 85138000000, start: '2025-04-01', end: '2025-06-30' }, ytd: { expect: 'gap' } },
+    '',
+  );
+  if (mixedBad.accuracy || !mixedBad.hallucination) errors.push('invented YTD on untagged span should hallucinate');
   const arm0 = jobs.find((j) => j.arm === '0');
   const md0 = readFileSync(path.join(jobsDir(cfg), `${String(arm0.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
   if (md0.includes('42000000') || md0.includes('190000000') || md0.includes('Tagged SEC companyfacts')) {

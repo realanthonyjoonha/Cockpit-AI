@@ -19,6 +19,7 @@ node eval/run.mjs
 ```bash
 node eval/run.mjs --prepare          # live fetch + keys + jobs
 node eval/run.mjs --offline --jobs   # constructed fixture only
+node eval/run.mjs --persist JOB_ID /tmp/eval-subject/JOB_ID.json
 node eval/run.mjs --score --report   # after traces land
 ```
 

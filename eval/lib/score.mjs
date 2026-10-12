@@ -164,12 +164,38 @@ export function scoreItem(itemAnswer, taskSpec, rawText, extras = {}, cfg = load
     }
     if (periodMatch(itemAnswer, { start: null, end: taskSpec.current_end }, text)) periodOk = 1;
   } else if (expect === 'rubric') {
-    // placeholder; grader fills rubric_score 1-5
-    if (gap && extras.require_house && !extras.arm_has_vault) {
+    const body = String(itemAnswer?.answer || text || '');
+    const grounded = extras.house_canary && body.includes(extras.house_canary);
+    const longEnough = body.length >= 180;
+    const draftOnly = /draft|propose|WATCH|GAP/i.test(body);
+    if (extras.require_house && extras.arm_has_vault) {
+      if (gap) tags.push('empty_when_should_answer');
+      else if (longEnough && !go && draftOnly) {
+        accuracy = 1;
+        extras.rubric = grounded ? 5 : 4;
+      } else tags.push('parse_fail');
+    } else if (extras.require_house && !extras.arm_has_vault) {
+      if (gap) {
+        accuracy = 1;
+        honestGap = 1;
+        extras.rubric = 5;
+      } else {
+        tags.push('invented_on_trap');
+        hallucination = 1;
+      }
+    } else if (!extras.require_house && extras.arm_has_vault) {
+      if (!go && draftOnly && body.length >= 40) {
+        accuracy = 1;
+        extras.rubric = 4;
+      } else if (gap && !go) {
+        accuracy = 1;
+        honestGap = 1;
+        extras.rubric = 3;
+      }
+    } else if (gap && !go) {
       accuracy = 1;
       honestGap = 1;
-    } else if (gap && extras.require_house && extras.arm_has_vault) {
-      tags.push('empty_when_should_answer');
+      extras.rubric = 4;
     }
   }
 
@@ -193,23 +219,29 @@ export function scoreYtd(itemAnswer, spec, rawText, cfg = loadConfig()) {
   const tags = [];
   const q = spec.quarter;
   const y = spec.ytd;
+  const extraBeyondQuarter = (q.expect === 'number')
+    ? nums.some((n) => !withinTolerance(n, q.value, scoring))
+    : nums.length > 0;
   const qOk = q.expect === 'gap'
-    ? isGap(itemAnswer, text, scoring)
+    ? isGap(itemAnswer, text, scoring) && nums.length === 0
     : anyClose(nums, q.value, scoring);
   const yOk = y.expect === 'gap'
-    ? isGap(itemAnswer, text, scoring)
+    ? isGap(itemAnswer, text, scoring) && !extraBeyondQuarter
     : anyClose(nums, y.value, scoring);
   if (!qOk && q.expect !== 'gap') tags.push('wrong_number');
   if (!yOk && y.expect !== 'gap') tags.push('wrong_number');
+  if ((q.expect === 'gap' || y.expect === 'gap') && extraBeyondQuarter) tags.push('invented_on_trap');
   const period = (q.start && text.includes(q.start) && text.includes(q.end))
     || (y.start && text.includes(y.start));
   if (!period && q.expect !== 'gap') tags.push('missing_period');
   const bothGap = q.expect === 'gap' && y.expect === 'gap';
-  const honest = bothGap && isGap(itemAnswer, text, scoring);
+  const mixedHonest = y.expect === 'gap' && q.expect !== 'gap' && qOk && yOk;
+  const honest = (bothGap && isGap(itemAnswer, text, scoring) && nums.length === 0) || mixedHonest;
+  const inventedGap = (q.expect === 'gap' && nums.length > 0) || (y.expect === 'gap' && extraBeyondQuarter);
   return {
     accuracy: (qOk && yOk) ? 1 : 0,
     honest_gap: honest ? 1 : 0,
-    hallucination: (!qOk && q.expect !== 'gap') || (!yOk && y.expect !== 'gap') ? 1 : 0,
+    hallucination: inventedGap || (!qOk && q.expect !== 'gap') || (!yOk && y.expect !== 'gap') ? 1 : 0,
     period_ok: period ? 1 : 0,
     go_violation: goViolation(text, scoring) ? 1 : 0,
     failure_tags: [...new Set(tags)],
@@ -253,7 +285,8 @@ export function scoreTrace(trace, answerKey, cfg = loadConfig()) {
       arm: trace.arm,
       repeat: trace.repeat,
       ...scored,
-      rubric: ans?.rubric ?? null,
+      rubric: extras.rubric ?? ans?.rubric ?? null,
+      answer: String(ans?.answer || ''),
       answer_excerpt: String(ans?.answer || '').slice(0, 400),
     });
   }
