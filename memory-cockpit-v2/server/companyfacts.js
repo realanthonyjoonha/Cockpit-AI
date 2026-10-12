@@ -480,6 +480,32 @@ export function claimPeriodLines(claim) {
   return claim && typeof claim.text === 'string' && claim.text ? [claim.text] : [];
 }
 
+function spanGroup(val) {
+  if (val && val.span) return String(val.span);
+  const period = val && val.period && typeof val.period === 'object' ? val.period : {};
+  return period.start ? 'other' : 'instant';
+}
+
+export function currentLatestFilingValues(values) {
+  const groups = new Map();
+  for (const val of values || []) {
+    if (!val || typeof val !== 'object') continue;
+    const key = spanGroup(val);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(val);
+  }
+  const kept = [];
+  for (const rows of groups.values()) {
+    let latestEnd = '';
+    for (const v of rows) {
+      const end = String((v.period || {}).end || '');
+      if (end > latestEnd) latestEnd = end;
+    }
+    kept.push(...rows.filter((v) => String((v.period || {}).end || '') === latestEnd));
+  }
+  return sortValues(kept);
+}
+
 function slot(mid, accn, values) {
   const ordered = sortValues(values);
   const text = ordered.map(valueBlock).join('\n');

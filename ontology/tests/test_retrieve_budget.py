@@ -5,6 +5,7 @@ Fixtures are harness constants. No vault write. No per-ticker budget.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -515,6 +516,176 @@ class TestRetrieveBudget(unittest.TestCase):
         out = enforce_char_budget(pack, paths.OVERVIEW_BUDGET_CHARS)
         self._assert_under(out)
         self.assertTrue(any("pack was over budget" in str(g) or "notes" in str(g) for g in out.get("gaps") or []))
+
+    def test_pretty_snapshot_keeps_current_periods_on_interim_filings(self):
+        from api.companyfacts import (
+            current_latest_filing_values,
+            form_family,
+            latest_accession,
+            latest_filing_slots,
+            mapped_latest_facts,
+            parse_companyfacts,
+        )
+
+        index = json.loads((REPO / "harness-stress" / "fixtures" / "companyfacts" / "index.json").read_text())
+        checked = 0
+        for row in index["issuers"]:
+            if row.get("kind") not in ("extract", "constructed"):
+                continue
+            doc = json.loads(
+                (REPO / "harness-stress" / "fixtures" / "companyfacts" / row["id"] / "companyfacts.json").read_text(encoding="utf-8")
+            )
+            errors = _pretty_snapshot_errors(doc, f"companyfacts/{row['id']}")
+            all_facts = parse_companyfacts(doc, source_id=f"companyfacts/{row['id']}")["facts"]
+            accn = latest_accession(all_facts)
+            latest_forms = {
+                form_family(f.get("form")) for f in all_facts if f.get("accession") == accn
+            }
+            if "10-Q" not in latest_forms:
+                continue
+            self.assertEqual(errors, [], errors)
+            slots, _ = latest_filing_slots(all_facts)
+            self.assertTrue(any(current_latest_filing_values(s.get("values") or []) for s in slots.values()))
+            self.assertTrue(mapped_latest_facts(all_facts) or slots)
+            checked += 1
+        self.assertGreaterEqual(checked, 1)
+
+
+def _period_key(val: dict) -> tuple:
+    period = val.get("period") or {}
+    return (period.get("start"), period.get("end"))
+
+
+def _pretty_snapshot_errors(doc: dict, source_id: str) -> list[str]:
+    from api.companyfacts import current_latest_filing_values, latest_filing_slots, mapped_latest_facts, parse_companyfacts
+
+    errors: list[str] = []
+    all_facts = parse_companyfacts(doc, source_id=source_id)["facts"]
+    slots, _ = latest_filing_slots(all_facts)
+    want = {}
+    for mid, slot in slots.items():
+        current = current_latest_filing_values([v for v in (slot.get("values") or []) if isinstance(v, dict)])
+        keys = {_period_key(v) for v in current}
+        if keys:
+            want[mid] = keys
+    if not want:
+        return ["no current latest-filing periods"]
+    fat = [
+        _claim(f"sent-{i}", f"Gross margin was {40 + i} percent. " + ("WORD " * 80), f"2026-01-{i + 1:02d}")
+        for i in range(12)
+    ]
+    live, _ = live_claims(fat, facts=mapped_latest_facts(all_facts))
+    snapshot = {
+        "available": True,
+        "ticker": "DEMO",
+        "house_prior": {
+            "status": "CONFIRMED",
+            "date": "2026-01-15",
+            "view_excerpt": "E" * 5000,
+            "notes": "N" * 20_000,
+        },
+        "claims": [
+            {
+                "text": c.get("text"),
+                "grade": c.get("grade"),
+                "as_of": c.get("as_of"),
+                "source_id": c.get("source_id"),
+                "metric_id": c.get("metric_id"),
+                "confidence": c.get("confidence"),
+                "origin": c.get("origin"),
+                "values": c.get("values"),
+            }
+            for c in live
+        ],
+        "gaps": [],
+    }
+    pretty = enforce_char_budget(
+        snapshot,
+        paths.OVERVIEW_BUDGET_CHARS,
+        lambda r: len(json.dumps(r, indent=2)),
+    )
+    used = len(json.dumps(pretty, indent=2))
+    if used > paths.OVERVIEW_BUDGET_CHARS:
+        errors.append(f"pretty snapshot over cap {used}")
+    gaps = [str(g) for g in (pretty.get("gaps") or [])]
+    tagged = [
+        c for c in (pretty.get("claims") or [])
+        if isinstance(c, dict) and c.get("origin") in ("companyfacts", "xbrl")
+    ]
+    if any("pack was over budget" in g for g in gaps) and not tagged:
+        errors.append("pretty snapshot wiped tagged claims")
+    by_mid = {c.get("metric_id"): c for c in tagged}
+    for mid, periods in want.items():
+        claim = by_mid.get(mid)
+        if claim is None:
+            errors.append(f"lost {mid}")
+            continue
+        got = {
+            _period_key(v)
+            for v in (claim.get("values") or [])
+            if isinstance(v, dict)
+        }
+        missing = periods - got
+        if missing:
+            errors.append(f"{mid} lost current periods {missing}")
+    return errors
+
+
+@unittest.skipUnless(
+    os.environ.get("COCKPIT_LIVE_COMPANYFACTS") == "1" and (os.environ.get("SEC_USER_AGENT") or os.environ.get("COCKPIT_SEC_UA")),
+    "opt-in live SEC refresh",
+)
+class LivePrettySnapshot(unittest.TestCase):
+    def test_live_periodic_filings_keep_current_periods_on_pretty_snapshot(self):
+        from api.companyfacts_fetch import DEFAULT_URL, pad_cik, resolve_cik, user_agent, _default_get, _rate_wait
+        import time
+
+        wiki = Path(tempfile.mkdtemp())
+        tickers = [
+            part.strip().upper()
+            for part in (os.environ.get("COCKPIT_LIVE_TICKERS") or "").split(",")
+            if part.strip()
+        ]
+        ciks: list[str] = []
+        if tickers:
+            for ident in tickers:
+                found = resolve_cik(ident, wiki)
+                self.assertTrue(found.get("cik"), f"unresolved ticker {ident}")
+                ciks.append(found["cik"])
+        else:
+            index = json.loads((REPO / "harness-stress" / "fixtures" / "companyfacts" / "index.json").read_text())
+            from api.companyfacts import form_family, latest_accession, parse_companyfacts
+
+            for row in index["issuers"]:
+                if row.get("kind") != "extract":
+                    continue
+                doc = json.loads(
+                    (REPO / "harness-stress" / "fixtures" / "companyfacts" / row["id"] / "companyfacts.json").read_text(encoding="utf-8")
+                )
+                facts = parse_companyfacts(doc)["facts"]
+                accn = latest_accession(facts)
+                forms = {form_family(f.get("form")) for f in facts if f.get("accession") == accn}
+                if "10-Q" not in forms or doc.get("cik") is None:
+                    continue
+                ciks.append(pad_cik(doc["cik"]))
+                if len(ciks) >= 3:
+                    break
+        self.assertTrue(ciks)
+        ua = user_agent()
+        checked = 0
+        for cik in ciks:
+            _rate_wait(time.sleep)
+            status, body = _default_get(
+                DEFAULT_URL.format(cik=pad_cik(cik)),
+                {"User-Agent": ua, "Accept": "application/json"},
+                30,
+            )
+            self.assertEqual(status, 200, f"live fetch {cik} HTTP {status}")
+            doc = json.loads(body.decode("utf-8"))
+            errors = _pretty_snapshot_errors(doc, f"companyfacts/live-{cik}")
+            self.assertEqual(errors, [], errors)
+            checked += 1
+        self.assertGreaterEqual(checked, 1)
 
 
 if __name__ == "__main__":

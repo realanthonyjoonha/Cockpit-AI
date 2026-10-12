@@ -204,6 +204,31 @@ def _rebuild_tagged_claim(claim: dict[str, Any], values: list[dict[str, Any]]) -
     return row
 
 
+def _keep_current_claim_periods(pack: dict[str, Any]) -> bool:
+    """Keep the current period of each span. Older comparatives on the same filing drop."""
+    from api.companyfacts import current_latest_filing_values
+
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not _is_tagged_claim(claim):
+            out.append(claim)
+            continue
+        values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+        if not values:
+            out.append(claim)
+            continue
+        kept = current_latest_filing_values(values)
+        if kept == values:
+            out.append(claim)
+            continue
+        out.append(_rebuild_tagged_claim(claim, kept))
+        changed = True
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
 def _drop_older_claim_periods(pack: dict[str, Any]) -> bool:
     """Keep every period from the latest filing. Rebuild text newest-first."""
     changed = False
@@ -484,8 +509,6 @@ def _stub_pack(pack: dict[str, Any], limit: int, measure) -> dict[str, Any]:
     focus = pack.get("focus") if isinstance(pack.get("focus"), dict) else {}
     hp = pack.get("house_prior") if isinstance(pack.get("house_prior"), dict) else {}
     gaps = [g for g in (pack.get("gaps") or []) if isinstance(g, str) and len(g) <= 180]
-    if "pack was over budget" not in gaps:
-        gaps.append("pack was over budget")
     stub: dict[str, Any] = {
         "focus": {
             "id": str(focus.get("id") or "")[:64],
@@ -515,8 +538,24 @@ def _stub_pack(pack: dict[str, Any], limit: int, measure) -> dict[str, Any]:
         "budget": {"limit_chars": limit, "used_chars": 0, "trimmed": True},
     }
     if measure(stub) > limit:
+        from api.companyfacts import current_latest_filing_values
+
+        for row in stub["claims"]:
+            row["values"] = [
+                _label_period(v) for v in current_latest_filing_values(row.get("values") or [])
+            ]
+        stub["gaps"] = [g for g in stub["gaps"] if g != "pack was over budget"][:4]
+        stub["focus"] = {
+            "id": str(focus.get("id") or "")[:32],
+            "ticker": str(focus.get("ticker") or "")[:12],
+        }
+    if measure(stub) > limit:
+        stub["house_prior"] = {}
+        stub["gaps"] = []
+    if measure(stub) > limit:
         stub["gaps"] = ["pack was over budget"]
         stub["focus"] = {"ticker": stub["focus"].get("ticker", "")[:12]}
+        stub.pop("claims", None)
     _seal(stub, limit, True, measure)
     return stub
 
@@ -568,6 +607,7 @@ def enforce_char_budget(
         lambda: _blank_tagged_texts(pack),
         lambda: _clip_claim_texts(pack, 80, None, skip_tagged=True),
         lambda: _clip_claim_texts(pack, 160, None),
+        lambda: _keep_current_claim_periods(pack),
         lambda: _clip_excerpt(pack, 80),
         lambda: _clear_list(pack, "catalysts"),
         lambda: _clear_list(pack, "series_snapshot"),

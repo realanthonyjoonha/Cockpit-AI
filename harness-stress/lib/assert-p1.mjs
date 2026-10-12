@@ -18,7 +18,14 @@ import {
   toMarkdown,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../../memory-cockpit-v2/server/assistContext.js';
-import { latestFilingSlots, mappedLatestFacts, parseCompanyfacts } from '../../memory-cockpit-v2/server/companyfacts.js';
+import {
+  currentLatestFilingValues,
+  formFamily,
+  latestAccession,
+  latestFilingSlots,
+  mappedLatestFacts,
+  parseCompanyfacts,
+} from '../../memory-cockpit-v2/server/companyfacts.js';
 import { loadSectors } from './sector-check.mjs';
 import { loadIndex } from './review-check.mjs';
 
@@ -433,6 +440,7 @@ export function assertP1() {
   errors.push(...quarterAndYtdDifferentEndsSurvive());
   errors.push(...visibleTextLeadsWithCurrentFy(rules));
   errors.push(...markdownPrintsEveryKeptPeriod(rules));
+  errors.push(...prettySnapshotKeepsCurrentPeriods(rules));
   return errors;
 }
 
@@ -645,5 +653,87 @@ function markdownPrintsEveryKeptPeriod(rules) {
       if (start && !visible.includes(String(start))) errors.push(`${name} markdown omitted period start ${start}`);
     }
   }
+  return errors;
+}
+
+function latestForms(facts) {
+  const accn = latestAccession(facts);
+  return new Set(
+    (facts || []).filter((f) => f.accession === accn).map((f) => formFamily(f.form)),
+  );
+}
+
+export function prettySnapshotErrors(doc, sourceId, rules) {
+  const errors = [];
+  const allFacts = parseCompanyfacts(doc, { sourceId }).facts;
+  const { slots } = latestFilingSlots(allFacts);
+  const want = {};
+  for (const [mid, slot] of Object.entries(slots)) {
+    const current = currentLatestFilingValues((slot.values || []).filter((v) => v && typeof v === 'object'));
+    const keys = new Set(current.map(periodKeyOf));
+    if (keys.size) want[mid] = keys;
+  }
+  if (!Object.keys(want).length) return ['no current latest-filing periods'];
+  const fat = Array.from({ length: 12 }, (_, i) => claim(
+    `sent-${i}`,
+    `Gross margin was ${40 + i} percent. ${'WORD '.repeat(80)}`,
+    `2026-01-${String(i + 1).padStart(2, '0')}`,
+  ));
+  const live = liveClaims(fat, rules, 8, null, { facts: mappedLatestFacts(allFacts) });
+  const snapshot = {
+    available: true,
+    ticker: 'DEMO',
+    house_prior: { status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'E'.repeat(5000), notes: 'N'.repeat(20_000) },
+    claims: live.map((c) => ({
+      text: c.text,
+      grade: c.grade,
+      as_of: c.as_of,
+      source_id: c.source_id,
+      metric_id: c.metric_id || null,
+      confidence: c.confidence || null,
+      origin: c.origin,
+      values: c.values,
+    })),
+    gaps: [],
+  };
+  enforceCharBudget(snapshot, OVERVIEW_BUDGET_CHARS, (row) => JSON.stringify(row, null, 2).length);
+  if (JSON.stringify(snapshot, null, 2).length > OVERVIEW_BUDGET_CHARS) {
+    errors.push('pretty snapshot over cap');
+  }
+  const tagged = (snapshot.claims || []).filter((c) => c.origin === 'companyfacts' || c.origin === 'xbrl');
+  const wiped = (snapshot.gaps || []).some((g) => String(g).includes('pack was over budget')) && !tagged.length;
+  if (wiped) errors.push('pretty snapshot wiped tagged claims');
+  const byMid = {};
+  for (const c of tagged) byMid[c.metric_id] = c;
+  for (const [mid, periods] of Object.entries(want)) {
+    const claimRow = byMid[mid];
+    if (!claimRow) {
+      errors.push(`lost ${mid}`);
+      continue;
+    }
+    const got = new Set((claimRow.values || []).map(periodKeyOf));
+    for (const key of periods) {
+      if (!got.has(key)) errors.push(`${mid} lost current period ${key}`);
+    }
+  }
+  return errors;
+}
+
+function prettySnapshotKeepsCurrentPeriods(rules) {
+  const errors = [];
+  const index = loadIndex();
+  const cfDir = path.join(REPO, 'harness-stress/fixtures/companyfacts');
+  let checked = 0;
+  for (const row of index.issuers || []) {
+    if (row.kind !== 'extract' && row.kind !== 'constructed') continue;
+    const doc = JSON.parse(readFileSync(path.join(cfDir, row.id, 'companyfacts.json'), 'utf8'));
+    const allFacts = parseCompanyfacts(doc, { sourceId: `companyfacts/${row.id}` }).facts;
+    if (!latestForms(allFacts).has('10-Q')) continue;
+    for (const err of prettySnapshotErrors(doc, `companyfacts/${row.id}`, rules)) {
+      errors.push(`${row.id} ${err}`);
+    }
+    checked += 1;
+  }
+  if (checked < 1) errors.push('no live-shaped 10-Q packs for pretty snapshot');
   return errors;
 }
