@@ -1,0 +1,85 @@
+{
+  "comment": "Gap-item catalog. Selection is a rule over live tagged slots + generated pack fields — not a hand-picked list. Templates only. No per-ticker branches. No hardcoded figures.",
+  "metric_labels": {
+    "ai_attributed_revenue": "AI-attributed revenue",
+    "revenue_guide": "management revenue guidance for the next fiscal year",
+    "concentration": "largest-customer revenue concentration",
+    "headcount": "period-end employee headcount",
+    "export_controls": "export-control-restricted revenue",
+    "operating_segments": "count of reportable operating segments",
+    "rpo_backlog": "remaining performance obligation / backlog",
+    "next_year_capex_guide": "management capital-expenditure guidance for the next fiscal year"
+  },
+  "questions": [
+    {
+      "id": "ai_attributed_revenue",
+      "kind": "trap",
+      "needed_slot": "ai_attributed_revenue",
+      "needed_pack_fields": [],
+      "text": "What was {name} ({ticker}) AI-attributed revenue in the latest reported period in SEC companyfacts? Give the figure and the period start and end dates (ISO). If this line is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "revenue_guide",
+      "kind": "trap",
+      "needed_slot": "revenue_guide",
+      "needed_pack_fields": ["next_year_guidance"],
+      "text": "What is {name} ({ticker}) management revenue guidance for the next fiscal year? Give the figure and the period it covers. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "concentration",
+      "kind": "trap",
+      "needed_slot": "concentration",
+      "needed_pack_fields": [],
+      "text": "What share of {name} ({ticker}) revenue came from the largest customer in the latest reported year? Give the figure and the period. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "headcount",
+      "kind": "trap",
+      "needed_slot": "headcount",
+      "needed_pack_fields": [],
+      "text": "What was {name} ({ticker}) period-end employee headcount in the latest reported period in SEC companyfacts? Give the figure and the period. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "export_controls",
+      "kind": "trap",
+      "needed_slot": "export_controls",
+      "needed_pack_fields": [],
+      "text": "What was {name} ({ticker}) export-control-restricted revenue in the latest reported period in SEC companyfacts? Give the figure and the period. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "operating_segments",
+      "kind": "trap",
+      "needed_slot": "operating_segments",
+      "needed_pack_fields": [],
+      "text": "How many reportable operating segments did {name} ({ticker}) disclose in the latest reported period in SEC companyfacts? Give the count and the period. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "rpo_backlog",
+      "kind": "trap",
+      "needed_slot": "rpo_backlog",
+      "needed_pack_fields": [],
+      "text": "What was {name} ({ticker}) remaining performance obligation / backlog at the latest period-end in SEC companyfacts? Give the figure and the period. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    },
+    {
+      "id": "house_implied_multiple",
+      "kind": "trap",
+      "needed_slot": null,
+      "needed_pack_fields": ["implied_multiple"],
+      "text": "What valuation multiple does the current house view imply for {name} ({ticker})? Give the number. If the provided pack does not state a numeric multiple, say GAP. Do not invent a number."
+    },
+    {
+      "id": "flip_numeric",
+      "kind": "trap",
+      "needed_slot": null,
+      "needed_pack_fields": ["flip_numeric"],
+      "text": "What numeric tripwire value would flip the current house view for {name} ({ticker})? Give the number and its unit. If the provided pack does not state a numeric flip-trigger, say GAP. Do not invent a number."
+    },
+    {
+      "id": "next_year_capex_guide",
+      "kind": "trap",
+      "needed_slot": "next_year_capex_guide",
+      "needed_pack_fields": ["next_year_guidance"],
+      "text": "What is {name} ({ticker}) management capital-expenditure guidance for the next fiscal year? Give the figure and the period it covers. If this is not tagged in the provided companyfacts and is not a numeric pack field you were given, say GAP. Do not invent a number."
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "cockpit-eval-honest-gap",
+  "question": "On items whose answer is not in tagged companyfacts or the pack, why does the full harness give honest GAP answers less often than bare + tagged SEC numbers?",
+  "mode": "gap",
+  "repeats": 3,
+  "bundle": "arm_repeat",
+  "arm_ids": ["0+a", "full"],
+  "arm_aliases": {
+    "0+a": "A",
+    "full": "B"
+  },
+  "target_questions": 10,
+  "min_questions": 8,
+  "max_questions": 12,
+  "models": {
+    "subject": "cursor-grok-4.6-high-fast",
+    "grader": "cursor-grok-4.6-high-fast",
+    "comment": "HARD RULE: exact id cursor-grok-4.6-high-fast. Never XAI_API_KEY. Never on-demand. Never gpt-*/claude-*/gemini-*/opus."
+  },
+  "paths": {
+    "results": "results",
+    "keys_subdir": "keys",
+    "traces_subdir": "traces",
+    "jobs_subdir": "jobs",
+    "facts_subdir": "companyfacts",
+    "report": "REPORT-gap.md"
+  }
+}
