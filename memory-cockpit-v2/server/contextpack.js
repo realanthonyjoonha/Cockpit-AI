@@ -4,7 +4,7 @@
 // metric, only with an amount of that slot's kind, and is marked low confidence.
 import { readFileSync } from 'fs';
 import path from 'path';
-import { canonicalMetric, claimPeriodLines, conceptIndex, loadTaxonomy, sentenceFillAllowed, sortValues, structuredMetric, taggedSlots } from './companyfacts.js';
+import { canonicalMetric, claimPeriodLines, conceptIndex, currentLatestFilingValues, loadTaxonomy, sentenceFillAllowed, sortValues, structuredMetric, taggedSlots } from './companyfacts.js';
 
 const GRADE_W = { A: 3, B: 2, C: 1 };
 export const FISCAL_GAP = 'as_of is a fiscal label without a period-end date';
@@ -887,6 +887,31 @@ function rebuildTaggedClaim(claim, values) {
   };
 }
 
+function keepCurrentClaimPeriods(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !isTaggedClaim(claim)) {
+      out.push(claim);
+      continue;
+    }
+    const values = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (!values.length) {
+      out.push(claim);
+      continue;
+    }
+    const kept = currentLatestFilingValues(values);
+    if (JSON.stringify(kept) === JSON.stringify(values)) {
+      out.push(claim);
+      continue;
+    }
+    out.push(rebuildTaggedClaim(claim, kept));
+    changed = true;
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
 function dropOlderClaimPeriods(pack) {
   let changed = false;
   const out = [];
@@ -1120,8 +1145,7 @@ function dropUntaggedClaims(pack) {
 function stubPack(pack, limit, measure) {
   const focus = pack.focus && typeof pack.focus === 'object' ? pack.focus : {};
   const hp = pack.house_prior && typeof pack.house_prior === 'object' ? pack.house_prior : {};
-  let gaps = (pack.gaps || []).filter((g) => typeof g === 'string' && g.length <= 180);
-  if (!gaps.includes('pack was over budget')) gaps.push('pack was over budget');
+  const gaps = (pack.gaps || []).filter((g) => typeof g === 'string' && g.length <= 180);
   const stub = {
     focus: { id: String(focus.id || '').slice(0, 64), ticker: String(focus.ticker || '').slice(0, 16) },
     intent: String(pack.intent || 'overview').slice(0, 32),
@@ -1140,8 +1164,23 @@ function stubPack(pack, limit, measure) {
     budget: { limit_chars: limit, used_chars: 0, trimmed: true },
   };
   if (measure(stub) > limit) {
+    for (const row of stub.claims) {
+      row.values = currentLatestFilingValues(row.values || []).map(labelPeriod);
+    }
+    stub.gaps = stub.gaps.filter((g) => g !== 'pack was over budget').slice(0, 4);
+    stub.focus = {
+      id: String(focus.id || '').slice(0, 32),
+      ticker: String(focus.ticker || '').slice(0, 12),
+    };
+  }
+  if (measure(stub) > limit) {
+    stub.house_prior = {};
+    stub.gaps = [];
+  }
+  if (measure(stub) > limit) {
     stub.gaps = ['pack was over budget'];
     stub.focus = { ticker: String(stub.focus.ticker || '').slice(0, 12) };
+    delete stub.claims;
   }
   seal(stub, limit, true, measure);
   return stub;
@@ -1178,6 +1217,7 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => blankTaggedTexts(pack),
     () => clipClaimTexts(pack, 80, null, { skipTagged: true }),
     () => clipClaimTexts(pack, 160, null),
+    () => keepCurrentClaimPeriods(pack),
     () => clipExcerpt(pack, 80),
     () => clearList(pack, 'catalysts'),
     () => clearList(pack, 'series_snapshot'),
