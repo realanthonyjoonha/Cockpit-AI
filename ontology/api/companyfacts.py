@@ -511,14 +511,42 @@ def _conflict_gap(mid: str, accn: str, start: str | None, end: str | None, rows:
     return lines
 
 
-def _sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Newest period first so visible text leads with the current filing period."""
     return sorted(
         values,
         key=lambda v: (
             str((v.get("period") or {}).get("end") or ""),
             str((v.get("period") or {}).get("start") or ""),
         ),
+        reverse=True,
     )
+
+
+_sort_values = sort_values
+
+
+def labeled_period_line(lab: dict[str, Any]) -> str:
+    """One visible line for a kept labeled period. Works after hard slim."""
+    period = lab.get("period") if isinstance(lab.get("period"), dict) else {}
+    if lab.get("concept") and lab.get("value_text") is not None and lab.get("unit") is not None:
+        try:
+            return _value_block(lab)
+        except (KeyError, TypeError, AttributeError):
+            pass
+    start, end = period.get("start"), period.get("end")
+    when = f"{start} to {end}" if start else (str(end) if end else "")
+    bits = [lab.get("span"), lab.get("unit"), lab.get("value_text"), when]
+    return " ".join(str(b) for b in bits if b not in (None, ""))
+
+
+def claim_period_lines(claim: dict[str, Any]) -> list[str]:
+    """Every kept labeled period, newest first. Falls back to claim text."""
+    values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+    if values:
+        return [labeled_period_line(v) for v in sort_values(values)]
+    text = claim.get("text")
+    return [text] if isinstance(text, str) and text else []
 
 
 def _slot(mid: str, accn: str, values: list[dict[str, Any]]) -> dict[str, Any]:

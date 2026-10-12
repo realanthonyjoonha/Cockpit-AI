@@ -447,16 +447,37 @@ function conflictGap(mid, accn, start, end, rows) {
   return lines;
 }
 
-function sortValues(values) {
+export function sortValues(values) {
   return [...values].sort((a, b) => {
     const ae = (a.period && a.period.end) || '';
     const be = (b.period && b.period.end) || '';
-    if (ae !== be) return ae < be ? -1 : 1;
+    if (ae !== be) return ae < be ? 1 : -1;
     const as = (a.period && a.period.start) || '';
     const bs = (b.period && b.period.start) || '';
-    if (as !== bs) return as < bs ? -1 : 1;
+    if (as !== bs) return as < bs ? 1 : -1;
     return 0;
   });
+}
+
+export function labeledPeriodLine(lab) {
+  const period = lab && lab.period && typeof lab.period === 'object' ? lab.period : {};
+  if (lab && lab.concept && lab.value_text != null && lab.unit != null) {
+    try {
+      return valueBlock(lab);
+    } catch {
+      /* slim rows still print */
+    }
+  }
+  const start = period.start;
+  const end = period.end;
+  const when = start ? `${start} to ${end}` : (end ? String(end) : '');
+  return [lab && lab.span, lab && lab.unit, lab && lab.value_text, when].filter((b) => b != null && b !== '').join(' ');
+}
+
+export function claimPeriodLines(claim) {
+  const values = ((claim && claim.values) || []).filter((v) => v && typeof v === 'object');
+  if (values.length) return sortValues(values).map(labeledPeriodLine);
+  return claim && typeof claim.text === 'string' && claim.text ? [claim.text] : [];
 }
 
 function slot(mid, accn, values) {

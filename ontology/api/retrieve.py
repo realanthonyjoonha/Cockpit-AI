@@ -180,8 +180,32 @@ def _slim_claim_values_hard(pack: dict[str, Any]) -> bool:
     return changed
 
 
+def _claim_latest_accession(claim: dict[str, Any]) -> str:
+    accn = claim.get("accession")
+    if accn:
+        return str(accn)
+    best: tuple[tuple[str, str], str] | None = None
+    for val in claim.get("values") or []:
+        if not isinstance(val, dict) or not val.get("accession"):
+            continue
+        key = (str(val.get("filed") or ""), str(val.get("accession")))
+        if best is None or key > best[0]:
+            best = (key, str(val.get("accession")))
+    return best[1] if best else ""
+
+
+def _rebuild_tagged_claim(claim: dict[str, Any], values: list[dict[str, Any]]) -> dict[str, Any]:
+    from api.companyfacts import claim_period_lines, sort_values
+
+    ordered = sort_values(values)
+    row = dict(claim)
+    row["values"] = ordered
+    row["text"] = "\n".join(claim_period_lines({"values": ordered}))
+    return row
+
+
 def _drop_older_claim_periods(pack: dict[str, Any]) -> bool:
-    """Drop comparative periods. Keep values that share the latest period.end."""
+    """Keep every period from the latest filing. Rebuild text newest-first."""
     changed = False
     out: list[Any] = []
     for claim in pack.get("claims") or []:
@@ -189,18 +213,27 @@ def _drop_older_claim_periods(pack: dict[str, Any]) -> bool:
             out.append(claim)
             continue
         values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
-        if len(values) <= 1:
+        if not values:
             out.append(claim)
             continue
-        latest_end = max((str((v.get("period") or {}).get("end") or "") for v in values), default="")
-        kept = [v for v in values if str((v.get("period") or {}).get("end") or "") == latest_end]
-        if not kept or kept == values:
+        accn = _claim_latest_accession(claim)
+        if accn and any(v.get("accession") for v in values):
+            kept = [
+                v
+                for v in values
+                if not v.get("accession") or str(v.get("accession")) == accn
+            ]
+        else:
+            kept = values
+        if not kept:
             out.append(claim)
             continue
-        row = dict(claim)
-        row["values"] = kept
+        row = _rebuild_tagged_claim(claim, kept)
+        if accn:
+            row["accession"] = accn
+        if row.get("values") != values or row.get("text") != claim.get("text"):
+            changed = True
         out.append(row)
-        changed = True
     if changed:
         pack["claims"] = out
     return changed
@@ -530,11 +563,11 @@ def enforce_char_budget(
         lambda: _clip_claim_texts(pack, 160, None, skip_tagged=True),
         lambda: _drop_other_claims(pack),
         lambda: _drop_claim_values(pack),
+        lambda: _drop_older_claim_periods(pack),
         lambda: _slim_claim_values_hard(pack),
+        lambda: _blank_tagged_texts(pack),
         lambda: _clip_claim_texts(pack, 80, None, skip_tagged=True),
         lambda: _clip_claim_texts(pack, 160, None),
-        lambda: _blank_tagged_texts(pack),
-        lambda: _drop_older_claim_periods(pack),
         lambda: _clip_excerpt(pack, 80),
         lambda: _clear_list(pack, "catalysts"),
         lambda: _clear_list(pack, "series_snapshot"),
@@ -716,12 +749,18 @@ def to_markdown(pack: dict[str, Any]) -> str:
 
     claims = pack.get("claims") or []
     if claims:
+        from api.companyfacts import claim_period_lines
+
         lines.append("## Claims (graded)")
         for c in claims:
-            lines.append(
-                f"- [{c.get('grade')}] ({c.get('as_of')}) {c.get('text')} "
-                f"← {c.get('source_id')}"
-            )
+            periods = claim_period_lines(c)
+            head = f"- [{c.get('grade')}] ({c.get('as_of')})"
+            if periods:
+                lines.append(f"{head} {periods[0]} ← {c.get('source_id')}")
+                for extra in periods[1:]:
+                    lines.append(f"  {extra}")
+            else:
+                lines.append(f"{head} ← {c.get('source_id')}")
         lines.append("")
 
     rs = pack.get("risk_summary") or {}

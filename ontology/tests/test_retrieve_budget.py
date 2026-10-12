@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 import paths
 from api.agent import _fit_agent_text, build_agent_context
 from api.contextpack import assemble_agent_pack, claim_gaps, live_claims, to_agent_markdown
-from api.retrieve import enforce_char_budget, resolve_ticker, retrieve
+from api.retrieve import enforce_char_budget, resolve_ticker, retrieve, to_markdown
 
 
 def _claim(cid: str, text: str, as_of: str, grade: str = "A") -> dict:
@@ -263,14 +263,12 @@ class TestRetrieveBudget(unittest.TestCase):
                 values = [v for v in (slot.get("values") or []) if isinstance(v, dict)]
                 if not values:
                     continue
-                latest_end = max(str((v.get("period") or {}).get("end") or "") for v in values)
                 want[mid] = {
                     (
                         (v.get("period") or {}).get("start"),
                         (v.get("period") or {}).get("end"),
                     )
                     for v in values
-                    if str((v.get("period") or {}).get("end") or "") == latest_end
                 }
             if not want:
                 continue
@@ -320,10 +318,8 @@ class TestRetrieveBudget(unittest.TestCase):
                 lambda r: len(json.dumps(r, indent=2)),
             )
             self.assertLessEqual(len(json.dumps(pretty, indent=2)), paths.OVERVIEW_BUDGET_CHARS)
-            packs.append(pretty)
             for pack in packs:
-                if pack is not pretty:
-                    self._assert_under(pack)
+                self._assert_under(pack)
                 by_mid = {
                     c.get("metric_id"): c
                     for c in pack.get("claims") or []
@@ -343,6 +339,135 @@ class TestRetrieveBudget(unittest.TestCase):
                     self.assertTrue(periods <= got, f"{row['id']} {mid} lost labeled periods {periods - got}")
             checked += 1
         self.assertGreaterEqual(checked, 1)
+
+    def test_quarter_and_ytd_with_different_ends_both_survive(self):
+        accn = "0000000001-26-000001"
+        quarter = {
+            "value_text": "1",
+            "unit": "USD",
+            "span": "quarter",
+            "period": {"start": "2026-04-01", "end": "2026-06-30"},
+            "accession": accn,
+        }
+        ytd = {
+            "value_text": "2",
+            "unit": "USD",
+            "span": "ytd",
+            "period": {"start": "2026-01-01", "end": "2026-03-31"},
+            "accession": accn,
+        }
+        pack = {
+            "focus": {"ticker": "DEMO", "id": "demo"},
+            "intent": "overview",
+            "house_prior": {"status": "CONFIRMED", "date": "2026-01-15", "view_excerpt": "E" * 5000},
+            "claims": [{
+                "id": "xbrl:rev",
+                "metric_id": "company_revenue",
+                "origin": "companyfacts",
+                "confidence": "tagged",
+                "accession": accn,
+                "text": "prior-period lead " * 40,
+                "values": [ytd, quarter],
+                "grade": "A",
+                "as_of": "2026-06-30",
+                "source_id": "companyfacts",
+            }] + [
+                _claim(f"sent-{i}", f"Gross margin was {40 + i} percent. " + ("WORD " * 80), f"2026-01-{i + 1:02d}")
+                for i in range(12)
+            ],
+            "gaps": [],
+        }
+        out = enforce_char_budget(pack, paths.OVERVIEW_BUDGET_CHARS)
+        self._assert_under(out)
+        tagged = next(c for c in out.get("claims") or [] if c.get("origin") == "companyfacts")
+        ends = {
+            ((v.get("period") or {}).get("start"), (v.get("period") or {}).get("end"))
+            for v in (tagged.get("values") or [])
+            if isinstance(v, dict)
+        }
+        self.assertIn(("2026-04-01", "2026-06-30"), ends)
+        self.assertIn(("2026-01-01", "2026-03-31"), ends)
+
+    def test_visible_text_leads_with_the_current_fiscal_year(self):
+        from api.companyfacts import latest_filing_slots, mapped_latest_facts, parse_companyfacts
+
+        index = json.loads((REPO / "harness-stress" / "fixtures" / "companyfacts" / "index.json").read_text())
+        checked = 0
+        for row in index["issuers"]:
+            if row.get("kind") != "extract":
+                continue
+            doc = json.loads(
+                (REPO / "harness-stress" / "fixtures" / "companyfacts" / row["id"] / "companyfacts.json").read_text(encoding="utf-8")
+            )
+            all_facts = parse_companyfacts(doc, source_id=f"companyfacts/{row['id']}")["facts"]
+            slots, _ = latest_filing_slots(all_facts)
+            annuals = {}
+            for mid, slot in slots.items():
+                ends = []
+                for v in slot.get("values") or []:
+                    if not isinstance(v, dict) or v.get("span") != "annual":
+                        continue
+                    end = str((v.get("period") or {}).get("end") or "")
+                    if end:
+                        ends.append(end)
+                if len(set(ends)) >= 2:
+                    annuals[mid] = set(ends)
+            if not annuals:
+                continue
+            ticker = "".join(ch for ch in row["id"].upper() if ch.isalnum())[:12]
+            store = _store([], ticker=ticker, focus_id=row["id"], gaps=[])
+            store["facts"] = mapped_latest_facts(all_facts)
+            self._write(ticker, store)
+            agent = assemble_agent_pack(store)
+            retrieved = retrieve(ticker, "overview")
+            for pack, render in ((agent, to_agent_markdown), (retrieved, to_markdown)):
+                visible = render(pack)
+                by_mid = {
+                    c.get("metric_id"): c
+                    for c in pack.get("claims") or []
+                    if c.get("origin") in ("companyfacts", "xbrl")
+                }
+                for mid, ends in annuals.items():
+                    current = max(ends)
+                    older = [e for e in ends if e != current]
+                    claim = by_mid.get(mid)
+                    self.assertIsNotNone(claim, f"{row['id']} lost {mid}")
+                    first_end = ((claim.get("values") or [{}])[0].get("period") or {}).get("end")
+                    self.assertEqual(str(first_end or ""), current, f"{row['id']} {mid} values did not lead with the current FY")
+                    pos_current = visible.find(current)
+                    self.assertNotEqual(pos_current, -1, f"{row['id']} {mid} current FY missing from visible text")
+                    for end in older:
+                        pos = visible.find(end)
+                        if pos != -1:
+                            self.assertLess(pos_current, pos, f"{row['id']} {mid} visible text led with an older period")
+            checked += 1
+        self.assertGreaterEqual(checked, 1)
+
+    def test_markdown_prints_every_kept_labeled_period(self):
+        from api.companyfacts import latest_filing_slots, mapped_latest_facts, parse_companyfacts
+
+        doc = json.loads(
+            (REPO / "harness-stress" / "fixtures" / "companyfacts" / "two-periods" / "companyfacts.json").read_text(encoding="utf-8")
+        )
+        all_facts = parse_companyfacts(doc, source_id="companyfacts/two-periods")["facts"]
+        slots, _ = latest_filing_slots(all_facts)
+        slot = slots["company_revenue"]
+        want_ends = [str((v.get("period") or {}).get("end") or "") for v in slot.get("values") or []]
+        self.assertGreaterEqual(len(want_ends), 2)
+        store = _store([], ticker="TWOP", focus_id="two-periods", gaps=[])
+        store["facts"] = mapped_latest_facts(all_facts)
+        self._write("TWOP", store)
+        agent = assemble_agent_pack(store)
+        retrieved = retrieve("TWOP", "overview")
+        for pack, render in ((agent, to_agent_markdown), (retrieved, to_markdown)):
+            visible = render(pack)
+            claim = next(c for c in pack.get("claims") or [] if c.get("metric_id") == "company_revenue")
+            for val in claim.get("values") or []:
+                end = str((val.get("period") or {}).get("end") or "")
+                start = (val.get("period") or {}).get("start")
+                self.assertIn(end, visible)
+                if start:
+                    self.assertIn(str(start), visible)
 
     def test_over_budget_keeps_tagged_before_sentences(self):
         pack = {
