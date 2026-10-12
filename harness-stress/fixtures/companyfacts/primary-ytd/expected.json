@@ -1,15 +1,21 @@
 {
   "id": "primary-ytd",
-  "comment": "Same end: concept order first. Primary YTD beats a fallback quarter.",
+  "comment": "Same-end cross-concept primary YTD vs quarter: quarter stays live; YTD attaches even from another mapped concept. Concept-first must not turn the half-year into the 10-Q value.",
   "slots": {
     "company_revenue": {
-      "value_text": "500000000",
+      "value_text": "80000000",
       "end": "2025-06-30",
-      "start": "2025-01-01",
-      "concept": "us-gaap:Revenues",
+      "start": "2025-04-01",
+      "concept": "us-gaap:SalesRevenueNet",
       "form": "10-Q",
       "filed": "2025-08-01",
-      "unit": "USD"
+      "unit": "USD",
+      "ytd": {
+        "value_text": "500000000",
+        "start": "2025-01-01",
+        "end": "2025-06-30",
+        "concept": "us-gaap:Revenues"
+      }
     }
   }
 }

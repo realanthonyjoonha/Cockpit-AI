@@ -6,15 +6,21 @@
   "form": "10-K",
   "reporting": "us-gaap",
   "currency": "USD",
+  "extract": "full-mapped",
   "slots": {
     "company_revenue": {
-      "value_text": "182447000000",
-      "end": "2025-12-31",
-      "start": "2025-01-01",
-      "concept": "us-gaap:Revenues",
-      "form": "10-K",
-      "filed": "2026-02-13",
-      "unit": "USD"
+      "value_text": "57347000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:RevenuesNetOfInterestExpense",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD",
+      "ytd": {
+        "value_text": "107183000000",
+        "start": "2026-01-01",
+        "end": "2026-06-30"
+      }
     },
     "net_income": {
       "value_text": "21155000000",

@@ -1,7 +1,7 @@
 """SEC companyfacts → normalized facts and live slots. No network. No model.
 
 Reads a local companyfacts JSON (the SEC XBRL companyfacts document, or a
-trimmed copy). Same algorithm as memory-cockpit-v2/server/companyfacts.js.
+full mapped-concept extract). Same algorithm as memory-cockpit-v2/server/companyfacts.js.
 """
 from __future__ import annotations
 
@@ -21,7 +21,11 @@ INTERIM_FORMS = {"10-Q", "6-K"}
 QUARTER_FP = {"Q1", "Q2", "Q3"}
 ISO4217 = re.compile(r"^[A-Z]{3}$")
 TAXONOMIES = ("us-gaap", "ifrs-full")
-STALE_DAYS = 730
+# Two missed annual periods as a day count: 2*365 plus a leap/53-week pad.
+# 730 (2*365) flips after a leap year or a 53-week year (731–742). Counting
+# fy labels was rejected: 6-K and short 10-KT often lack a reliable fy series.
+STALE_DAYS = 760
+LEASE_REVENUE = "us-gaap:OperatingLeaseLeaseIncome"
 
 _TAXONOMY: dict[str, Any] | None = None
 
@@ -125,6 +129,10 @@ def duration_kind(
     peers = [int(p) for p in (peer_days or [])]
     longer = any(p > days + 14 for p in peers)
     shorter = any(p < days - 14 for p in peers)
+    if family == "10-KT" and fp_u == "FY":
+        return "annual"
+    if fp_u == "FY" and family in ANNUAL_FORMS:
+        return "annual"
     if longer and days <= 200:
         return "quarter"
     if shorter and days <= 340:
@@ -180,6 +188,7 @@ MISSING_CACHE = "companyfacts cache missing; headline slots empty"
 UNREADABLE = "companyfacts cache unreadable"
 STRUCTURED_GAP = "{mid}: not reported in structured data"
 STALE_GAP = "{mid}: stale: last reported {end}"
+LEASE_ONLY_GAP = "{mid}: lease income only"
 
 
 def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, Any]:
@@ -290,6 +299,73 @@ def _metric_concepts(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
     return list(spec.get("concepts") or []), list(spec.get("fallback") or [])
 
 
+def mapped_concepts(tax: dict[str, Any] | None = None) -> list[str]:
+    tax = tax or load_taxonomy()
+    out: list[str] = []
+    for spec in (tax.get("metrics") or {}).values():
+        if spec.get("alias_of"):
+            continue
+        out.extend(list(spec.get("concepts") or []) + list(spec.get("fallback") or []))
+    return sorted(set(out))
+
+
+def mapped_inventory(doc: dict[str, Any], tax: dict[str, Any] | None = None) -> dict[str, dict[str, int]]:
+    """Per-unit point counts for every mapped concept present in the document."""
+    return extract_mapped_document(doc, tax)[1]
+
+
+def missing_mapped_from_source(
+    fixture_doc: dict[str, Any],
+    source_inventory: dict[str, Any],
+    tax: dict[str, Any] | None = None,
+) -> list[str]:
+    """Mapped concepts (or unit counts) present in the live source but missing from the fixture."""
+    have = mapped_inventory(fixture_doc, tax)
+    missing: list[str] = []
+    for concept, units in (source_inventory or {}).items():
+        if concept not in have:
+            missing.append(concept)
+            continue
+        for unit, count in (units or {}).items():
+            if have[concept].get(unit, 0) < int(count):
+                missing.append(f"{concept}:{unit}")
+    return missing
+
+
+def extract_mapped_document(doc: dict[str, Any], tax: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Copy every mapped concept node from a live companyfacts document. No point deletions."""
+    tax = tax or load_taxonomy()
+    want: dict[str, set[str]] = {}
+    for concept in mapped_concepts(tax):
+        ns, loc = concept.split(":", 1)
+        want.setdefault(ns, set()).add(loc)
+    src_facts = doc.get("facts") if isinstance(doc, dict) else None
+    if not isinstance(src_facts, dict):
+        src_facts = {}
+    facts: dict[str, Any] = {}
+    inventory: dict[str, dict[str, int]] = {}
+    for ns, locals_ in want.items():
+        group = src_facts.get(ns)
+        if not isinstance(group, dict):
+            continue
+        kept: dict[str, Any] = {}
+        for loc in sorted(locals_):
+            node = group.get(loc)
+            if not isinstance(node, dict):
+                continue
+            kept[loc] = node
+            units = node.get("units") if isinstance(node.get("units"), dict) else {}
+            inventory[f"{ns}:{loc}"] = {
+                unit: len(pts) if isinstance(pts, list) else 0
+                for unit, pts in units.items()
+            }
+        if kept:
+            facts[ns] = kept
+    extracted = {k: doc[k] for k in ("cik", "entityName") if isinstance(doc, dict) and k in doc}
+    extracted["facts"] = facts
+    return extracted, inventory
+
+
 def _latest_periodic_end(facts: list[dict[str, Any]]) -> str | None:
     ends = [
         f["period"]["end"]
@@ -310,11 +386,12 @@ def stale_gap(mid: str, end: str) -> str:
 
 def select_slots(
     facts: list[dict[str, Any]], tax: dict[str, Any] | None = None
-) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+) -> tuple[dict[str, dict[str, Any]], dict[str, str], dict[str, str]]:
     """One consolidated slot per structured metric. Stale winners are omitted."""
     tax = tax or load_taxonomy()
     slots: dict[str, dict[str, Any]] = {}
     stale: dict[str, str] = {}
+    notes: dict[str, str] = {}
     latest_periodic = _latest_periodic_end(facts or [])
     for mid, spec in (tax.get("metrics") or {}).items():
         if spec.get("alias_of"):
@@ -333,6 +410,16 @@ def select_slots(
             and _unit_ok(str(f.get("unit") or ""), str(kind))
         ]
         cands = [f for f in pool if f.get("concept") in concepts]
+        lease_only = False
+        true_total_on_filer = any(
+            (not f.get("dimensional")) and f.get("concept") in concepts
+            for f in facts or []
+        )
+        if not cands and mid == "company_revenue" and not true_total_on_filer:
+            cands = [f for f in pool if f.get("concept") == LEASE_REVENUE]
+            lease_only = bool(cands)
+            if lease_only:
+                concepts = concepts + [LEASE_REVENUE]
         if not cands:
             continue
 
@@ -365,10 +452,12 @@ def select_slots(
             ]
             return duration_kind(n, w.get("fp"), w.get("form"), peers)
 
-        annual_form_annual = any(
-            form_family(w.get("form")) in ANNUAL_FORMS and _kind(w) == "annual"
-            for w, _ in at_end
-        )
+        def _annual_anchor(w: dict[str, Any]) -> bool:
+            if _kind(w) != "annual":
+                return False
+            return form_family(w.get("form")) in ANNUAL_FORMS
+
+        annual_form_annual = any(_annual_anchor(w) for w, _ in at_end)
         interim = bool(families & INTERIM_FORMS) and not (families <= ANNUAL_FORMS) and not annual_form_annual
 
         def rank(pair: tuple[dict[str, Any], Any]) -> tuple:
@@ -384,7 +473,7 @@ def select_slots(
                 cidx = 99
             n = _days(w["period"].get("start"), w["period"]["end"])
             span = -n if interim else n
-            return (-cidx, dur, span, w.get("filed") or "", w.get("accession") or "")
+            return (dur, -cidx, span, w.get("filed") or "", w.get("accession") or "")
 
         win, restated_from = max(at_end, key=rank)
         if fact_is_stale(win["period"]["end"], latest_periodic):
@@ -392,13 +481,16 @@ def select_slots(
             continue
         ytd = None
         if want_period == "duration" and _kind(win) == "quarter":
-            ytd_rows = [
-                w for w, _ in at_end
-                if w["concept"] == win["concept"]
-                and _kind(w) == "ytd"
-            ]
+            ytd_rows = [w for w, _ in at_end if _kind(w) == "ytd"]
             if ytd_rows:
-                ytd = max(ytd_rows, key=lambda w: (w.get("filed") or "", w.get("accession") or ""))
+                def ytd_rank(w: dict[str, Any]) -> tuple:
+                    same = 1 if w["concept"] == win["concept"] else 0
+                    try:
+                        cidx = concepts.index(w["concept"])
+                    except ValueError:
+                        cidx = 99
+                    return (same, -cidx, w.get("filed") or "", w.get("accession") or "")
+                ytd = max(ytd_rows, key=ytd_rank)
 
         text = (
             f"{_local(win['concept'])} {win['unit']} {group_digits(win['value_text'])} "
@@ -451,7 +543,9 @@ def select_slots(
                 if ytd else None
             ),
         }
-    return slots, stale
+        if lease_only:
+            notes[mid] = LEASE_ONLY_GAP.format(mid=mid)
+    return slots, stale, notes
 
 
 def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
@@ -466,18 +560,21 @@ def headline_gaps(
 ) -> list[str]:
     tax = tax or load_taxonomy()
     stale: dict[str, str] = {}
+    notes: dict[str, str] = {}
     if facts is not None:
-        stale = select_slots(facts, tax)[1]
+        _, stale, notes = select_slots(facts, tax)
     gaps: list[str] = []
     for mid, spec in (tax.get("metrics") or {}).items():
         if spec.get("alias_of"):
             continue
-        if not (spec.get("concepts") or spec.get("fallback")):
+        if not (spec.get("concepts") or spec.get("fallback")) and mid not in notes:
             continue
         if mid in slots:
+            if mid in notes:
+                gaps.append(notes[mid])
             continue
         if mid in stale:
             gaps.append(stale_gap(mid, stale[mid]))
-        else:
+        elif spec.get("concepts") or spec.get("fallback"):
             gaps.append(STRUCTURED_GAP.format(mid=mid))
     return gaps

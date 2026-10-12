@@ -12,12 +12,17 @@ const QUARTER_FP = new Set(['Q1', 'Q2', 'Q3']);
 const ISO4217 = /^[A-Z]{3}$/;
 const TAXONOMIES = ['us-gaap', 'ifrs-full'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-export const STALE_DAYS = 730;
+// Two missed annual periods as a day count: 2*365 plus a leap/53-week pad.
+// 730 (2*365) flips after a leap year or a 53-week year (731–742). Counting
+// fy labels was rejected: 6-K and short 10-KT often lack a reliable fy series.
+export const STALE_DAYS = 760;
+const LEASE_REVENUE = 'us-gaap:OperatingLeaseLeaseIncome';
 
 export const MISSING_CACHE = 'companyfacts cache missing; headline slots empty';
 export const UNREADABLE = 'companyfacts cache unreadable';
 export const STRUCTURED_GAP = (mid) => `${mid}: not reported in structured data`;
 export const STALE_GAP = (mid, end) => `${mid}: stale: last reported ${end}`;
+export const LEASE_ONLY_GAP = (mid) => `${mid}: lease income only`;
 
 let taxonomyCache = null;
 
@@ -124,6 +129,8 @@ export function durationKind(n, fp, form, peerDays) {
   const peers = (peerDays || []).map((p) => Number(p)).filter((p) => Number.isFinite(p));
   const longer = peers.some((p) => p > n + 14);
   const shorter = peers.some((p) => p < n - 14);
+  if (family === '10-KT' && fpU === 'FY') return 'annual';
+  if (fpU === 'FY' && ANNUAL_FORMS.has(family)) return 'annual';
   if (longer && n <= 200) return 'quarter';
   if (shorter && n <= 340) return 'ytd';
   if (ANNUAL_FORMS.has(family) || fpU === 'FY') {
@@ -240,6 +247,68 @@ export function loadCompanyfactsFile(filePath, opts = {}) {
   }
 }
 
+export function mappedConcepts(taxonomy = null) {
+  const tax = taxonomy || loadTaxonomy();
+  const out = new Set();
+  for (const spec of Object.values(tax.metrics || {})) {
+    if (spec.alias_of) continue;
+    for (const c of [...(spec.concepts || []), ...(spec.fallback || [])]) out.add(c);
+  }
+  return [...out].sort();
+}
+
+export function mappedInventory(doc, taxonomy = null) {
+  return extractMappedDocument(doc, taxonomy).inventory;
+}
+
+export function missingMappedFromSource(fixtureDoc, sourceInventory, taxonomy = null) {
+  const have = mappedInventory(fixtureDoc, taxonomy);
+  const missing = [];
+  for (const [concept, units] of Object.entries(sourceInventory || {})) {
+    if (!have[concept]) {
+      missing.push(concept);
+      continue;
+    }
+    for (const [unit, count] of Object.entries(units || {})) {
+      if ((have[concept][unit] || 0) < Number(count)) missing.push(`${concept}:${unit}`);
+    }
+  }
+  return missing;
+}
+
+export function extractMappedDocument(doc, taxonomy = null) {
+  const tax = taxonomy || loadTaxonomy();
+  const want = {};
+  for (const concept of mappedConcepts(tax)) {
+    const [ns, loc] = concept.split(':');
+    if (!want[ns]) want[ns] = new Set();
+    want[ns].add(loc);
+  }
+  const srcFacts = doc && typeof doc === 'object' && doc.facts && typeof doc.facts === 'object' ? doc.facts : {};
+  const facts = {};
+  const inventory = {};
+  for (const [ns, locals] of Object.entries(want)) {
+    const group = srcFacts[ns];
+    if (!group || typeof group !== 'object') continue;
+    const kept = {};
+    for (const loc of [...locals].sort()) {
+      const node = group[loc];
+      if (!node || typeof node !== 'object') continue;
+      kept[loc] = node;
+      const units = node.units && typeof node.units === 'object' ? node.units : {};
+      inventory[`${ns}:${loc}`] = Object.fromEntries(
+        Object.entries(units).map(([unit, pts]) => [unit, Array.isArray(pts) ? pts.length : 0]),
+      );
+    }
+    if (Object.keys(kept).length) facts[ns] = kept;
+  }
+  const extracted = {};
+  if (doc && Object.prototype.hasOwnProperty.call(doc, 'cik')) extracted.cik = doc.cik;
+  if (doc && Object.prototype.hasOwnProperty.call(doc, 'entityName')) extracted.entityName = doc.entityName;
+  extracted.facts = facts;
+  return { extracted, inventory };
+}
+
 export function mappedFacts(facts, taxonomy = null) {
   const tax = taxonomy || loadTaxonomy();
   const known = new Set();
@@ -276,18 +345,26 @@ export function selectSlots(facts, taxonomy = null) {
   const tax = taxonomy || loadTaxonomy();
   const slots = {};
   const stale = {};
+  const notes = {};
   const latestPeriodic = latestPeriodicEnd(facts || []);
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
     if (spec.alias_of) continue;
     const primary = spec.concepts || [];
     const fallback = spec.fallback || [];
-    const concepts = [...primary, ...fallback.filter((c) => !primary.includes(c))];
+    let concepts = [...primary, ...fallback.filter((c) => !primary.includes(c))];
     if (!concepts.length) continue;
     const pool = (facts || []).filter((f) => !f.dimensional
       && f.period && f.period.type === spec.period
       && f.period.end
       && unitOk(String(f.unit || ''), String(spec.unit)));
-    const cands = pool.filter((f) => concepts.includes(f.concept));
+    let cands = pool.filter((f) => concepts.includes(f.concept));
+    let leaseOnly = false;
+    const trueTotalOnFiler = (facts || []).some((f) => !f.dimensional && concepts.includes(f.concept));
+    if (!cands.length && mid === 'company_revenue' && !trueTotalOnFiler) {
+      cands = pool.filter((f) => f.concept === LEASE_REVENUE);
+      leaseOnly = cands.length > 0;
+      if (leaseOnly) concepts = [...concepts, LEASE_REVENUE];
+    }
     if (!cands.length) continue;
 
     const groups = new Map();
@@ -324,7 +401,7 @@ export function selectSlots(facts, taxonomy = null) {
       w.form,
       atEnd.filter(([o]) => o !== w).map(([o]) => days(o.period.start, o.period.end)),
     );
-    const annualFormAnnual = atEnd.some(([w]) => ANNUAL_FORMS.has(formFamily(w.form)) && kindOf(w) === 'annual');
+    const annualFormAnnual = atEnd.some(([w]) => kindOf(w) === 'annual' && ANNUAL_FORMS.has(formFamily(w.form)));
     const interim = hasInterimForm && !onlyAnnual && !annualFormAnnual;
 
     const rank = ([w]) => {
@@ -333,7 +410,7 @@ export function selectSlots(facts, taxonomy = null) {
       const cidx = concepts.indexOf(w.concept);
       const n = days(w.period.start, w.period.end);
       const span = interim ? -n : n;
-      return [-(cidx < 0 ? 99 : cidx), dur, span, w.filed || '', w.accession || ''];
+      return [dur, -(cidx < 0 ? 99 : cidx), span, w.filed || '', w.accession || ''];
     };
     const best = atEnd.reduce((acc, row) => (acc == null || cmpTuple(rank(row), rank(acc)) > 0 ? row : acc), null);
     const win = best[0];
@@ -344,11 +421,16 @@ export function selectSlots(facts, taxonomy = null) {
     }
     let ytd = null;
     if (spec.period === 'duration' && kindOf(win) === 'quarter') {
-      const ytdRows = atEnd
-        .map(([w]) => w)
-        .filter((w) => w.concept === win.concept && kindOf(w) === 'ytd');
+      const ytdRows = atEnd.map(([w]) => w).filter((w) => kindOf(w) === 'ytd');
       if (ytdRows.length) {
-        ytd = ytdRows.reduce((acc, w) => (acc == null || cmpTuple([w.filed || '', w.accession || ''], [acc.filed || '', acc.accession || '']) > 0 ? w : acc), null);
+        ytd = ytdRows.reduce((acc, w) => {
+          const rankOf = (row) => {
+            const same = row.concept === win.concept ? 1 : 0;
+            const cidx = concepts.indexOf(row.concept);
+            return [same, -(cidx < 0 ? 99 : cidx), row.filed || '', row.accession || ''];
+          };
+          return acc == null || cmpTuple(rankOf(w), rankOf(acc)) > 0 ? w : acc;
+        }, null);
       }
     }
     let text = `${local(win.concept)} ${win.unit} ${groupDigits(win.value_text)} for ${periodDesc(win.period)} (consolidated companyfacts`;
@@ -396,8 +478,9 @@ export function selectSlots(facts, taxonomy = null) {
         concept: ytd.concept,
       } : null,
     };
+    if (leaseOnly) notes[mid] = LEASE_ONLY_GAP(mid);
   }
-  return { slots, stale };
+  return { slots, stale, notes };
 }
 
 export function taggedSlots(facts, taxonomy = null) {
@@ -406,14 +489,20 @@ export function taggedSlots(facts, taxonomy = null) {
 
 export function headlineGaps(slots, taxonomy = null, facts = null) {
   const tax = taxonomy || loadTaxonomy();
-  const stale = facts != null ? selectSlots(facts, tax).stale : {};
+  const selected = facts != null ? selectSlots(facts, tax) : { stale: {}, notes: {} };
+  const stale = selected.stale || {};
+  const notes = selected.notes || {};
   const gaps = [];
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
     if (spec.alias_of) continue;
-    if (!((spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length))) continue;
-    if (slots[mid]) continue;
+    const structured = (spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length);
+    if (!structured && !notes[mid]) continue;
+    if (slots[mid]) {
+      if (notes[mid]) gaps.push(notes[mid]);
+      continue;
+    }
     if (stale[mid]) gaps.push(STALE_GAP(mid, stale[mid]));
-    else gaps.push(STRUCTURED_GAP(mid));
+    else if (structured) gaps.push(STRUCTURED_GAP(mid));
   }
   return gaps;
 }
