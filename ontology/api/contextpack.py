@@ -598,9 +598,9 @@ def live_claims(
             mid = canonical_metric(str(mid), tax)
             if mid in slots:
                 context.append((i, _context_row(c, mid, "structured_slot")))
-                slot_key = parse_as_of(slots[mid]["as_of"]).get("sort_key") or ""
-                own_key = parse_as_of(c.get("as_of")).get("sort_key") or ""
-                if own_key > slot_key:
+                slot_key = parse_as_of(slots[mid]["as_of"]).get("sort_key")
+                own_key = parse_as_of(c.get("as_of")).get("sort_key")
+                if slot_key and own_key and own_key > slot_key:
                     newer[mid] = newer.get(mid, 0) + 1
             elif structured_metric(mid, tax) or not sentence_fill_allowed(mid, tax):
                 context.append((i, _context_row(c, mid, "no_structured_fact")))
@@ -686,6 +686,28 @@ def _currency_values(text: str) -> dict[str, list[float]]:
     return by
 
 
+def _labeled_currency_amounts(claim: dict[str, Any]) -> dict[str, list[float]]:
+    """One amount per labeled period on a companyfacts row; else amounts in the sentence."""
+    if claim.get("origin") in ("companyfacts", "xbrl"):
+        by: dict[str, list[float]] = {}
+        rows = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+        if not rows:
+            rows = [claim]
+        for row in rows:
+            unit = str(row.get("unit") or "")
+            if not re.fullmatch(r"[A-Z]{3}", unit):
+                continue
+            raw = row.get("value_text")
+            if raw is None:
+                raw = row.get("value")
+            try:
+                by.setdefault(unit, []).append(float(raw))
+            except (TypeError, ValueError):
+                continue
+        return by
+    return _currency_values(claim.get("text") or "")
+
+
 def stale_tripwires(
     risks: list[dict[str, Any]],
     live: list[dict[str, Any]],
@@ -704,11 +726,7 @@ def stale_tripwires(
         if not mid or mid not in by_metric:
             continue
         claim = by_metric[mid]
-        if claim.get("origin") in ("companyfacts", "xbrl"):
-            unit = str(claim.get("unit") or "")
-            claim_by = {unit: [float(claim["value"])]} if re.fullmatch(r"[A-Z]{3}", unit) else {}
-        else:
-            claim_by = _currency_values(claim.get("text") or "")
+        claim_by = _labeled_currency_amounts(claim)
         if not claim_by:
             continue
         for tw in r.get("tripwires") or []:
@@ -732,16 +750,21 @@ def stale_tripwires(
                 return abs(a - b) / max(a, b) <= 0.15
 
             disagreed = False
+            compared = False
             for cur in shared:
-                live_amt = max(claim_by[cur])
                 tw_amts = tw_by[cur]
-                same_scale = [a for a in tw_amts if 0.2 * live_amt <= a <= 5 * live_amt]
-                if not same_scale:
-                    continue
-                if any(close(a, live_amt) for a in same_scale):
-                    continue
-                disagreed = True
-                break
+                matched = False
+                for live_amt in claim_by[cur]:
+                    same_scale = [a for a in tw_amts if 0.2 * live_amt <= a <= 5 * live_amt]
+                    if not same_scale:
+                        continue
+                    compared = True
+                    if any(close(a, live_amt) for a in same_scale):
+                        matched = True
+                        break
+                if compared and not matched:
+                    disagreed = True
+                    break
             if not disagreed:
                 continue
             out.append({

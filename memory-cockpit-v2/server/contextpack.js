@@ -521,9 +521,9 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
     if (mid) {
       if (Object.prototype.hasOwnProperty.call(slots, mid)) {
         context.push({ i, row: contextRow(c, mid, 'structured_slot') });
-        const slotKey = parseAsOf(slots[mid].as_of).sort_key || '';
-        const ownKey = parseAsOf(c.as_of).sort_key || '';
-        if (ownKey > slotKey) newer.set(mid, (newer.get(mid) || 0) + 1);
+        const slotKey = parseAsOf(slots[mid].as_of).sort_key;
+        const ownKey = parseAsOf(c.as_of).sort_key;
+        if (slotKey && ownKey && ownKey > slotKey) newer.set(mid, (newer.get(mid) || 0) + 1);
       } else if (structuredMetric(mid, tax) || !sentenceFillAllowed(mid, tax)) {
         context.push({ i, row: contextRow(c, mid, 'no_structured_fact') });
         blocked.set(mid, (blocked.get(mid) || 0) + 1);
@@ -610,6 +610,101 @@ export function claimGaps(claims, rules, residualCap = 8, facts = null) {
   return gaps;
 }
 
+function currencyValues(text) {
+  const by = {};
+  for (const amt of parseAmounts(text)) {
+    if (amt.unit !== 'currency' || !amt.currency) continue;
+    if (!by[amt.currency]) by[amt.currency] = [];
+    by[amt.currency].push(Number(amt.value));
+  }
+  return by;
+}
+
+export function labeledCurrencyAmounts(claim) {
+  if (claim && (claim.origin === 'companyfacts' || claim.origin === 'xbrl')) {
+    const by = {};
+    let rows = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (!rows.length) rows = [claim];
+    for (const row of rows) {
+      const unit = String(row.unit || '');
+      if (!/^[A-Z]{3}$/.test(unit)) continue;
+      const raw = row.value_text != null ? row.value_text : row.value;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      if (!by[unit]) by[unit] = [];
+      by[unit].push(n);
+    }
+    return by;
+  }
+  return currencyValues((claim && claim.text) || '');
+}
+
+export function staleTripwires(risks, live, rules, gaps = null) {
+  const byMetric = {};
+  for (const c of live || []) {
+    if (c && c.metric_id && c.metric_id !== 'other') byMetric[c.metric_id] = c;
+  }
+  const out = [];
+  for (const r of risks || []) {
+    const st = String((r && r.status) || '').toUpperCase();
+    if (st !== 'WATCH' && st !== 'FIRED') continue;
+    const mid = riskMetric((r && (r.name || r.id)) || '', rules);
+    if (!mid || !Object.prototype.hasOwnProperty.call(byMetric, mid)) continue;
+    const claim = byMetric[mid];
+    const claimBy = labeledCurrencyAmounts(claim);
+    if (!Object.keys(claimBy).length) continue;
+    for (const tw of r.tripwires || []) {
+      if (!tw || typeof tw !== 'object') continue;
+      const state = String(tw.state || '');
+      const twBy = currencyValues(state);
+      if (!Object.keys(twBy).length) continue;
+      const shared = Object.keys(claimBy).filter((cur) => Object.prototype.hasOwnProperty.call(twBy, cur));
+      if (!shared.length) {
+        if (Array.isArray(gaps)) {
+          const msg = 'cross-currency tripwire; currencies not compared';
+          if (!gaps.includes(msg)) gaps.push(msg);
+        }
+        continue;
+      }
+      const close = (a, b) => {
+        if (a <= 0 || b <= 0) return false;
+        return Math.abs(a - b) / Math.max(a, b) <= 0.15;
+      };
+      let disagreed = false;
+      let compared = false;
+      for (const cur of shared) {
+        const twAmts = twBy[cur];
+        let matched = false;
+        for (const liveAmt of claimBy[cur]) {
+          const sameScale = twAmts.filter((a) => a >= 0.2 * liveAmt && a <= 5 * liveAmt);
+          if (!sameScale.length) continue;
+          compared = true;
+          if (sameScale.some((a) => close(a, liveAmt))) {
+            matched = true;
+            break;
+          }
+        }
+        if (compared && !matched) {
+          disagreed = true;
+          break;
+        }
+      }
+      if (!disagreed) continue;
+      out.push({
+        risk_id: r.id,
+        risk_name: r.name,
+        metric_id: mid,
+        tripwire_state: state,
+        live_claim_as_of: claim.as_of,
+        live_claim_text: claim.text,
+        live_claim_id: claim.id,
+      });
+      break;
+    }
+  }
+  return out;
+}
+
 export function assembleAgentPack(store, rules) {
   const gaps = [];
   const context = [];
@@ -622,8 +717,11 @@ export function assembleAgentPack(store, rules) {
     return st === 'WATCH' || st === 'FIRED';
   });
   const storeGaps = Array.isArray(store.gaps) ? store.gaps : [];
+  const staleGaps = [];
+  const stale = staleTripwires(store.risks || [], live, rules, staleGaps);
   const merged = storeGaps.slice();
   for (const g of gaps) if (!merged.includes(g)) merged.push(g);
+  for (const g of staleGaps) if (!merged.includes(g)) merged.push(g);
   return {
     schema: 'contextpack.v2',
     intent: 'agent',
@@ -642,6 +740,7 @@ export function assembleAgentPack(store, rules) {
     },
     claims: live.map(packClaim),
     context_claims: context.slice(0, CONTEXT_CAP).map(contextClaim),
+    stale_tripwires: stale,
     store_claims: (store.claims || []).length,
     gaps: merged,
     decision_support_only: true,
