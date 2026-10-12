@@ -1,8 +1,8 @@
 // Exact match of companyfacts fixtures vs expected.json. No network.
-import { readFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { headlineGaps, loadCompanyfactsFile, taggedSlots } from '../server/companyfacts.js';
+import { headlineGaps, loadCompanyfactsFile, missingMappedFromSource, taggedSlots } from '../server/companyfacts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.resolve(HERE, '../../harness-stress/fixtures/companyfacts');
@@ -44,6 +44,26 @@ for (const id of dirs) {
   const gaps = headlineGaps(slots, null, parsed.facts);
   for (const msg of expected.gaps_contain || []) {
     if (!gaps.includes(msg)) fail(`${id} missing gap ${msg}`);
+  }
+}
+
+for (const id of dirs) {
+  const srcPath = path.join(FIX, id, 'source-concepts.json');
+  if (!existsSync(srcPath)) continue;
+  const src = JSON.parse(readFileSync(srcPath, 'utf8'));
+  const doc = JSON.parse(readFileSync(path.join(FIX, id, 'companyfacts.json'), 'utf8'));
+  const missing = missingMappedFromSource(doc, src.concepts || {});
+  if (missing.length) fail(`${id} trimmed mapped concepts: ${missing.join(', ')}`);
+  if (id === 'bank') {
+    if (src.concepts?.['us-gaap:RevenuesNetOfInterestExpense']?.USD !== 149) {
+      fail('bank source-concepts dropped RevenuesNetOfInterestExpense');
+    }
+    const trimmed = structuredClone(doc);
+    delete trimmed.facts['us-gaap'].RevenuesNetOfInterestExpense;
+    const trimmedMissing = missingMappedFromSource(trimmed, src.concepts || {});
+    if (!trimmedMissing.some((m) => m.includes('RevenuesNetOfInterestExpense'))) {
+      fail('completeness check did not fail after deleting RNIE from a bank copy');
+    }
   }
 }
 
