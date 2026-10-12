@@ -3,6 +3,7 @@
 import { loadPack } from './pack.js';
 import { readHouseMarkdown } from './thinHouseSave.js';
 import { loadContextpackRules, liveClaims, compareClaimsNewestFirst, OVERVIEW_BUDGET_CHARS } from './contextpack.js';
+import { claimPeriodLines } from './companyfacts.js';
 
 export const HOUSE_FILE_POINTER = 'Full file is get_house_view.';
 
@@ -169,7 +170,14 @@ export function buildHouseAssistContext(opts) {
     for (const c of rankedClaims) {
       const low = c.confidence === 'low' ? 'sentence, low confidence ' : '';
       const mid = c.metric_id ? `\`${c.metric_id}\` ${low}` : '';
-      sections.push(`- ${mid}[${c.grade || '?'}] (${c.as_of || '—'}) ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
+      const head = `- ${mid}[${c.grade || '?'}] (${c.as_of || '—'})`;
+      const periods = claimPeriodLines(c);
+      if (periods.length) {
+        sections.push(`${head} ${periods[0]}`);
+        for (const extra of periods.slice(1)) sections.push(`  ${extra}`);
+      } else {
+        sections.push(`${head} ${String(c.text || '').replace(/\s+/g, ' ').trim()}`);
+      }
     }
   }
   sections.push('');
