@@ -2,9 +2,10 @@
  * Review-comment sentences against companyfacts slots.
  * A sentence never changes a structured numeric slot, including an empty one.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { missingMappedFromSource } from '../../memory-cockpit-v2/server/companyfacts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURES = path.join(HERE, '../fixtures');
@@ -240,8 +241,30 @@ export function checkReviewerCases(api) {
     errors.push(`k-vs-q4 ${kq4?.value_text} form ${kq4?.form}`);
   }
   const pytd = api.taggedSlots(factsFor(api, 'primary-ytd').facts).company_revenue;
-  if (pytd?.value_text !== '500000000' || pytd?.concept !== 'us-gaap:Revenues') {
-    errors.push(`primary-ytd ${pytd?.concept}=${pytd?.value_text}`);
+  if (pytd?.value_text !== '80000000' || pytd?.concept !== 'us-gaap:SalesRevenueNet' || pytd?.ytd?.value_text !== '500000000') {
+    errors.push(`primary-ytd ${pytd?.concept}=${pytd?.value_text} ytd ${pytd?.ytd?.value_text}`);
+  }
+  const sixkFy = api.taggedSlots(factsFor(api, 'sixk-fy-q').facts).company_revenue;
+  if (sixkFy?.value_text !== '250000000' || sixkFy?.form !== '6-K' || sixkFy?.ytd) {
+    errors.push(`sixk-fy-q ${sixkFy?.value_text} form ${sixkFy?.form} ytd ${sixkFy?.ytd?.value_text}`);
+  }
+  const tenktShort = api.taggedSlots(factsFor(api, 'tenkt-short').facts).company_revenue;
+  if (tenktShort?.value_text !== '340000000' || tenktShort?.form !== '10-KT' || tenktShort?.ytd) {
+    errors.push(`tenkt-short ${tenktShort?.value_text} form ${tenktShort?.form}`);
+  }
+  const leaseFacts = factsFor(api, 'lease-only').facts;
+  const lease = api.taggedSlots(leaseFacts).company_revenue;
+  const leaseGaps = api.headlineGaps ? api.headlineGaps({ company_revenue: lease }, null, leaseFacts) : [];
+  if (lease?.value_text !== '1207000000' || lease?.concept !== 'us-gaap:OperatingLeaseLeaseIncome'
+    || !leaseGaps.includes('company_revenue: lease income only')) {
+    errors.push(`lease-only ${lease?.concept}=${lease?.value_text} gaps ${JSON.stringify(leaseGaps)}`);
+  }
+  const padFacts = factsFor(api, 'stale-pad').facts;
+  const pad = api.taggedSlots(padFacts);
+  const padGaps = api.headlineGaps ? api.headlineGaps(pad, null, padFacts) : [];
+  if (pad.total_debt?.value_text !== '500000000' || pad.interest_revenue
+    || !padGaps.includes('interest_revenue: stale: last reported 2024-05-30')) {
+    errors.push(`stale-pad debt=${pad.total_debt?.value_text} int=${pad.interest_revenue?.value_text} gaps ${JSON.stringify(padGaps)}`);
   }
   const span = api.taggedSlots(factsFor(api, 'span-tie').facts).company_revenue;
   const spanR = api.taggedSlots(factsFor(api, 'span-tie-rev').facts).company_revenue;
@@ -260,8 +283,10 @@ export function checkReviewerCases(api) {
     errors.push(`stale-slot gap ${JSON.stringify(staleGaps)}`);
   }
   const bank = api.taggedSlots(factsFor(api, 'bank').facts);
-  if (bank.company_revenue?.value_text !== '182447000000' || bank.company_revenue?.concept !== 'us-gaap:Revenues') {
-    errors.push(`bank revenue ${bank.company_revenue?.concept}=${bank.company_revenue?.value_text}`);
+  if (bank.company_revenue?.value_text !== '57347000000'
+    || bank.company_revenue?.concept !== 'us-gaap:RevenuesNetOfInterestExpense'
+    || bank.company_revenue?.ytd?.value_text !== '107183000000') {
+    errors.push(`bank revenue ${bank.company_revenue?.concept}=${bank.company_revenue?.value_text} ytd ${bank.company_revenue?.ytd?.value_text}`);
   }
   if (bank.total_debt || bank.interest_revenue) {
     errors.push(`bank stale slots still filled debt=${bank.total_debt?.value_text} int=${bank.interest_revenue?.value_text}`);
@@ -278,6 +303,7 @@ export function checkCompanyfactsExact(api) {
     'old-primary', 'q111', 'q111-rev', 'concept-priority',
     'sixk-q', 'tenkt', 'sixk-nofp', 'tenkt-q', 'k-vs-q4',
     'primary-ytd', 'span-tie', 'span-tie-rev', 'true-total', 'stale-slot',
+    'sixk-fy-q', 'tenkt-short', 'lease-only', 'stale-pad',
   ]) {
     if (!(index.issuers || []).some((row) => row.id === need)) errors.push(`missing reviewer fixture ${need}`);
   }
@@ -309,6 +335,34 @@ export function checkCompanyfactsExact(api) {
         if (!gaps.includes(msg)) errors.push(`${row.id} missing gap ${msg}`);
       }
     }
+  }
+  errors.push(...checkFullMappedExtracts());
+  return errors;
+}
+
+export function checkFullMappedExtracts() {
+  const errors = [];
+  const dirs = readdirSync(CF_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
+  for (const dir of dirs) {
+    const srcPath = path.join(CF_DIR, dir.name, 'source-concepts.json');
+    if (!existsSync(srcPath)) continue;
+    const src = JSON.parse(readFileSync(srcPath, 'utf8'));
+    if (src.extract !== 'full-mapped') errors.push(`${dir.name} source-concepts missing extract:full-mapped`);
+    const doc = JSON.parse(readFileSync(path.join(CF_DIR, dir.name, 'companyfacts.json'), 'utf8'));
+    const missing = missingMappedFromSource(doc, src.concepts || {});
+    if (missing.length) errors.push(`${dir.name} trimmed mapped concepts: ${missing.join(', ')}`);
+  }
+  const bankSrc = JSON.parse(readFileSync(path.join(CF_DIR, 'bank', 'source-concepts.json'), 'utf8'));
+  if (bankSrc.concepts?.['us-gaap:RevenuesNetOfInterestExpense']?.USD !== 149) {
+    errors.push('bank source-concepts dropped RevenuesNetOfInterestExpense');
+  }
+  const trimmed = JSON.parse(readFileSync(path.join(CF_DIR, 'bank', 'companyfacts.json'), 'utf8'));
+  if (trimmed.facts?.['us-gaap']?.RevenuesNetOfInterestExpense) {
+    delete trimmed.facts['us-gaap'].RevenuesNetOfInterestExpense;
+  }
+  const trimmedMissing = missingMappedFromSource(trimmed, bankSrc.concepts || {});
+  if (!trimmedMissing.some((m) => m.includes('RevenuesNetOfInterestExpense'))) {
+    errors.push('completeness check did not fail after deleting RNIE from a bank copy');
   }
   return errors;
 }

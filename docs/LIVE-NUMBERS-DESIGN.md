@@ -276,12 +276,13 @@ For each structured metric:
 3. **Same period** (`end` + `start` or instant `end`): pick the latest `filed`. Tie → latest `accn` (string compare is the accession order the SEC issues). The displaced value, if `value_text` differs, is `prior` with `restated: true`.
 4. **Current slot** among remaining period winners:
    - Latest `end` wins (most recent reported period).
-   - Same `end`, duration metric. Rank is concept-list order first, then duration preference, then span length, then later `filed` / `accn`. Array order never decides.
+   - Same `end`, duration metric. Rank is duration preference first (quarter > YTD > annual on an interim slot), then concept-list order, then span length, then later `filed` / `accn`. Array order never decides.
     - A 6-K is an interim form even without `fp`. Classify its duration by relative span (then day buckets). Prefer quarter over YTD when the slot is interim.
-    - If any annual-form (`10-K` / `10-KT` / `20-F` / `40-F`) annual-duration point exists at that end, the slot is annual (10-K vs Q4 10-Q same end; 10-KT `fp=FY` with a quarter peer). The quarter point stays classified as a quarter; it does not win the annual slot.
-    - Otherwise if a `10-Q` or `6-K` is present: prefer quarter over YTD over annual. Classify duration by `fp` and relative span at the same end (the shorter intra-year point is the quarter). Day buckets are a fallback only (quarter ≤ 130 days, including a 16-week / 111-day quarter).
+    - A 6-K full-year is annual; a same-end 6-K quarter stays the live quarter. The annual is not attached as YTD and does not replace the quarter.
+    - If any annual-form (`10-K` / `10-KT` / `20-F` / `40-F`) annual-duration point exists at that end, the slot is annual (10-K vs Q4 10-Q same end; 10-KT `fp=FY` with a quarter peer, including a short 10-KT ≤ 340 days). The quarter point stays classified as a quarter; it does not win the annual slot.
+    - Otherwise if a `10-Q` or `6-K` is present: prefer quarter over YTD over annual. Classify duration by `fp` and relative span at the same end (the shorter intra-year point is the quarter). `fp=FY` on a 10-KT is annual before relative-span YTD. Day buckets are a fallback only (quarter ≤ 130 days, including a 16-week / 111-day quarter).
     - Else prefer annual duration. No `ytd`.
-    - Same-end primary YTD beats a fallback-concept quarter because concept order is first.
+    - Same-end cross-concept primary YTD attaches to the live quarter. Concept-first must not turn a half-year into the 10-Q value.
     - Span length is part of the rank so two same-end annuals (or two quarters) cannot tie on JSON array order.
 5. Instant metrics (cash, debt, goodwill): `end` only. No duration contest. Latest `end`, then latest `filed`.
 6. Units:
@@ -291,7 +292,7 @@ For each structured metric:
    - Other units do not fill.
 7. Do not sum two concepts (no “current debt + noncurrent debt”). If the filer never reports a mapped total-debt concept, the slot is empty and the gap says so.
 8. A reported zero is a value. Absence is a gap.
-9. **Stale slot.** After the winner is chosen, compare its `end` to the filer's latest allowed periodic `end` (`10-K` / `10-Q` / `20-F` / `40-F` / `10-KT` / `6-K` across the facts). If the winner is older than ~2 fiscal years (`STALE_DAYS = 730`), emit no slot and a gap `{id}: stale: last reported {end}`. A last-10-K total that is only one quarter behind a later 10-Q (JPM `Revenues` 2025-12-31 vs 2026-06-30) stays. JPM `LongTermDebt` 2014 and `InterestAndDividendIncomeOperating` 2012 are stale.
+9. **Stale slot.** After the winner is chosen, compare its `end` to the filer's latest allowed periodic `end` (`10-K` / `10-Q` / `20-F` / `40-F` / `10-KT` / `6-K` across the facts). If the winner is older than two missed annual periods, emit no slot and a gap `{id}: stale: last reported {end}`. **Choice: `STALE_DAYS = 760`** (2×365 plus a leap/53-week pad). A 730-day cutoff (2×365 with no pad) flips after a leap year or a 53-week year (731–742 days). Counting `fy` labels was rejected: 6-K and short 10-KT often lack a reliable fy series. A last-10-K total that is only one quarter behind a later 10-Q (JPM `Revenues` 2025-12-31 vs 2026-06-30) stays. JPM `LongTermDebt` 2014 and `InterestAndDividendIncomeOperating` 2012 are stale. A 759-day fact stays; a 761-day fact is stale.
 
 This is the opposite of the iXBRL round's “longer duration wins,” which made 10-Q YTD beat the quarter (PR #5 review). Restatements win by `filed`/`accn`, which is the opposite of “first definition kept.”
 
@@ -303,7 +304,7 @@ One shared file: `ontology/schema/taxonomy_xbrl.json`. Headline ids are short. T
 
 | id | period | unit | Ordered concepts |
 | --- | --- | --- | --- |
-| `company_revenue` | duration | currency | **True totals only:** `us-gaap:Revenues`, `us-gaap:SalesRevenueNet`, `us-gaap:RegulatedAndUnregulatedOperatingRevenue`, `us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax`, `us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax`, `ifrs-full:Revenue`, `ifrs-full:RevenueFromContractsWithCustomers`; fallback true-total synonyms `us-gaap:PremiumsEarnedNet`, `us-gaap:RevenuesNetOfInterestExpense`. **Not** components (`OperatingLeaseLeaseIncome`, `InterestAndDividendIncomeOperating`, collaborative-arrangement slices). |
+| `company_revenue` | duration | currency | **True totals only:** `us-gaap:Revenues`, `us-gaap:SalesRevenueNet`, `us-gaap:RegulatedAndUnregulatedOperatingRevenue`, `us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax`, `us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax`, `ifrs-full:Revenue`, `ifrs-full:RevenueFromContractsWithCustomers`; fallback true-total synonyms `us-gaap:PremiumsEarnedNet`, `us-gaap:RevenuesNetOfInterestExpense`. **Not** a fallback: `OperatingLeaseLeaseIncome` fills only when the filer has no true-total concept, with gap `lease income only`. **Not** components (`InterestAndDividendIncomeOperating`, collaborative-arrangement slices). |
 | `operating_income` | duration | currency | `us-gaap:OperatingIncomeLoss`, `ifrs-full:ProfitLossFromOperatingActivities` |
 | `net_income` | duration | currency | `us-gaap:NetIncomeLoss`, `ifrs-full:ProfitLoss` |
 | `diluted_eps` | duration | per_share | `us-gaap:EarningsPerShareDiluted`, `us-gaap:IncomeLossFromContinuingOperationsPerDilutedShare`, `ifrs-full:DilutedEarningsLossPerShare`, `ifrs-full:BasicAndDilutedEarningsLossPerShare` |
@@ -334,7 +335,8 @@ These are not headline totals. They may still appear as live rows from classifie
 | --- | --- |
 | No cache | All structured slots empty. Gap `companyfacts cache missing; headline slots empty`. |
 | Cache present, concept absent | That slot empty. Gap `{id}: not reported in structured data`. |
-| Cache present, latest mapped fact older than ~2 fiscal years vs the filer's latest 10-K/10-Q/20-F/40-F/10-KT/6-K `end` | That slot empty. Gap `{id}: stale: last reported {end}`. Do not trim the fixture to hide the old tag. |
+| Cache present, latest mapped fact older than 760 days (two missed annual periods plus leap/53-week pad) vs the filer's latest 10-K/10-Q/20-F/40-F/10-KT/6-K `end` | That slot empty. Gap `{id}: stale: last reported {end}`. Do not trim the fixture to hide the old tag. |
+| Cache present, filer has no true-total revenue concept, only `OperatingLeaseLeaseIncome` | `company_revenue` filled from lease income. Gap `{id}: lease income only`. |
 | Cache present, only dimensional would have existed | N/A — companyfacts has no dimensions. |
 | Sentence names a structured metric | `context_claims` with reason `structured_slot` or `no_structured_fact`. Live value unchanged. |
 | Sentence names a phrase-only metric | Existing phrase rules. May be a live row. |
@@ -345,9 +347,11 @@ These are not headline totals. They may still appear as live rows from classifie
 | 53-week year | Duration ≥ 341 counts as annual. Period end is the filed `end`, not snapped to a calendar quarter. |
 | Unpadded / written dates on sentences | Existing `parse_as_of`. Not used to pick a companyfacts point. |
 
-**True-total rule.** A `concepts` or `fallback` entry on a total slot may only be a synonym for that total (same economic line, different tag). Components, slices, and product/geography tags are unmapped. Documented in `taxonomy_xbrl.json` `comment`. Restoring `OperatingLeaseLeaseIncome` to `company_revenue` makes untrimmed JPM report $1.207B lease income; that is a failed map, not a fixture trim.
+**True-total rule.** A `concepts` or `fallback` entry on a total slot may only be a synonym for that total (same economic line, different tag). Components, slices, and product/geography tags are unmapped. Documented in `taxonomy_xbrl.json` `comment`. Restoring `OperatingLeaseLeaseIncome` to the fallback list makes a filer that also reports `Revenues` take lease income when that point is newer; that is a failed map, not a fixture trim. Live JPM `company_revenue` is `RevenuesNetOfInterestExpense` Q2 2026 $57,347,000,000 (YTD $107,183,000,000).
 
-**Forbidden fallbacks.** Guess a year-end month from sector. Convert EUR to USD. Sum two debt concepts. Fill a headline from “Revenue was $X”. Parse iXBRL HTML when the cache is missing. Call the SEC from `live_claims`. Trim a real extract so a component tag disappears.
+**Full-mapped extract rule.** A sector fixture taken from live companyfacts must keep every taxonomy-mapped concept present in the live source, with the same per-unit point counts (`source-concepts.json`). A completeness check fails if a mapped live concept is missing from the fixture. Do not trim RNIE (or any other mapped tag) to lock an older `Revenues` annual. Unmapped tags may be omitted. Synthetic reviewer fixtures stay synthetic.
+
+**Forbidden fallbacks.** Guess a year-end month from sector. Convert EUR to USD. Sum two debt concepts. Fill a headline from “Revenue was $X”. Parse iXBRL HTML when the cache is missing. Call the SEC from `live_claims`. Trim a real extract so a mapped tag disappears.
 
 ## Compatibility with later phases
 
@@ -362,13 +366,13 @@ Merge forward is rebase-or-merge of this branch into `#6` → `#7` → `#8` → 
 
 ## Fixture set
 
-`harness-stress/fixtures/companyfacts/`. Public SEC data, trimmed to headline concepts plus the tripwire concepts the selector needs. Not a desk. Not a house view. Not Anthony’s vault.
+`harness-stress/fixtures/companyfacts/`. Public SEC data. Full-mapped sector extracts (`extract: full-mapped` + `source-concepts.json`) keep every mapped live concept; synthetic reviewer cases stay synthetic. Not a desk. Not a house view. Not Anthony’s vault.
 
 Ten sectors from the plan, plus a restatement case and a 10-Q YTD case. Extra names only if needed to reach a clean expected.json. Avoid kernel dogfood tickers (`NVDA`, `MU`, `LLY`) and covered pack names used as product defaults.
 
 | id | Sector / case | Form | Reporting | Why |
 | --- | --- | --- | --- | --- |
-| `bank` | Bank | 10-K | us-gaap | Top line + net interest; deposits must not become cash |
+| `bank` | Bank | 10-Q | us-gaap | Full-mapped JPM extract; RNIE Q2 2026 $57.347B + YTD. Completeness pinned to `source-concepts.json` |
 | `insurer` | Insurer | 10-K | us-gaap | Premiums concept |
 | `reit` | REIT | 10-K | us-gaap | Rental / lease income concept |
 | `utility` | Utility | 10-K | us-gaap | Operating / regulated revenue |
@@ -383,16 +387,21 @@ Ten sectors from the plan, plus a restatement case and a 10-Q YTD case. Extra na
 | `sixk-q` / `sixk-nofp` | 6-K | 6-K | ifrs-full | Quarter + YTD; without `fp`, classify by span |
 | `tenkt` / `tenkt-q` | 10-KT | 10-KT | us-gaap | Transition annual; with a quarter peer still annual |
 | `k-vs-q4` | 10-K vs Q4 10-Q | 10-K | us-gaap | Same end → annual slot is the 10-K |
-| `primary-ytd` | concept order | 10-Q | us-gaap | Primary YTD beats fallback quarter |
+| `primary-ytd` | duration first | 10-Q | us-gaap | Same-end fallback quarter stays live; primary YTD attaches |
 | `span-tie` / `span-tie-rev` | rank | 10-K | us-gaap | Span length, not array order |
 | `true-total` | map | 10-K | us-gaap | Newer lease income must not steal `Revenues` |
 | `stale-slot` | staleness | 10-K | us-gaap | 2014 debt empty; gap `stale: last reported` |
+| `sixk-fy-q` | 6-K FY + Q | 6-K | ifrs-full | Full-year stays annual; same-end quarter is live |
+| `tenkt-short` | short 10-KT | 10-KT | us-gaap | `fp=FY` ≤340 days is annual, not YTD |
+| `lease-only` | lessor | 10-K | us-gaap | Lease income only when no true-total; gap `lease income only` |
+| `stale-pad` | 760-day pad | 10-Q | us-gaap | 759-day debt stays; 761-day interest is stale |
 
 Each folder:
 
 ```text
-companyfacts.json   # trimmed SEC document (entityName, cik, facts for mapped concepts)
-expected.json       # headline slots + gaps, hand-checkable against that filing
+companyfacts.json     # SEC document (full mapped extract, or synthetic reviewer case)
+expected.json         # headline slots + gaps, hand-checkable against that filing
+source-concepts.json  # full-mapped only: live concept → unit → point count
 ```
 
 `expected.json` shape:
@@ -438,6 +447,9 @@ Proof is exit codes, not report prose.
 11. **Gates.** All must exit 0:
 
 ```text
+python3 ontology/tests/prove_review_fixes.py
+node ontology/tests/prove_review_fixes.mjs
+node memory-cockpit-v2/scripts/companyfacts-test.mjs
 node harness-stress/run.mjs --assert p0
 node harness-stress/run.mjs --assert sectors
 node memory-cockpit-v2/scripts/contextpack-test.mjs
@@ -446,6 +458,8 @@ python3 -m unittest tests.test_companyfacts tests.test_contextpack_live tests.te
 npm run test:platform --prefix memory-cockpit-v2
 node harness-stress/run.mjs
 ```
+
+Run the two prove scripts sequentially, never in parallel (they edit live parser files).
 
 After merge-forward onto `cursor/harness-p5-tool-catalog-440b`: `--assert p0` through `--assert p5` and `--assert sectors`.
 

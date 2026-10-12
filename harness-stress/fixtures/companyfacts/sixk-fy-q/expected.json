@@ -1,0 +1,15 @@
+{
+  "id": "sixk-fy-q",
+  "comment": "6-K full-year stays annual; same-end 6-K quarter stays the live quarter. The annual is not attached as YTD and does not replace the quarter.",
+  "slots": {
+    "company_revenue": {
+      "value_text": "250000000",
+      "end": "2025-12-31",
+      "start": "2025-10-01",
+      "concept": "ifrs-full:Revenue",
+      "form": "6-K",
+      "filed": "2026-02-15",
+      "unit": "EUR"
+    }
+  }
+}

@@ -11,8 +11,11 @@ REPO = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
 from api.companyfacts import (  # noqa: E402
+    STALE_DAYS,
+    extract_mapped_document,
     headline_gaps,
     load_taxonomy,
+    missing_mapped_from_source,
     parse_companyfacts,
     structured_metric,
     tagged_slots,
@@ -134,8 +137,29 @@ class FixturesMatchExpected(unittest.TestCase):
         self.assertEqual(kq4["value_text"], "1000000000")
         self.assertEqual(kq4["form"], "10-K")
         pytd = tagged_slots(parse_companyfacts(load_pair("primary-ytd")[0])["facts"])["company_revenue"]
-        self.assertEqual(pytd["concept"], "us-gaap:Revenues")
-        self.assertEqual(pytd["value_text"], "500000000")
+        self.assertEqual(pytd["concept"], "us-gaap:SalesRevenueNet")
+        self.assertEqual(pytd["value_text"], "80000000")
+        self.assertEqual(pytd["ytd"]["value_text"], "500000000")
+        sixk_fy = tagged_slots(parse_companyfacts(load_pair("sixk-fy-q")[0])["facts"])["company_revenue"]
+        self.assertEqual(sixk_fy["value_text"], "250000000")
+        self.assertEqual(sixk_fy["form"], "6-K")
+        self.assertIsNone(sixk_fy.get("ytd"))
+        tenkt_short = tagged_slots(parse_companyfacts(load_pair("tenkt-short")[0])["facts"])["company_revenue"]
+        self.assertEqual(tenkt_short["value_text"], "340000000")
+        self.assertEqual(tenkt_short["form"], "10-KT")
+        lease_doc, _ = load_pair("lease-only")
+        lease_facts = parse_companyfacts(lease_doc)["facts"]
+        lease = tagged_slots(lease_facts)["company_revenue"]
+        self.assertEqual(lease["concept"], "us-gaap:OperatingLeaseLeaseIncome")
+        self.assertEqual(lease["value_text"], "1207000000")
+        self.assertIn("company_revenue: lease income only", headline_gaps(tagged_slots(lease_facts), facts=lease_facts))
+        pad_doc, _ = load_pair("stale-pad")
+        pad_facts = parse_companyfacts(pad_doc)["facts"]
+        pad = tagged_slots(pad_facts)
+        self.assertEqual(pad["total_debt"]["value_text"], "500000000")
+        self.assertNotIn("interest_revenue", pad)
+        self.assertIn("interest_revenue: stale: last reported 2024-05-30", headline_gaps(pad, facts=pad_facts))
+        self.assertEqual(STALE_DAYS, 760)
         span = tagged_slots(parse_companyfacts(load_pair("span-tie")[0])["facts"])["company_revenue"]
         span_r = tagged_slots(parse_companyfacts(load_pair("span-tie-rev")[0])["facts"])["company_revenue"]
         self.assertEqual(span["value_text"], "200000000")
@@ -151,10 +175,40 @@ class FixturesMatchExpected(unittest.TestCase):
         self.assertIn("total_debt: stale: last reported 2014-06-30", gaps)
         bank_doc, _ = load_pair("bank")
         bank = tagged_slots(parse_companyfacts(bank_doc)["facts"])
-        self.assertEqual(bank["company_revenue"]["concept"], "us-gaap:Revenues")
-        self.assertEqual(bank["company_revenue"]["value_text"], "182447000000")
+        self.assertEqual(bank["company_revenue"]["concept"], "us-gaap:RevenuesNetOfInterestExpense")
+        self.assertEqual(bank["company_revenue"]["value_text"], "57347000000")
+        self.assertEqual(bank["company_revenue"]["ytd"]["value_text"], "107183000000")
         self.assertNotIn("total_debt", bank)
         self.assertNotIn("interest_revenue", bank)
+
+    def test_full_mapped_fixtures_keep_every_source_concept(self):
+        for folder in FIXTURES.iterdir():
+            src_path = folder / "source-concepts.json"
+            if not src_path.is_file():
+                continue
+            src = json.loads(src_path.read_text(encoding="utf-8"))
+            self.assertEqual(src.get("extract"), "full-mapped", folder.name)
+            doc = json.loads((folder / "companyfacts.json").read_text(encoding="utf-8"))
+            missing = missing_mapped_from_source(doc, src["concepts"])
+            self.assertEqual(missing, [], f"{folder.name} trimmed {missing}")
+
+    def test_trimming_mapped_concept_fails_completeness(self):
+        src = json.loads((FIXTURES / "bank" / "source-concepts.json").read_text(encoding="utf-8"))
+        self.assertEqual(src["concepts"]["us-gaap:RevenuesNetOfInterestExpense"]["USD"], 149)
+        doc = json.loads((FIXTURES / "bank" / "companyfacts.json").read_text(encoding="utf-8"))
+        del doc["facts"]["us-gaap"]["RevenuesNetOfInterestExpense"]
+        missing = missing_mapped_from_source(doc, src["concepts"])
+        self.assertTrue(any("RevenuesNetOfInterestExpense" in m for m in missing))
+
+    def test_bank_matches_live_mapped_when_present(self):
+        live_path = Path("/tmp/jpm-live.json")
+        if not live_path.is_file():
+            self.skipTest("live JPM companyfacts not present")
+        live = json.loads(live_path.read_text(encoding="utf-8"))
+        fixture = json.loads((FIXTURES / "bank" / "companyfacts.json").read_text(encoding="utf-8"))
+        _, live_inv = extract_mapped_document(live)
+        missing = missing_mapped_from_source(fixture, live_inv)
+        self.assertEqual(missing, [], f"bank fixture missing live mapped {missing}")
 
 
 class ReviewSentencesNeverFill(unittest.TestCase):

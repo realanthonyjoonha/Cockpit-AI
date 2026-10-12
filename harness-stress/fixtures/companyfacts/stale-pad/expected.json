@@ -1,0 +1,26 @@
+{
+  "id": "stale-pad",
+  "comment": "STALE_DAYS is 760 (two missed annual periods plus leap/53-week pad). A 759-day fact stays; a 730-day cutoff would drop it. A 761-day fact is stale.",
+  "slots": {
+    "company_revenue": {
+      "value_text": "100000000",
+      "end": "2026-06-30",
+      "start": "2026-04-01",
+      "concept": "us-gaap:Revenues",
+      "form": "10-Q",
+      "filed": "2026-08-06",
+      "unit": "USD"
+    },
+    "total_debt": {
+      "value_text": "500000000",
+      "end": "2024-06-01",
+      "start": null,
+      "concept": "us-gaap:LongTermDebt",
+      "form": "10-Q",
+      "filed": "2024-08-04",
+      "unit": "USD"
+    }
+  },
+  "empty": ["interest_revenue"],
+  "gaps_contain": ["interest_revenue: stale: last reported 2024-05-30"]
+}
