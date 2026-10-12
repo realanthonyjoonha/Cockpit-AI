@@ -545,6 +545,14 @@ def _context_row(c: dict[str, Any], mid: str, reason: str) -> dict[str, Any]:
     }
 
 
+def _slot_as_of_label(slot: dict[str, Any]) -> str:
+    as_of = slot.get("as_of")
+    if as_of:
+        return str(as_of)
+    accn = slot.get("accession")
+    return f"latest-filing {accn}" if accn else "latest-filing"
+
+
 def live_claims(
     claims: list[dict[str, Any]],
     rules: dict[str, Any] | None = None,
@@ -607,7 +615,7 @@ def live_claims(
     indexed: list[tuple[int, dict[str, Any]]] = []
     superseded: list[dict[str, Any]] = []
     for mid, n in newer.items():
-        add_gap(f"{mid}: {n} newer sentence(s) not used; live value is the companyfacts {slots[mid]['as_of']} fact")
+        add_gap(f"{mid}: {n} newer sentence(s) not used; live value is the companyfacts {_slot_as_of_label(slots[mid])} fact")
     for mid in blocked:
         add_gap(HEADLINE_GAP.format(mid=mid))
     for k, row in enumerate(slots.values()):
@@ -749,6 +757,16 @@ def stale_tripwires(
     return out
 
 
+_PACKED_VALUE_KEYS = (
+    "concept", "tags", "value_text", "unit", "period", "span",
+    "form", "fp", "fy", "filed", "accession",
+)
+
+
+def _slim_labeled_value(val: dict[str, Any]) -> dict[str, Any]:
+    return {k: val.get(k) for k in _PACKED_VALUE_KEYS}
+
+
 def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
     row = {
         "id": c.get("id"),
@@ -762,8 +780,11 @@ def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
         row["origin"] = c.get("origin")
         row["confidence"] = c.get("confidence")
     if c.get("origin") in ("companyfacts", "xbrl"):
-        for key in ("concept", "value", "unit"):
-            row[key] = c.get(key)
+        for key in ("concept", "value", "value_text", "unit"):
+            if key in c:
+                row[key] = c.get(key)
+        if c.get("values"):
+            row["values"] = [_slim_labeled_value(v) for v in c.get("values") or [] if isinstance(v, dict)]
     return row
 
 

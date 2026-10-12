@@ -1,16 +1,16 @@
 {
-  "cik": 9,
-  "entityName": "Primary YTD beats fallback quarter at same end",
+  "cik": 3,
+  "entityName": "Constructed Same Period Disagree",
   "facts": {
     "us-gaap": {
       "Revenues": {
         "units": {
           "USD": [
             {
-              "start": "2025-01-01",
+              "start": "2025-04-01",
               "end": "2025-06-30",
-              "val": 500000000,
-              "accn": "0000000009-25-000002",
+              "val": 31,
+              "accn": "0000000003-25-000003",
               "fy": 2025,
               "fp": "Q2",
               "form": "10-Q",
@@ -19,14 +19,14 @@
           ]
         }
       },
-      "SalesRevenueNet": {
+      "RevenuesNetOfInterestExpense": {
         "units": {
           "USD": [
             {
               "start": "2025-04-01",
               "end": "2025-06-30",
-              "val": 80000000,
-              "accn": "0000000009-25-000002",
+              "val": 32,
+              "accn": "0000000003-25-000003",
               "fy": 2025,
               "fp": "Q2",
               "form": "10-Q",

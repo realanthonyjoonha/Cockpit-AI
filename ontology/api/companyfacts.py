@@ -1,7 +1,8 @@
-"""SEC companyfacts → normalized facts and live slots. No network. No model.
+"""SEC companyfacts → labeled per-period slots. No network. No model.
 
-Reads a local companyfacts JSON (the SEC XBRL companyfacts document, or a
-full mapped-concept extract). Same algorithm as memory-cockpit-v2/server/companyfacts.js.
+Reads a local companyfacts JSON. Same algorithm as
+memory-cockpit-v2/server/companyfacts.js. V2: latest filing, group by period,
+unique-or-gap. No ranking engine.
 """
 from __future__ import annotations
 
@@ -16,16 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TAXONOMY_PATH = ROOT / "schema" / "taxonomy_xbrl.json"
 
 ALLOWED_FORMS = {"10-K", "10-Q", "20-F", "40-F", "6-K", "10-KT"}
-ANNUAL_FORMS = {"10-K", "20-F", "40-F", "10-KT"}
-INTERIM_FORMS = {"10-Q", "6-K"}
-QUARTER_FP = {"Q1", "Q2", "Q3"}
 ISO4217 = re.compile(r"^[A-Z]{3}$")
 TAXONOMIES = ("us-gaap", "ifrs-full")
-# Two missed annual periods as a day count: 2*365 plus a leap/53-week pad.
-# 730 (2*365) flips after a leap year or a 53-week year (731–742). Counting
-# fy labels was rejected: 6-K and short 10-KT often lack a reliable fy series.
-STALE_DAYS = 760
-LEASE_REVENUE = "us-gaap:OperatingLeaseLeaseIncome"
 
 _TAXONOMY: dict[str, Any] | None = None
 
@@ -42,7 +35,7 @@ def load_taxonomy() -> dict[str, Any]:
 
 def sentence_fill_allowed(metric_id: str, tax: dict[str, Any] | None = None) -> bool:
     spec = ((tax or load_taxonomy()).get("metrics") or {}).get(canonical_metric(metric_id, tax)) or {}
-    if spec.get("concepts") or spec.get("fallback"):
+    if spec.get("concepts"):
         return False
     return spec.get("sentence_fill") is not False
 
@@ -51,7 +44,7 @@ def structured_metric(metric_id: str, tax: dict[str, Any] | None = None) -> bool
     spec = ((tax or load_taxonomy()).get("metrics") or {}).get(metric_id) or {}
     if spec.get("alias_of"):
         return True
-    return bool(spec.get("concepts") or spec.get("fallback"))
+    return bool(spec.get("concepts"))
 
 
 def concept_index(tax: dict[str, Any] | None = None) -> dict[str, str]:
@@ -60,7 +53,7 @@ def concept_index(tax: dict[str, Any] | None = None) -> dict[str, str]:
     for mid, spec in (tax.get("metrics") or {}).items():
         if spec.get("alias_of"):
             continue
-        for concept in list(spec.get("concepts") or []) + list(spec.get("fallback") or []):
+        for concept in list(spec.get("concepts") or []):
             idx.setdefault(concept, mid)
             idx.setdefault(concept.split(":")[-1], mid)
     return idx
@@ -108,51 +101,13 @@ def form_family(form: str | None) -> str:
     return (form or "").split("/")[0].upper()
 
 
-def _days(start: str | None, end: str | None) -> int:
+def _days(start: str | None, end: str | None) -> int | None:
     if not start or not end:
-        return 0
+        return None
     try:
         return (date.fromisoformat(end) - date.fromisoformat(start)).days
     except ValueError:
-        return 0
-
-
-def duration_kind(
-    days: int,
-    fp: str | None = None,
-    form: str | None = None,
-    peer_days: list[int] | None = None,
-) -> str:
-    """Classify a duration by fp / form / relative span. Never uses array order."""
-    family = form_family(form)
-    fp_u = (fp or "").upper()
-    peers = [int(p) for p in (peer_days or [])]
-    longer = any(p > days + 14 for p in peers)
-    shorter = any(p < days - 14 for p in peers)
-    if family == "10-KT" and fp_u == "FY":
-        return "annual"
-    if fp_u == "FY" and family in ANNUAL_FORMS:
-        return "annual"
-    if longer and days <= 200:
-        return "quarter"
-    if shorter and days <= 340:
-        return "ytd"
-    if family in ANNUAL_FORMS or fp_u == "FY":
-        if days >= 300 or fp_u == "FY":
-            return "annual"
-    if fp_u in QUARTER_FP:
-        if days <= 130:
-            return "quarter"
-        if days <= 340:
-            return "ytd"
-        return "annual"
-    if days >= 341:
-        return "annual"
-    if 70 <= days <= 130:
-        return "quarter"
-    if 131 <= days <= 340:
-        return "ytd"
-    return "other"
+        return None
 
 
 def canonical_metric(metric_id: str, tax: dict[str, Any] | None = None) -> str:
@@ -187,18 +142,15 @@ def _unit_ok(unit: str, kind: str) -> bool:
 MISSING_CACHE = "companyfacts cache missing; headline slots empty"
 UNREADABLE = "companyfacts cache unreadable"
 STRUCTURED_GAP = "{mid}: not reported in structured data"
-STALE_GAP = "{mid}: stale: last reported {end}"
-LEASE_ONLY_GAP = "{mid}: lease income only"
 
 
 def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, Any]:
-    """Normalized facts from a companyfacts object. Never opens a network."""
+    """NormalizedFact list. No network. No ranking."""
     notes: list[str] = []
     if not isinstance(doc, dict) or not isinstance(doc.get("facts"), dict):
         return {"facts": [], "notes": [UNREADABLE], "entity": None, "cik": None}
     facts_root = doc["facts"]
     out: list[dict[str, Any]] = []
-    order = 0
     for tax in TAXONOMIES:
         group = facts_root.get(tax)
         if not isinstance(group, dict):
@@ -238,6 +190,7 @@ def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, A
                     if start and not re.match(r"^\d{4}-\d{2}-\d{2}$", start):
                         start = None
                     period_type = "duration" if start else "instant"
+                    days = _days(start, end) if start else None
                     out.append({
                         "concept": concept,
                         "value": to_number(text),
@@ -245,6 +198,7 @@ def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, A
                         "unit": str(unit),
                         "currency": _currency(str(unit)),
                         "period": {"type": period_type, "start": start, "end": end},
+                        "duration_days": days,
                         "fy": raw.get("fy") if isinstance(raw.get("fy"), int) else None,
                         "fp": raw.get("fp") if isinstance(raw.get("fp"), str) else None,
                         "form": form,
@@ -252,9 +206,7 @@ def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, A
                         "accession": str(accn),
                         "dimensional": False,
                         "source_id": source_id or f"companyfacts:{accn}",
-                        "order": order,
                     })
-                    order += 1
     return {
         "facts": out,
         "notes": notes,
@@ -278,25 +230,9 @@ def mapped_facts(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None)
     for spec in (tax.get("metrics") or {}).values():
         if spec.get("alias_of"):
             continue
-        for c in list(spec.get("concepts") or []) + list(spec.get("fallback") or []):
+        for c in list(spec.get("concepts") or []):
             known.add(c)
     return [f for f in facts or [] if f.get("concept") in known and not f.get("dimensional")]
-
-
-def _period_desc(period: dict[str, Any]) -> str:
-    if period.get("type") == "duration":
-        return f"{period.get('start')} to {period.get('end')}"
-    return str(period.get("end"))
-
-
-def _period_label(period: dict[str, Any]) -> str:
-    if period.get("type") == "duration":
-        return f"{period.get('start')}/{period.get('end')}"
-    return str(period.get("end"))
-
-
-def _metric_concepts(spec: dict[str, Any]) -> tuple[list[str], list[str]]:
-    return list(spec.get("concepts") or []), list(spec.get("fallback") or [])
 
 
 def mapped_concepts(tax: dict[str, Any] | None = None) -> list[str]:
@@ -305,12 +241,11 @@ def mapped_concepts(tax: dict[str, Any] | None = None) -> list[str]:
     for spec in (tax.get("metrics") or {}).values():
         if spec.get("alias_of"):
             continue
-        out.extend(list(spec.get("concepts") or []) + list(spec.get("fallback") or []))
+        out.extend(list(spec.get("concepts") or []))
     return sorted(set(out))
 
 
 def mapped_inventory(doc: dict[str, Any], tax: dict[str, Any] | None = None) -> dict[str, dict[str, int]]:
-    """Per-unit point counts for every mapped concept present in the document."""
     return extract_mapped_document(doc, tax)[1]
 
 
@@ -319,7 +254,6 @@ def missing_mapped_from_source(
     source_inventory: dict[str, Any],
     tax: dict[str, Any] | None = None,
 ) -> list[str]:
-    """Mapped concepts (or unit counts) present in the live source but missing from the fixture."""
     have = mapped_inventory(fixture_doc, tax)
     missing: list[str] = []
     for concept, units in (source_inventory or {}).items():
@@ -333,7 +267,7 @@ def missing_mapped_from_source(
 
 
 def extract_mapped_document(doc: dict[str, Any], tax: dict[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Copy every mapped concept node from a live companyfacts document. No point deletions."""
+    """Copy every mapped concept node. No point deletions. Opt-in refresh helper."""
     tax = tax or load_taxonomy()
     want: dict[str, set[str]] = {}
     for concept in mapped_concepts(tax):
@@ -366,191 +300,236 @@ def extract_mapped_document(doc: dict[str, Any], tax: dict[str, Any] | None = No
     return extracted, inventory
 
 
-def _latest_periodic_end(facts: list[dict[str, Any]]) -> str | None:
-    ends = [
-        f["period"]["end"]
-        for f in facts or []
-        if form_family(f.get("form")) in ALLOWED_FORMS
-        and (f.get("period") or {}).get("end")
-    ]
-    return max(ends) if ends else None
+def latest_accession(facts: list[dict[str, Any]]) -> str | None:
+    """max (filed, accession) among ALLOWED_FORMS. None if empty."""
+    best: tuple[tuple[str, str], str] | None = None
+    for f in facts or []:
+        if form_family(f.get("form")) not in ALLOWED_FORMS:
+            continue
+        filed = str(f.get("filed") or "")
+        accn = str(f.get("accession") or "")
+        if not accn:
+            continue
+        key = (filed, accn)
+        if best is None or key > best[0]:
+            best = (key, accn)
+    return best[1] if best else None
 
 
-def fact_is_stale(end: str | None, latest: str | None) -> bool:
-    return bool(end and latest and _days(end, latest) > STALE_DAYS)
+def period_key(fact: dict[str, Any]) -> tuple[str | None, str | None]:
+    """(period.start, period.end). Instant → (None, end)."""
+    period = fact.get("period") or {}
+    return (period.get("start"), period.get("end"))
 
 
-def stale_gap(mid: str, end: str) -> str:
-    return STALE_GAP.format(mid=mid, end=end)
+def span_label(duration_days: int | None, period_type: str) -> str | None:
+    """Display word only. Not a rank key."""
+    if period_type == "instant":
+        return None
+    if duration_days is None:
+        return "other"
+    if 70 <= duration_days <= 130:
+        return "quarter"
+    if 131 <= duration_days <= 340:
+        return "ytd"
+    if duration_days >= 341:
+        return "annual"
+    return "other"
 
 
-def select_slots(
-    facts: list[dict[str, Any]], tax: dict[str, Any] | None = None
-) -> tuple[dict[str, dict[str, Any]], dict[str, str], dict[str, str]]:
-    """One consolidated slot per structured metric. Stale winners are omitted."""
+def candidates_for(
+    metric_id: str,
+    facts: list[dict[str, Any]],
+    accession: str,
+    tax: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Mapped true-total facts in that accession with a matching unit kind."""
     tax = tax or load_taxonomy()
+    spec = (tax.get("metrics") or {}).get(metric_id) or {}
+    concepts = list(spec.get("concepts") or [])
+    if spec.get("alias_of") or not concepts:
+        return []
+    want_period = spec.get("period")
+    kind = spec.get("unit")
+    out: list[dict[str, Any]] = []
+    for f in facts or []:
+        if f.get("dimensional"):
+            continue
+        if f.get("accession") != accession:
+            continue
+        if f.get("concept") not in concepts:
+            continue
+        period = f.get("period") or {}
+        if period.get("type") != want_period or not period.get("end"):
+            continue
+        if not _unit_ok(str(f.get("unit") or ""), str(kind)):
+            continue
+        out.append(f)
+    return out
+
+
+def group_by_period(facts: list[dict[str, Any]]) -> dict[tuple, list[dict[str, Any]]]:
+    """Partition by period_key."""
+    groups: dict[tuple, list[dict[str, Any]]] = {}
+    for f in facts or []:
+        groups.setdefault(period_key(f), []).append(f)
+    return groups
+
+
+def agree(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """Same value_text and unit. Period is already equal inside a group."""
+    return a.get("value_text") == b.get("value_text") and a.get("unit") == b.get("unit")
+
+
+def _period_agrees(rows: list[dict[str, Any]]) -> bool:
+    if not rows:
+        return True
+    first = rows[0]
+    return all(agree(first, row) for row in rows[1:])
+
+
+def _labeled(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    picked = min(rows, key=lambda f: str(f.get("concept") or ""))
+    period = dict(picked.get("period") or {})
+    days = picked.get("duration_days")
+    if days is None:
+        days = _days(period.get("start"), period.get("end")) if period.get("start") else None
+    return {
+        "concept": picked["concept"],
+        "tags": sorted({str(f.get("concept")) for f in rows if f.get("concept")}),
+        "value_text": picked["value_text"],
+        "unit": picked["unit"],
+        "currency": picked.get("currency"),
+        "period": period,
+        "duration_days": days,
+        "span": span_label(days, str(period.get("type") or "")),
+        "form": picked.get("form"),
+        "fp": picked.get("fp"),
+        "fy": picked.get("fy"),
+        "filed": picked.get("filed"),
+        "accession": picked.get("accession"),
+        "source_id": picked.get("source_id"),
+        "value": picked.get("value"),
+    }
+
+
+def _period_when(period: dict[str, Any]) -> str:
+    if period.get("type") == "duration" and period.get("start"):
+        return f"for {period.get('start')} to {period.get('end')}"
+    return f"at {period.get('end')}"
+
+
+def _value_block(lab: dict[str, Any]) -> str:
+    bits: list[str] = []
+    if lab.get("span"):
+        bits.append(str(lab["span"]))
+    form = lab.get("form") or ""
+    bits.append(f"form {form}".rstrip())
+    if lab.get("fp"):
+        bits.append(f"fp={lab['fp']}")
+    if lab.get("fy") is not None:
+        bits.append(f"fy={lab['fy']}")
+    if lab.get("filed"):
+        bits.append(f"filed {lab['filed']}")
+    if lab.get("accession"):
+        bits.append(f"accn {lab['accession']}")
+    return (
+        f"{_local(lab['concept'])} {lab['unit']} {group_digits(lab['value_text'])} "
+        f"{_period_when(lab['period'])}\n({', '.join(bits)})"
+    )
+
+
+def _period_gap_key(start: str | None, end: str | None) -> str:
+    return f"{start or ''}/{end or ''}"
+
+
+def _conflict_gap(mid: str, accn: str, start: str | None, end: str | None, rows: list[dict[str, Any]]) -> list[str]:
+    header = (
+        f"{mid} {_period_gap_key(start, end)}: latest filing {accn} "
+        f"has {len(rows)} disagreeing tagged facts"
+    )
+    lines = [header]
+    for row in sorted(rows, key=lambda f: (str(f.get("concept") or ""), str(f.get("unit") or ""), str(f.get("value_text") or ""))):
+        fp = row.get("fp") or ""
+        lines.append(
+            f"  - {row.get('concept')} {row.get('unit')} {row.get('value_text')} {row.get('form')} {fp}".rstrip()
+        )
+    return lines
+
+
+def _sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        values,
+        key=lambda v: (
+            str((v.get("period") or {}).get("end") or ""),
+            str((v.get("period") or {}).get("start") or ""),
+        ),
+    )
+
+
+def _slot(mid: str, accn: str, values: list[dict[str, Any]]) -> dict[str, Any]:
+    values = _sort_values(values)
+    text = "\n".join(_value_block(v) for v in values)
+    sole = values[0] if len(values) == 1 else None
+    return {
+        "id": f"xbrl:{mid}:{accn}",
+        "metric_id": mid,
+        "text": text,
+        "as_of": (sole["period"].get("end") if sole else None),
+        "grade": "A",
+        "source_id": (sole.get("source_id") if sole else f"companyfacts:{accn}"),
+        "origin": "companyfacts",
+        "confidence": "tagged",
+        "values": values,
+        "concept": (sole.get("concept") if sole else None),
+        "value": (sole.get("value") if sole else None),
+        "value_text": (sole.get("value_text") if sole else None),
+        "unit": (sole.get("unit") if sole else None),
+        "currency": (sole.get("currency") if sole else None),
+        "period": (dict(sole["period"]) if sole else None),
+        "fy": (sole.get("fy") if sole else None),
+        "fp": (sole.get("fp") if sole else None),
+        "form": (sole.get("form") if sole else None),
+        "filed": (sole.get("filed") if sole else None),
+        "accession": accn,
+    }
+
+
+def latest_filing_slots(
+    facts: list[dict[str, Any]], tax: dict[str, Any] | None = None
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Returns (slots, gaps). slots[mid] has values[] (unique periods) or is absent."""
+    tax = tax or load_taxonomy()
+    accn = latest_accession(facts or [])
     slots: dict[str, dict[str, Any]] = {}
-    stale: dict[str, str] = {}
-    notes: dict[str, str] = {}
-    latest_periodic = _latest_periodic_end(facts or [])
+    gaps: list[str] = []
     for mid, spec in (tax.get("metrics") or {}).items():
         if spec.get("alias_of"):
             continue
-        primary, fallback = _metric_concepts(spec)
-        concepts = primary + [c for c in fallback if c not in primary]
-        if not concepts:
+        if not spec.get("concepts"):
             continue
-        want_period = spec.get("period")
-        kind = spec.get("unit")
-        pool = [
-            f for f in facts or []
-            if not f.get("dimensional")
-            and (f.get("period") or {}).get("type") == want_period
-            and (f.get("period") or {}).get("end")
-            and _unit_ok(str(f.get("unit") or ""), str(kind))
-        ]
-        cands = [f for f in pool if f.get("concept") in concepts]
-        lease_only = False
-        true_total_on_filer = any(
-            (not f.get("dimensional")) and f.get("concept") in concepts
-            for f in facts or []
-        )
-        if not cands and mid == "company_revenue" and not true_total_on_filer:
-            cands = [f for f in pool if f.get("concept") == LEASE_REVENUE]
-            lease_only = bool(cands)
-            if lease_only:
-                concepts = concepts + [LEASE_REVENUE]
+        if not accn:
+            gaps.append(f"{mid}: not reported in latest filing")
+            continue
+        cands = candidates_for(mid, facts or [], accn, tax)
         if not cands:
+            gaps.append(f"{mid}: not reported in latest filing {accn}")
             continue
-
-        groups: dict[tuple, list[dict[str, Any]]] = {}
-        for f in cands:
-            key = (f["concept"], f["period"].get("start"), f["period"]["end"], f.get("unit"))
-            groups.setdefault(key, []).append(f)
-
-        winners: list[tuple[dict[str, Any], dict[str, Any] | None]] = []
-        for rows in groups.values():
-            rows = sorted(rows, key=lambda f: (f.get("filed") or "", f.get("accession") or "", int(f.get("order") or 0)))
-            win = rows[-1]
-            prior = None
-            for old in reversed(rows[:-1]):
-                if old.get("value_text") != win.get("value_text"):
-                    prior = old
-                    break
-            winners.append((win, prior))
-
-        latest_end = max(w["period"]["end"] for w, _ in winners)
-        at_end = [(w, p) for w, p in winners if w["period"]["end"] == latest_end]
-        families = {form_family(w.get("form")) for w, _ in at_end}
-
-        def _kind(w: dict[str, Any]) -> str:
-            n = _days(w["period"].get("start"), w["period"]["end"])
-            peers = [
-                _days(o["period"].get("start"), o["period"]["end"])
-                for o, _ in at_end
-                if o is not w
-            ]
-            return duration_kind(n, w.get("fp"), w.get("form"), peers)
-
-        def _annual_anchor(w: dict[str, Any]) -> bool:
-            if _kind(w) != "annual":
-                return False
-            return form_family(w.get("form")) in ANNUAL_FORMS
-
-        annual_form_annual = any(_annual_anchor(w) for w, _ in at_end)
-        interim = bool(families & INTERIM_FORMS) and not (families <= ANNUAL_FORMS) and not annual_form_annual
-
-        def rank(pair: tuple[dict[str, Any], Any]) -> tuple:
-            w = pair[0]
-            kind_d = _kind(w)
-            if interim:
-                dur = {"quarter": 2, "ytd": 1}.get(kind_d, 0)
+        values: list[dict[str, Any]] = []
+        for key, rows in group_by_period(cands).items():
+            start, end = key
+            if _period_agrees(rows):
+                values.append(_labeled(rows))
             else:
-                dur = 2 if kind_d == "annual" else 0
-            try:
-                cidx = concepts.index(w["concept"])
-            except ValueError:
-                cidx = 99
-            n = _days(w["period"].get("start"), w["period"]["end"])
-            span = -n if interim else n
-            return (dur, -cidx, span, w.get("filed") or "", w.get("accession") or "")
-
-        win, restated_from = max(at_end, key=rank)
-        if fact_is_stale(win["period"]["end"], latest_periodic):
-            stale[mid] = win["period"]["end"]
-            continue
-        ytd = None
-        if want_period == "duration" and _kind(win) == "quarter":
-            ytd_rows = [w for w, _ in at_end if _kind(w) == "ytd"]
-            if ytd_rows:
-                def ytd_rank(w: dict[str, Any]) -> tuple:
-                    same = 1 if w["concept"] == win["concept"] else 0
-                    try:
-                        cidx = concepts.index(w["concept"])
-                    except ValueError:
-                        cidx = 99
-                    return (same, -cidx, w.get("filed") or "", w.get("accession") or "")
-                ytd = max(ytd_rows, key=ytd_rank)
-
-        text = (
-            f"{_local(win['concept'])} {win['unit']} {group_digits(win['value_text'])} "
-            f"for {_period_desc(win['period'])} (consolidated companyfacts"
-        )
-        prior = None
-        if restated_from:
-            text += f"; restated from {group_digits(restated_from['value_text'])}"
-            prior = {
-                "end": restated_from["period"]["end"],
-                "value": restated_from["value"],
-                "value_text": restated_from["value_text"],
-                "restated": True,
-                "filed": restated_from.get("filed"),
-                "accession": restated_from.get("accession"),
-                "source_id": restated_from.get("source_id"),
-            }
-        if ytd:
-            text += f"; ytd {group_digits(ytd['value_text'])}"
-        text += ")"
-        slots[mid] = {
-            "id": f"xbrl:{win['concept']}:{_period_label(win['period'])}",
-            "metric_id": mid,
-            "text": text,
-            "as_of": win["period"]["end"],
-            "grade": "A",
-            "source_id": win.get("source_id"),
-            "origin": "companyfacts",
-            "confidence": "tagged",
-            "concept": win["concept"],
-            "value": win["value"],
-            "value_text": win["value_text"],
-            "unit": win["unit"],
-            "currency": win.get("currency"),
-            "period": dict(win["period"]),
-            "fy": win.get("fy"),
-            "fp": win.get("fp"),
-            "form": win.get("form"),
-            "filed": win.get("filed"),
-            "accession": win.get("accession"),
-            "prior": prior,
-            "ytd": (
-                {
-                    "start": ytd["period"]["start"],
-                    "end": ytd["period"]["end"],
-                    "value": ytd["value"],
-                    "value_text": ytd["value_text"],
-                    "concept": ytd["concept"],
-                }
-                if ytd else None
-            ),
-        }
-        if lease_only:
-            notes[mid] = LEASE_ONLY_GAP.format(mid=mid)
-    return slots, stale, notes
+                gaps.extend(_conflict_gap(mid, accn, start, end, rows))
+        if values:
+            slots[mid] = _slot(mid, accn, values)
+    return slots, gaps
 
 
 def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
-    """One consolidated companyfacts slot per structured metric."""
-    return select_slots(facts, tax)[0]
+    """latest_filing_slots(...)[0]. Name kept so live_claims does not fork."""
+    return latest_filing_slots(facts, tax)[0]
 
 
 def headline_gaps(
@@ -558,23 +537,53 @@ def headline_gaps(
     tax: dict[str, Any] | None = None,
     facts: list[dict[str, Any]] | None = None,
 ) -> list[str]:
-    tax = tax or load_taxonomy()
-    stale: dict[str, str] = {}
-    notes: dict[str, str] = {}
-    if facts is not None:
-        _, stale, notes = select_slots(facts, tax)
-    gaps: list[str] = []
-    for mid, spec in (tax.get("metrics") or {}).items():
-        if spec.get("alias_of"):
-            continue
-        if not (spec.get("concepts") or spec.get("fallback")) and mid not in notes:
-            continue
-        if mid in slots:
-            if mid in notes:
-                gaps.append(notes[mid])
-            continue
-        if mid in stale:
-            gaps.append(stale_gap(mid, stale[mid]))
-        elif spec.get("concepts") or spec.get("fallback"):
-            gaps.append(STRUCTURED_GAP.format(mid=mid))
-    return gaps
+    """latest_filing_slots(...)[1] when facts is provided."""
+    if facts is None:
+        facts = []
+    return latest_filing_slots(facts, tax)[1]
+
+
+def default_cache(wiki_root: Path, slug: str) -> Path:
+    return Path(wiki_root) / "raw" / f"{slug}-research" / "sec" / "companyfacts.json"
+
+
+def cache_status_gap(cache: Path) -> str | None:
+    status = Path(cache).with_name("companyfacts.status.json")
+    if not status.is_file():
+        return None
+    try:
+        data = json.loads(status.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    gap = data.get("gap") if isinstance(data, dict) else None
+    return str(gap) if gap else None
+
+
+def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[str, Any]:
+    """Read cache or override path. Missing → empty facts + cache gap. Never fetches."""
+    override = (cfg or {}).get("companyfacts_path")
+    if override:
+        path = Path(override).expanduser()
+        if not path.is_absolute():
+            path = Path(wiki_root) / path
+    else:
+        path = default_cache(wiki_root, slug)
+    wiki = Path(wiki_root)
+    if not path.is_file():
+        notes = [cache_status_gap(path) or MISSING_CACHE]
+        return {"facts": [], "notes": notes, "files": [], "slots": {}}
+    source = str(path.relative_to(wiki)) if wiki in path.parents else str(path)
+    parsed = load_companyfacts_file(path, source_id=source)
+    slots, gaps = latest_filing_slots(parsed["facts"])
+    kept = mapped_facts(parsed["facts"])
+    notes = list(parsed.get("notes") or [])
+    status_gap = cache_status_gap(path)
+    if status_gap and status_gap not in notes:
+        notes.insert(0, status_gap)
+    notes.extend(gaps)
+    rel = str(path)
+    try:
+        rel = str(path.relative_to(wiki))
+    except ValueError:
+        pass
+    return {"facts": kept, "notes": notes, "files": [rel], "slots": slots}
