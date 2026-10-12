@@ -488,6 +488,12 @@ function contextRow(c, mid, reason) {
   };
 }
 
+function slotAsOfLabel(slot) {
+  if (slot && slot.as_of) return String(slot.as_of);
+  if (slot && slot.accession) return `latest-filing ${slot.accession}`;
+  return 'latest-filing';
+}
+
 export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts = {}) {
   const tax = loadTaxonomy();
   const slots = taggedSlots((opts && opts.facts) || [], tax);
@@ -532,7 +538,7 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
     }
   });
   for (const [mid, n] of newer) {
-    addGap(`${mid}: ${n} newer sentence(s) not used; live value is the companyfacts ${slots[mid].as_of} fact`);
+    addGap(`${mid}: ${n} newer sentence(s) not used; live value is the companyfacts ${slotAsOfLabel(slots[mid])} fact`);
   }
   for (const [mid] of blocked) addGap(HEADLINE_GAP(mid));
   const indexed = [];
@@ -573,7 +579,9 @@ export function packClaim(c) {
     row.confidence = c.confidence;
   }
   if (c.origin === 'companyfacts' || c.origin === 'xbrl') {
-    for (const key of ['concept', 'value', 'unit']) row[key] = c[key];
+    for (const key of ['concept', 'value', 'value_text', 'unit', 'values']) {
+      if (Object.prototype.hasOwnProperty.call(c, key)) row[key] = c[key];
+    }
   }
   return row;
 }

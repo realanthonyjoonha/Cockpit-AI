@@ -82,8 +82,16 @@ def tagged_snapshot(claims: list, rules: dict, rel: str) -> dict:
             "slots": {
                 mid: {
                     "id": s["id"],
-                    "value_text": s["value_text"],
-                    "prior": (s.get("prior") or {}).get("value_text"),
+                    "value_text": s.get("value_text"),
+                    "values": [
+                        {
+                            "value_text": v.get("value_text"),
+                            "period": v.get("period"),
+                            "accession": v.get("accession"),
+                            "concept": v.get("concept"),
+                        }
+                        for v in (s.get("values") or [])
+                    ],
                 }
                 for mid, s in slots.items()
             },

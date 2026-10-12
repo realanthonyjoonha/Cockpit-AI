@@ -1,0 +1,23 @@
+{
+  "cik": 4,
+  "entityName": "Constructed None",
+  "facts": {
+    "us-gaap": {
+      "CashAndCashEquivalentsAtCarryingValue": {
+        "units": {
+          "USD": [
+            {
+              "end": "2025-06-30",
+              "val": 7,
+              "accn": "0000000004-25-000004",
+              "fy": 2025,
+              "fp": "Q2",
+              "form": "10-Q",
+              "filed": "2025-08-01"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
