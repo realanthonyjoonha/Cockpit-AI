@@ -190,6 +190,41 @@ class TestRetrieveBudget(unittest.TestCase):
         excerpt = (pack.get("house_prior") or {}).get("view_excerpt") or ""
         self.assertNotIn("E" * (len(excerpt) + 1), md)
 
+    def test_overview_omits_pre_stuffed_background(self):
+        from api.contextpack import object_identity
+
+        primer = "BACKGROUND-CANARY US G-SIB shape: consumer, CIB, asset management."
+        stance = [{"label": "Advantaged", "text": "VAULT-STANCE deposit beta is the named watch."}]
+        role = "BACKGROUND-CANARY role in a sector thesis the model can search."
+        store = _store(
+            [_claim("rev", "Net sales were $10 million", "2026-01-01")],
+            summary=primer,
+        )
+        store["object"]["stance"] = stance
+        store["object"]["role_in_theses"] = role
+        self._write("DEMO", store)
+        pack = retrieve("DEMO", "overview")
+        agent = assemble_agent_pack(store)
+        self._assert_under(pack)
+        self._assert_under(agent)
+        identity = {"id": "demo", "name": "Demo Fixture", "ticker": "DEMO"}
+        for row in (pack, agent):
+            obj = row.get("object") or {}
+            self.assertEqual(obj, identity)
+            self.assertEqual(obj, object_identity(store["object"]))
+        stuffed_md = to_markdown({"object": store["object"], "focus": store["focus"], "intent": "overview"})
+        md = to_markdown(pack)
+        agent_md = to_agent_markdown(agent)
+        texts = [json.dumps(pack), json.dumps(agent), md, agent_md, stuffed_md]
+        for q in ("overview status", "how exposed is DEMO to pricing?", "what is the stance"):
+            texts.append(build_agent_context("DEMO", q))
+        for text in texts:
+            self.assertNotIn("BACKGROUND-CANARY", text)
+            self.assertNotIn("## Company —", text)
+        ctx = build_agent_context("DEMO", "overview status")
+        self.assertIn("HEAD-CANARY fixture excerpt", ctx)
+        self.assertIn("END CONTEXT", ctx)
+
     def test_ten_sectors_keep_their_metric_under_the_cap(self):
         fixture = json.loads((REPO / "harness-stress" / "fixtures" / "sectors.json").read_text())
         self.assertEqual(len(fixture["issuers"]), 10)

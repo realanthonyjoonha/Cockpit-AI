@@ -148,10 +148,10 @@ def answer(focus: str, question: str) -> str:
     if _match(q, "stance", "advantaged", "exposed", "contested"):
         obj = store.get("object") or {}
         lines.append(f"**{obj.get('name')} ({obj.get('ticker')})**")
-        if obj.get("summary"):
-            lines.append(obj["summary"])
         for s in obj.get("stance") or []:
             lines.append(f"- **{s.get('label')}:** {s.get('text')}")
+        if not obj.get("stance"):
+            lines.append("GAP: no stance rows in the store.")
         return "\n".join(lines)
 
     # Contract / backlog / remaining-performance claims. Generic words only.
