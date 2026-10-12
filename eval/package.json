@@ -1,0 +1,14 @@
+{
+  "name": "cockpit-eval-pilot",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "LARGE harness: which context beats bare Grok 4.6 + web search. No XAI_API_KEY.",
+  "scripts": {
+    "start": "node run.mjs",
+    "test": "node run.mjs --self-test"
+  },
+  "dependencies": {
+    "gpt-tokenizer": "2.9.0"
+  }
+}

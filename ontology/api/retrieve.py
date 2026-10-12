@@ -353,26 +353,6 @@ def _clip_gaps(pack: dict[str, Any], n: int) -> bool:
     return changed
 
 
-def _clip_object(pack: dict[str, Any], n: int) -> bool:
-    obj = pack.get("object")
-    if not isinstance(obj, dict):
-        return False
-    row = dict(obj)
-    changed = False
-    for key in ("summary", "role_in_theses"):
-        val = row.get(key)
-        if isinstance(val, str) and len(val) > n:
-            row[key] = val[:n]
-            changed = True
-    stance = row.get("stance")
-    if isinstance(stance, list) and len(stance) > 4:
-        row["stance"] = stance[:4]
-        changed = True
-    if changed:
-        pack["object"] = row
-    return changed
-
-
 def _clip_risks(pack: dict[str, Any], summary_n: int, trip_n: int | None) -> bool:
     risks = pack.get("risks")
     if not isinstance(risks, list):
@@ -589,7 +569,6 @@ def enforce_char_budget(
         lambda: _slim_claim_values(pack),
         lambda: _clip_claim_texts(pack, 480, "other"),
         lambda: _clip_claim_texts(pack, 480, None, skip_tagged=True),
-        lambda: _clip_object(pack, 300),
         lambda: _clip_risks(pack, 160, 2),
         lambda: _clip_pin(pack, 160),
         lambda: _clip_excerpt(pack, 500),
@@ -674,6 +653,8 @@ def retrieve(
     if intent not in VALID_INTENTS:
         raise ValueError(f"intent must be one of {sorted(VALID_INTENTS)}")
 
+    from api.contextpack import object_identity
+
     ticker = resolve_ticker(focus)
     store = load_store(ticker)
     limit = budget if budget is not None else paths.OVERVIEW_BUDGET_CHARS
@@ -701,19 +682,11 @@ def retrieve(
         pack = {
             **base,
             "catalysts": store.get("catalysts") or [],
-            "object": {
-                "id": (store.get("object") or {}).get("id"),
-                "name": (store.get("object") or {}).get("name"),
-                "ticker": (store.get("object") or {}).get("ticker"),
-            },
+            "object": object_identity(store.get("object")),
         }
         return _budget_cut(pack, limit)
 
-    # overview
-    obj = dict(store.get("object") or {})
-    # keep overview lean
-    if "role_in_theses" in obj and len(obj["role_in_theses"] or "") > 800:
-        obj["role_in_theses"] = (obj["role_in_theses"] or "")[:800] + "…"
+    # overview — identity only. Company/sector primers stay out of the pack.
 
     # Source catalog only (id/title/lines/path) — never embed full 20–40pp masters here
     src_cat = [
@@ -734,7 +707,7 @@ def retrieve(
 
     pack = {
         **base,
-        "object": obj,
+        "object": object_identity(store.get("object")),
         "claims": claims,
         "risk_summary": store.get("risk_summary"),
         "risks": [
@@ -776,15 +749,6 @@ def to_markdown(pack: dict[str, Any]) -> str:
             f"## House prior — {hp.get('play')} ({hp.get('status')} · {hp.get('date') or 'n.d.'})"
         )
         lines.append((hp.get("view_excerpt") or "")[:900])
-        lines.append("")
-
-    obj = pack.get("object") or {}
-    if obj.get("summary") or obj.get("stance"):
-        lines.append(f"## Company — {obj.get('name')} ({obj.get('ticker')})")
-        if obj.get("summary"):
-            lines.append(obj["summary"])
-        for s in obj.get("stance") or []:
-            lines.append(f"- **{s.get('label')}:** {s.get('text')}")
         lines.append("")
 
     claims = pack.get("claims") or []

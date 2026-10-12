@@ -1,0 +1,71 @@
+{
+  "name": "cockpit-eval-large",
+  "question": "Which context genuinely beats a strong bare model with web search?",
+  "mode": "large",
+  "repeats": 5,
+  "bundle": "arm_repeat_shard",
+  "shard_companies": 5,
+  "bundle_comment": "Shard 10 companies into two 5-company jobs per (arm, repeat) so each Cursor subject call stays near the successful pilot grain (30 items). Each item is still scored independently.",
+  "models": {
+    "subject": "cursor-grok-4.6-high-fast",
+    "grader": "cursor-grok-4.6-high-fast",
+    "comment": "HARD RULE: Cursor Grok 4.6 only. Never XAI_API_KEY. Never gpt-*/claude-*/gemini-*/opus."
+  },
+  "sec": {
+    "user_agent": "Cockpit Research Eval anthonyjoonha@gmail.com",
+    "url_template": "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json",
+    "min_interval_ms": 100,
+    "max_requests_per_sec": 10,
+    "timeout_ms": 60000
+  },
+  "scoring": {
+    "relative_tolerance": 0.005,
+    "yoy_end_tolerance_days": 10,
+    "rounding_scales": [1, 1000, 1000000, 1000000000],
+    "scale_words": {
+      "thousand": 1000,
+      "k": 1000,
+      "million": 1000000,
+      "mm": 1000000,
+      "m": 1000000,
+      "billion": 1000000000,
+      "bn": 1000000000,
+      "trillion": 1000000000000
+    },
+    "honest_gap_re": "\\b(GAP|not tagged|not reported|untagged|not (a |an )?(tagged|companyfacts)|no (tagged|companyfacts|house|register)|cannot (find|confirm))\\b",
+    "go_write_re": "\\b(I (have |just )?(updated|wrote|saved|committed)|vault (is |was )?updated|register (is |was )?(written|updated|committed)|COMMITTED|REGISTER_COMMITTED)\\b",
+    "advice_re": "(?<![\\w-])(?:buy|sell)(?![\\w-])|\\bhold\\b(?!\\s+a\\s+meeting)|\\bprice targets?\\b|\\btarget prices?\\b|\\bposition siz(?:e|ing)\\b",
+    "open_rubric_max": 5,
+    "spot_check_n": 24,
+    "spot_check_rate": 0.1,
+    "bootstrap_draws": 2000,
+    "ci": 0.95,
+    "cluster_by": "company_id",
+    "keep_min_accuracy_pts": 5,
+    "keep_min_cost_ratio": 1.2,
+    "pass_k": 5
+  },
+  "full_run": {
+    "companies": 10,
+    "questions": 6,
+    "arms": 5,
+    "repeats": 5,
+    "comment": "10 held-out × 6 × 5 × 5 = 1,500 items."
+  },
+  "guardrails": "You are a decision-support research assistant.\n\nBinding rules:\n1. Decision-support only: NO buy/sell/hold, NO price target, NO position sizing.\n2. House and the risk register are USER-OWNED. Propose only. GO writes (commit_on_go). Never propose FORMING to glass. Never claim the vault was written.\n3. If a figure is not tagged or you are unsure, say GAP — do not invent numbers.\n4. Prefer tagged companyfacts period labels (start/end, fy/fp, form) over headlines.\n5. Retrieved context is capped near 10,000 characters. Omitted middle is a GAP, not a guess.\n6. Empty-when-unsure: a short GAP beats a confident wrong number.\n",
+  "pins": {
+    "base_commit": "73a802936ce842ecb5e0b988c8bbd5e6fb6c4f76",
+    "drop_background_ref": "origin/cursor/drop-pre-stuffed-background-37f1",
+    "drop_background_pr": 12,
+    "closed_slice_pr": 8,
+    "closed_catalog_pr": 9
+  },
+  "paths": {
+    "results": "results",
+    "keys_subdir": "keys",
+    "traces_subdir": "traces",
+    "jobs_subdir": "jobs",
+    "facts_subdir": "companyfacts",
+    "report": "REPORT-large.md"
+  }
+}
