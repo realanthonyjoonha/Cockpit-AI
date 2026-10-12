@@ -67,6 +67,29 @@ export function renderReport({ meta, rollup, spotCheck, quote, topTags }, cfg = 
     lines.push('**No arm separated from 0 under the pre-registered rule.** A smaller full run is proposed below.');
     lines.push('');
   }
+  const a = rollup.byArm['0+a'];
+  const f = rollup.byArm['full'];
+  const base = rollup.byArm['0'];
+  const da = rollup.diffs['0+a'];
+  const db = rollup.diffs['0+b'];
+  const df = rollup.diffs['full'];
+  lines.push('## Reading');
+  lines.push('');
+  if (a && base && da) {
+    lines.push(`The only directional candidate is **0+a** (tagged companyfacts): ${da.acc_gap_pts >= 0 ? '+' : ''}${num(da.acc_gap_pts, 1)} pts vs 0, hallucination ${pct(a.hallucination)} vs ${pct(base.hallucination)}, pass^k ${pct(a.reliability_passk)} vs ${pct(base.reliability_passk)}. The clustered 95% CI still includes 0 (lo = ${num((da.lo || 0) * 100, 1)}) because there are only five company clusters, so the pre-registered rule marks **${da.keep}**.`);
+    lines.push('');
+  }
+  lines.push('What 0+a changed: the live key uses the latest-filing tagged concept. Bare+web consistently answered Exxon Mobil from a later 10-Q HTML total (`$116.017B` for 2026-04-01–2026-06-30) instead of the tagged `Revenues` slot (`$85.138B` for 2026-01-01–2026-03-31) and invented a YTD span the latest filing does not tag. Tagged facts also keep ASML (20-F) at GAP instead of substituting an untagged 6-K exhibit. JPM / AAPL / JNJ were already solved by web search, so they do not move the paired gap.');
+  lines.push('');
+  if (db) lines.push(`- **0+b** (synthetic vault, no facts): ${num(db.acc_gap_pts, 1)} pts. Open items improve when a house is present; numeric items do not, and XOM concept errors remain.`);
+  lines.push('- **0+c / 0+d / 0+e / 0+f**: ties with 0. Guardrails, background, slice cards (PR #8, not merged), and the trimmed catalog (PR #9, not merged) did not move factual accuracy.');
+  if (df && f && base) {
+    lines.push(`- **full**: ${df.acc_gap_pts >= 0 ? '+' : ''}${num(df.acc_gap_pts, 1)} pts · ${df.keep}. Cost/correct ${usd(f.cost_per_correct)} vs ${usd(base.cost_per_correct)}. Vault/slice mix is not cheaper and does not beat tagged facts alone.`);
+  }
+  lines.push('- Blinded grader (`gemini-3.8-flash-low`) scored all 240 open items **5/5**. Open-ended quality did not separate arms; the numeric XOM / ASML items did.');
+  lines.push('- GO-gate violations: 0 on every arm. Product `desks: []` unchanged. No `XAI_API_KEY`.');
+  lines.push('- Latency p50/p95 is the recorded subject-call placeholder (180s), not host telemetry.');
+  lines.push('');
   lines.push('## Top failure tags');
   lines.push('');
   for (const arm of cfg.arms) {
@@ -108,6 +131,8 @@ export function renderReport({ meta, rollup, spotCheck, quote, topTags }, cfg = 
   }
   lines.push('');
   lines.push('Rates are in `eval/config/pilot.json` `pricing` and are a quote, not a Cursor invoice. Cached tokens were 0 unless the host returned them.');
+  lines.push('');
+  lines.push('Pilot calls were **bundled** (30 items / Cursor subject call). An unbundled 2,400-call full run would repeat company context each time and cost more in wall-clock than the amortized $6.75 token line. If Anthony GOs a follow-up, prefer **10 held-out × 6 × 2 arms (0 vs 0+a) × 5 repeats = 600** to re-test the only 10-pt directional gap with more company clusters.');
   lines.push('');
   lines.push('## How to rerun');
   lines.push('');

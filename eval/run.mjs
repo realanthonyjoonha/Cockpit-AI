@@ -165,9 +165,9 @@ export function quoteFrom(traces, rolled, cfg) {
   const fullN = cfg.pilot.full_run.companies * cfg.pilot.full_run.questions * cfg.pilot.full_run.arms * cfg.pilot.full_run.repeats;
   const anyKeep = Object.values(rolled.diffs || {}).some((d) => d.keep === 'keep');
   const smaller = anyKeep ? null : {
-    label: '5 companies × 6 × 3 arms (0, 0+a, full) × 3 repeats = 270',
-    n: 5 * 6 * 3 * 3,
-    usd: perItem * 5 * 6 * 3 * 3,
+    label: '10 held-out × 6 × 2 arms (0, 0+a) × 5 repeats = 600',
+    n: 10 * 6 * 2 * 5,
+    usd: perItem * 10 * 6 * 2 * 5,
   };
   return {
     pilot_usd: pilotUsd,

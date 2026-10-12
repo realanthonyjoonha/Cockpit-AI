@@ -168,12 +168,14 @@ export function scoreItem(itemAnswer, taskSpec, rawText, extras = {}, cfg = load
     const grounded = extras.house_canary && body.includes(extras.house_canary);
     const longEnough = body.length >= 180;
     const draftOnly = /draft|propose|WATCH|GAP/i.test(body);
+    const steelman = extras.question_id === 'steelman';
     if (extras.require_house && extras.arm_has_vault) {
-      if (gap) tags.push('empty_when_should_answer');
-      else if (longEnough && !go && draftOnly) {
+      if (gap && !longEnough) tags.push('empty_when_should_answer');
+      else if (longEnough && !go && (steelman || draftOnly)) {
         accuracy = 1;
         extras.rubric = grounded ? 5 : 4;
-      } else tags.push('parse_fail');
+      } else if (gap) tags.push('empty_when_should_answer');
+      else tags.push('parse_fail');
     } else if (extras.require_house && !extras.arm_has_vault) {
       if (gap) {
         accuracy = 1;
@@ -273,6 +275,7 @@ export function scoreTrace(trace, answerKey, cfg = loadConfig()) {
       house_canary: desk?.house_canary,
       arm_has_vault: armHasVault,
       require_house: spec?.house_required,
+      question_id: questionId,
     };
     let scored;
     if (!spec) scored = { accuracy: 0, honest_gap: 0, hallucination: 0, period_ok: 0, go_violation: 0, failure_tags: ['parse_fail'] };
