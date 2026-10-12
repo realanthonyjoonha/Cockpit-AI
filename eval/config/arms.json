@@ -1,0 +1,38 @@
+{
+  "comment": "Same model, same tasks, one change vs arm 0. Full = current harness after PR #12 (facts + vault + guardrails). PRs #8/#9 closed: no 0+d/0+e/0+f.",
+  "baseline": "0",
+  "arms": [
+    {
+      "id": "0",
+      "label": "bare + web",
+      "web_search": true,
+      "inject": []
+    },
+    {
+      "id": "0+a",
+      "label": "tagged SEC companyfacts",
+      "web_search": true,
+      "inject": ["facts"]
+    },
+    {
+      "id": "0+b",
+      "label": "synthetic vault",
+      "web_search": true,
+      "inject": ["vault"]
+    },
+    {
+      "id": "0+c",
+      "label": "guardrails (GO gates, 10k cap, empty-when-unsure)",
+      "web_search": true,
+      "inject": ["guardrails"],
+      "cap_chars": 10000
+    },
+    {
+      "id": "full",
+      "label": "current harness (facts + vault + guardrails)",
+      "web_search": true,
+      "inject": ["facts", "vault", "guardrails"],
+      "cap_chars": 10000
+    }
+  ]
+}
