@@ -90,7 +90,7 @@ if (process.env.ENG_ORDER_WORKER !== '1') {
 }
 
 const vault = process.env.COCKPIT_VAULT;
-const { goCommitRegister, goCommitDrivers } = await import('../server/goCommit.js');
+const { goCommitRegister, goCommitDrivers, readSession } = await import('../server/goCommit.js');
 const { proposeKeepDriver, parseDriversMarkdown, readDriversSource, driversSourceRel } = await import('../server/driverProposals.js');
 const { registerCloseout } = await import('./register-closeout.mjs');
 const { driversOk } = await import('./drivers-closeout.mjs');
@@ -131,6 +131,15 @@ function throws(fn) {
     return e.message || String(e);
   }
 }
+function refusal(fn) {
+  try {
+    const out = fn();
+    if (out && out.ok === false) return String(out.error || '');
+    return '';
+  } catch (e) {
+    return e.message || String(e);
+  }
+}
 
 const eightThin = fs.readFileSync(eightPath, 'utf8');
 let msg = throws(() => reg('SAVE DRAFT'));
@@ -149,9 +158,48 @@ msg = throws(() => drv('GO'));
 if (/Register is not closed/i.test(msg) && /thin/i.test(msg) && !fs.existsSync(ninePath)) {
   ok('drivers GO refused while register is thin');
 } else bad(`drivers on thin register: ${msg}`);
-msg = throws(() => reg('GO'));
-if (/thin/i.test(msg)) ok('register GO refused while 08 is thin');
-else bad(`thin register GO: ${msg}`);
+const eightBeforeThinGo = fs.readFileSync(eightPath, 'utf8');
+msg = refusal(() => reg('GO'));
+if (/thin/i.test(msg) && /not stamped/i.test(msg) && fs.readFileSync(eightPath, 'utf8') === eightBeforeThinGo) {
+  ok('register GO refused while 08 is thin');
+} else bad(`thin register GO: ${msg}`);
+if (readSession('engord').phase !== 'REGISTER_COMMITTED') ok('thin register did not stamp');
+else bad('thin register stamped REGISTER_COMMITTED');
+
+const collideSection = `### R2 — Colliding chip
+- **Status:** WATCH · **Grade:** [B] · chip
+- **Mechanism:** fixture
+
+| Signal | Tripwire | Current state | As-of |
+| --- | --- | --- | --- |
+| s | t | now | 2026-01-01 |
+`;
+fs.writeFileSync(path.join(vault, 'cockpit', 'proposals', 'risks-engord.json'), JSON.stringify({
+  version: 1,
+  slug: 'engord',
+  proposals: [1, 2, 3, 4].map((i) => ({
+    id: `rp_collide_${i}`,
+    kind: 'add_risk',
+    status: 'pending',
+    slug: 'engord',
+    r_num: '2',
+    title: `Colliding chip ${i}`,
+    risk_name: `R2 — Colliding chip ${i}`,
+    to_status: 'WATCH',
+    grade: 'B',
+    summary: 'chip',
+    mechanism: 'fixture',
+    section_markdown: collideSection,
+  })),
+}));
+const eightBeforeCollide = fs.readFileSync(eightPath, 'utf8');
+msg = refusal(() => reg('GO'));
+if (/not stamped/i.test(msg) && fs.readFileSync(eightPath, 'utf8') === eightBeforeCollide) {
+  ok('four colliding chips do not stamp a thin register');
+} else bad(`colliding chips: ${msg}`);
+if (readSession('engord').phase !== 'REGISTER_COMMITTED') ok('colliding chips did not stamp');
+else bad('colliding chips stamped');
+fs.unlinkSync(path.join(vault, 'cockpit', 'proposals', 'risks-engord.json'));
 
 fs.writeFileSync(eightPath, acceptedShape('**DRAFT** — not ACCEPTED.'));
 msg = throws(() => drv('GO'));

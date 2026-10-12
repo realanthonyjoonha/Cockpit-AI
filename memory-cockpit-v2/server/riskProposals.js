@@ -394,16 +394,51 @@ export function proposeRiskStatus(opts) {
 }
 
 /**
- * Next Rn number from SoR sections (max + 1).
+ * Next Rn number from SoR sections and any already-pending numbers (max + 1).
+ * Pending chips must not share one number just because the file has not moved.
  */
-export function nextRiskNumber(text) {
+export function nextRiskNumber(text, extra = []) {
   const sections = parseRiskSections(text);
   let max = 0;
   for (const s of sections) {
     const n = parseInt(s.rNum, 10);
     if (Number.isFinite(n) && n > max) max = n;
   }
+  const extras = Array.isArray(extra) ? extra : [extra];
+  for (const raw of extras) {
+    const n = parseInt(String(raw).replace(/\D/g, ''), 10);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
   return max + 1;
+}
+
+/**
+ * Project 08 as it would look after distinct pending add_risk sections.
+ * A chip whose number is already used does not add a second heading.
+ */
+export function projectAddRiskMarkdown(text, proposals) {
+  let md = String(text || '');
+  const used = new Set(parseRiskSections(md).map((s) => String(s.rNum)));
+  for (const p of proposals || []) {
+    if (p.kind && p.kind !== 'add_risk') continue;
+    const rNum = String(p.r_num ?? '').replace(/\D/g, '');
+    if (!rNum || used.has(rNum)) continue;
+    let section = p.section_markdown;
+    if (!section || !new RegExp(`###\\s+R${rNum}\\b`).test(section)) {
+      section = buildAddRiskSection({
+        rNum,
+        title: p.title || String(p.risk_name || `Risk ${rNum}`).replace(/^R\d+\s*[—–-]\s*/i, ''),
+        status: p.to_status || 'WATCH',
+        grade: p.grade || 'B',
+        summary: p.summary || 'pending section',
+        mechanism: p.mechanism || p.summary || 'pending section',
+        tripwires: p.tripwires || [],
+      });
+    }
+    used.add(rNum);
+    md = insertRiskSection(md, section);
+  }
+  return md;
 }
 
 /**
@@ -567,7 +602,19 @@ export function proposeAddRisk(opts) {
     throw new Error(`similar risk title already in SoR: ${cleanTitle}`);
   }
 
-  const rNum = body.r_num != null ? String(body.r_num).replace(/\D/g, '') : String(nextRiskNumber(text));
+  const pendingStore = readStore(slug);
+  const pendingNums = pendingStore.proposals
+    .filter((p) => p && p.status === 'pending' && (!p.kind || p.kind === 'add_risk') && p.r_num != null)
+    .map((p) => String(p.r_num).replace(/\D/g, ''));
+  let rNum;
+  if (body.r_num != null && String(body.r_num).trim() !== '') {
+    rNum = String(body.r_num).replace(/\D/g, '');
+    if (pendingNums.includes(rNum)) {
+      throw new Error(`R${rNum} already pending — omit r_num to auto-assign`);
+    }
+  } else {
+    rNum = String(nextRiskNumber(text, pendingNums));
+  }
   if (existing.some((s) => s.rNum === rNum)) {
     throw new Error(`R${rNum} already exists — omit r_num to auto-assign`);
   }
@@ -643,6 +690,11 @@ export function proposeAddRisk(opts) {
     glass: `http://127.0.0.1:4682/#/${slug}/risks`,
     decision_support_only: true,
   };
+}
+
+/** Full pending rows, including section_markdown. Not the glass list. */
+export function pendingRiskRecords(slug) {
+  return readStore(slug).proposals.filter((p) => p && p.status === 'pending');
 }
 
 export function listRiskProposals(slug, { status } = {}) {

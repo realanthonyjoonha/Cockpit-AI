@@ -95,7 +95,7 @@ function readAllowlistedMarkdownFile(filePath) {
 
 const { loadPack } = await import(path.join(ROOT, 'server', 'pack.js'));
 const { enforceCharBudget, OVERVIEW_BUDGET_CHARS } = await import(path.join(ROOT, 'server', 'contextpack.js'));
-const { readHouseMarkdown } = await import(path.join(ROOT, 'server', 'thinHouseSave.js'));
+const { readHouseMarkdown, auditAllowlistedHouse } = await import(path.join(ROOT, 'server', 'thinHouseSave.js'));
 const { buildHouseAssistContext, assistToolTrailer } = await import(path.join(ROOT, 'server', 'assistContext.js'));
 const { getLiveThinDeskProfiles } = await import(path.join(ROOT, 'server', 'thinDeskProfiles.js'));
 
@@ -225,7 +225,7 @@ server.tool('list_desks', 'List thin desks (slug, ticker, house_file) for THIS M
 
 server.tool(
   'get_house_view',
-  'Read vault house-view markdown for a desk.',
+  'Read vault house-view markdown for a desk. Bash may read and may not write house-view-*.md, 08-risks-catalysts.md, or 09.',
   { desk: z.string().describe('slug or ticker, e.g. nbis') },
   async ({ desk }) => {
     const { desk: d, profile } = resolveDesk(desk);
@@ -238,7 +238,7 @@ server.tool(
       exists: raw.exists,
       path: raw.path,
       markdown: raw.markdown,
-      write_policy: 'Do not write house-view-*.md directly. propose_house_view then commit_on_go after user GO (glass ACCEPT is alternate).',
+      write_policy: 'Do not write house-view-*.md directly. Bash may read and may not write house-view-*.md, 08-risks-catalysts.md, or 09. propose_house_view then commit_on_go after user GO (glass ACCEPT is alternate).',
       decision_support_only: true,
     });
   },
@@ -301,6 +301,18 @@ server.tool(
     const fired = risks.filter((r) => r.status === 'FIRED').map((r) => r.name);
     const sorLag = risks.some((r) => r.status_source === 'sor');
     const packSummary = pack.risk_summary || {};
+    let gaps = Array.isArray(pack.gaps) ? pack.gaps.filter((g) => typeof g === 'string') : [];
+    try {
+      const houseGap = auditAllowlistedHouse(d.house_file || profile.houseFile).gap;
+      if (houseGap) {
+        gaps = gaps.filter((g) => g !== houseGap).slice(0, 14);
+        gaps.push(houseGap);
+      } else {
+        gaps = gaps.slice(0, 15);
+      }
+    } catch {
+      gaps = gaps.slice(0, 15);
+    }
 
     const snapshot = {
       available: true,
@@ -328,7 +340,7 @@ server.tool(
         ...(Array.isArray(c.values) ? { values: c.values } : {}),
       })),
       contextpack: 'v2',
-      gaps: (pack.gaps || []).slice(0, 15),
+      gaps,
       sor_ahead_of_pack: sorLag,
       note: sorLag
         ? 'SoR risk status ahead of pack — risk_summary.watch is SoR-aware. COMPILE BOOK to sync store.'
@@ -456,7 +468,7 @@ server.tool(
 
 server.tool(
   'commit_on_go',
-  'Write vault after the user said GO. Same path as glass ACCEPT. kind=house needs pending CONFIRMED proposal_id. kind=register requires live house CONFIRMED. Do NOT call after SAVE DRAFT or EDIT. Not agent_accept.',
+  'Write vault after the user said GO. Same path as glass ACCEPT. kind=house needs pending CONFIRMED proposal_id. kind=register requires live house CONFIRMED. Do NOT call after SAVE DRAFT or EDIT. Not agent_accept. Bash may read and may not write house-view-*.md, 08-risks-catalysts.md, or 09.',
   {
     desk: z.string(),
     kind: z.string().describe('house | register | drivers'),

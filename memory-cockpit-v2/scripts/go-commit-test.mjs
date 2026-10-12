@@ -80,10 +80,12 @@ const {
   isGoUtterance,
   goCommitHouse,
   goCommitRegister,
+  goCommitDrivers,
   readSession,
 } = await import('../server/goCommit.js');
 const { proposeHouse, listHouseProposals } = await import('../server/houseProposals.js');
 const { proposeAddRisk } = await import('../server/riskProposals.js');
+const { registerCloseout } = await import('./register-closeout.mjs');
 
 let fail = 0;
 const ok = (m) => console.log('  ✓', m);
@@ -289,6 +291,100 @@ else bad(`session after register ${readSession('gocom').phase}`);
 if (add?.proposal?.id && (reg.applied || []).some((x) => x.id === add.proposal.id)) {
   ok('pending add_risk chip applied');
 } else bad('chip not applied');
+if (reg.ok === true) {
+  const closed = registerCloseout('gocom', { vault });
+  if (closed.pass) ok('ok register implies register-closeout');
+  else bad(`ok register but closeout failed: ${closed.reason}`);
+}
+
+function oneRisk(title) {
+  return `# 08\n### R1 — ${title}\n- **Status:** WATCH · **Grade:** [B] · harness\n- **Mechanism:** harness\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| s | t | now | 2026-01-01 |\n`;
+}
+function desk(slug, body) {
+  fs.mkdirSync(path.join(vault, 'raw', `${slug}-research`), { recursive: true });
+  fs.writeFileSync(path.join(vault, `house-view-${slug}.md`), CONFIRMED);
+  fs.writeFileSync(path.join(vault, 'raw', `${slug}-research`, '08-risks-catalysts.md'), body);
+}
+function regSlug(slug) {
+  return goCommitRegister({
+    slug,
+    houseFile: `house-view-${slug}.md`,
+    risksSourceRel: `raw/${slug}-research/08-risks-catalysts.md`,
+    utterance: 'GO',
+    compile: false,
+  });
+}
+
+desk('godist', oneRisk('Distinct seed'));
+const nums = [];
+for (let i = 1; i <= 4; i++) {
+  const chip = proposeAddRisk({
+    slug: 'godist',
+    ticker: 'GODIST',
+    risksSourceRel: 'raw/godist-research/08-risks-catalysts.md',
+    body: {
+      title: `Distinct chip ${i}`,
+      summary: 'distinct number',
+      mechanism: 'fixture',
+      grade: 'B',
+      status: 'WATCH',
+      tripwires: [{ signal: 's', tripwire: 't', state: 'now', as_of: '2026-01-01' }],
+    },
+  });
+  nums.push(String(chip.proposal.r_num));
+}
+if (new Set(nums).size === 4) ok(`four chips got distinct r_num ${nums.join(',')}`);
+else bad(`r_num collided ${nums.join(',')}`);
+const dist = regSlug('godist');
+if (dist.ok === true && readSession('godist').phase === 'REGISTER_COMMITTED') ok('four distinct risks stamp the register');
+else bad(`distinct register ${dist.error || dist.ok}`);
+if (dist.ok === true && registerCloseout('godist', { vault }).pass) ok('distinct register closeout passes');
+else bad('distinct register closeout');
+let drvMsg = '';
+try {
+  const drv = goCommitDrivers({
+    slug: 'godist',
+    houseFile: 'house-view-godist.md',
+    utterance: 'GO',
+    compile: false,
+  });
+  if (drv.ok) ok('drivers GO is not rejected for a thin register');
+  else drvMsg = drv.error || 'ok false';
+} catch (e) {
+  drvMsg = e.message || String(e);
+}
+if (drvMsg) {
+  if (/thin|not closed/i.test(drvMsg)) bad(`drivers still thin: ${drvMsg}`);
+  else bad(`drivers GO: ${drvMsg}`);
+}
+
+desk('gocoll', oneRisk('Collide seed'));
+const collideMd = `### R2 — Collide\n- **Status:** WATCH · **Grade:** [B] · chip\n- **Mechanism:** fixture\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| s | t | now | 2026-01-01 |\n`;
+fs.writeFileSync(path.join(vault, 'cockpit', 'proposals', 'risks-gocoll.json'), JSON.stringify({
+  version: 1,
+  slug: 'gocoll',
+  proposals: [1, 2, 3, 4].map((i) => ({
+    id: `rp_collide_${i}`,
+    kind: 'add_risk',
+    status: 'pending',
+    r_num: '2',
+    title: `Collide ${i}`,
+    risk_name: `R2 — Collide ${i}`,
+    to_status: 'WATCH',
+    grade: 'B',
+    summary: 'chip',
+    mechanism: 'fixture',
+    section_markdown: collideMd,
+  })),
+}));
+const beforeCollide = fs.readFileSync(path.join(vault, 'raw', 'gocoll-research', '08-risks-catalysts.md'), 'utf8');
+const coll = regSlug('gocoll');
+const afterCollide = fs.readFileSync(path.join(vault, 'raw', 'gocoll-research', '08-risks-catalysts.md'), 'utf8');
+if (coll.ok === false && /not stamped/i.test(coll.error || '') && afterCollide === beforeCollide) {
+  ok('colliding chips return ok false and write nothing');
+} else bad(`collide ${coll.ok} ${coll.error}`);
+if (readSession('gocoll').phase !== 'REGISTER_COMMITTED') ok('colliding chips did not stamp');
+else bad('colliding chips stamped');
 
 if (fail) {
   console.log(`\ngo-commit-test FAIL ${fail}`);

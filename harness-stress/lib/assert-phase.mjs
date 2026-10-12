@@ -21,6 +21,7 @@ import {
   staleTripwires,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { sectorBudgetErrors } from './assert-p1.mjs';
+import { sectorGoErrors } from './assert-p2.mjs';
 import { headlineGaps, parseCompanyfacts, structuredMetric, taggedSlots } from '../../memory-cockpit-v2/server/companyfacts.js';
 import {
   bannedNeedles,
@@ -173,6 +174,7 @@ export function assertSectors() {
     errors.push('thin-desks.json desks is not empty');
   }
   errors.push(...sectorBudgetErrors());
+  errors.push(...sectorGoErrors());
   return errors;
 }
 

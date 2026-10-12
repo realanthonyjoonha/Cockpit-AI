@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { isScaffoldHouseMarkdown, houseMarkdownStatus } from '../server/houseStance.js';
+import { readHouseWriteAudit, HOUSE_OUTSIDE_WRITE_GAP } from '../server/thinHouseSave.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = process.env.COCKPIT_REPO || path.join(ROOT, '..');
@@ -73,16 +74,32 @@ function pendingNonScaffold(vault, slug) {
 
 export function houseCloseout(slug, opts = {}) {
   const vault = opts.vault || vaultRoot();
-  const housePath = path.join(vault, `house-view-${slug}.md`);
-  const live = fs.existsSync(housePath) ? fs.readFileSync(housePath, 'utf8') : '';
+  const houseName = `house-view-${slug}.md`;
+  const housePath = path.join(vault, houseName);
+  const exists = fs.existsSync(housePath);
+  const live = exists ? fs.readFileSync(housePath, 'utf8') : '';
+  const audit = readHouseWriteAudit(vault, houseName, live, { exists });
   const liveScaffold = !live || isScaffoldHouseMarkdown(live);
   const pend = pendingNonScaffold(vault, slug);
+
+  if (audit.mismatch) {
+    return {
+      slug,
+      pass: false,
+      reason: `${HOUSE_OUTSIDE_WRITE_GAP}. An append that skipped saveHouseMarkdown is not a GO.`,
+      gap: HOUSE_OUTSIDE_WRITE_GAP,
+      audit_state: audit.state,
+      live_bytes: live.length,
+      pending: pend,
+    };
+  }
 
   if (!liveScaffold) {
     return {
       slug,
       pass: true,
       reason: 'live house is not the FORMING scaffold',
+      audit_state: audit.state,
       live_bytes: live.length,
       pending: pend,
     };
@@ -92,6 +109,7 @@ export function houseCloseout(slug, opts = {}) {
       slug,
       pass: true,
       reason: 'live house is scaffold; pending CONFIRMED proposal exists (GO, not FORMING)',
+      audit_state: audit.state,
       live_bytes: live.length,
       pending: pend,
     };
@@ -100,6 +118,7 @@ export function houseCloseout(slug, opts = {}) {
     slug,
     pass: false,
     reason: 'TSLA-class miss: live house is still scaffold and there is no pending CONFIRMED proposal. Dump in Grok; user GO then propose_house CONFIRMED + commit_on_go. Do not propose FORMING.',
+    audit_state: audit.state,
     live_bytes: live.length,
     pending: pend,
   };

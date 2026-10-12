@@ -1,11 +1,73 @@
 // thinHouseSave.js — Path 1.0 allowlisted house-view writes for thin desks.
 // Writes ONLY vault-root house_file from desk profile. Never store/. Decision-support only.
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { VAULT_DIR, isInsideVault, canonicalize } from './vault.js';
 
 export const HOUSE_MAX_BYTES = 400_000;
+/** Pack gap when the bytes no longer match the last saveHouseMarkdown hash. */
+export const HOUSE_OUTSIDE_WRITE_GAP = 'house file changed outside saveHouseMarkdown';
 const HOUSE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/;
+const HOUSE_LOG_NAME = 'house-write-log.jsonl';
+
+function sha256(text) {
+  return crypto.createHash('sha256').update(String(text), 'utf8').digest('hex');
+}
+
+function houseWriteLogPath(vaultRoot) {
+  return path.join(vaultRoot, 'cockpit', HOUSE_LOG_NAME);
+}
+
+/**
+ * Last authorized hash for this house file. Does not create a log.
+ * No line for the file is "no audit yet", which is not a mismatch.
+ * @param {string} vaultRoot
+ * @param {string} houseFile
+ * @param {string} markdown
+ * @param {{ exists?: boolean }} [opts]
+ */
+export function readHouseWriteAudit(vaultRoot, houseFile, markdown, opts = {}) {
+  const name = path.basename(String(houseFile || ''));
+  const fp = houseWriteLogPath(vaultRoot);
+  let last = null;
+  if (fs.existsSync(fp)) {
+    for (const line of fs.readFileSync(fp, 'utf8').split('\n')) {
+      if (!line.trim()) continue;
+      let row;
+      try { row = JSON.parse(line); } catch { continue; }
+      if (row && row.house_file === name && typeof row.sha256 === 'string') last = row;
+    }
+  }
+  if (!last) return { state: 'no_audit', mismatch: false, gap: null };
+  const exists = opts.exists !== false;
+  if (!exists || sha256(markdown) !== last.sha256) {
+    return { state: 'mismatch', mismatch: true, gap: HOUSE_OUTSIDE_WRITE_GAP };
+  }
+  return { state: 'match', mismatch: false, gap: null };
+}
+
+/** Audit the allowlisted house. A missing log is not treated as authorized. */
+export function auditAllowlistedHouse(houseFile) {
+  const raw = readHouseMarkdown(houseFile);
+  const vaultRoot = path.dirname(raw.path);
+  return readHouseWriteAudit(vaultRoot, raw.house_file, raw.exists ? raw.markdown : '', {
+    exists: raw.exists,
+  });
+}
+
+function recordHouseWrite(vaultRoot, houseFile, markdown) {
+  const name = assertHouseFileName(houseFile);
+  const fp = houseWriteLogPath(vaultRoot);
+  if (!isInsideVault(fp)) throw new Error('house write log outside vault');
+  fs.mkdirSync(path.dirname(fp), { recursive: true });
+  const line = JSON.stringify({
+    house_file: name,
+    sha256: sha256(markdown),
+    at: new Date().toISOString(),
+  });
+  fs.appendFileSync(fp, `${line}\n`);
+}
 
 export function assertHouseFileName(houseFile) {
   const name = String(houseFile || '').trim();
@@ -72,6 +134,7 @@ export function saveHouseMarkdown(houseFile, markdown) {
     try { fs.unlinkSync(tmp); } catch { /* ignore */ }
     throw e;
   }
+  recordHouseWrite(path.dirname(abs), name, markdown);
   return {
     ok: true,
     path: abs,

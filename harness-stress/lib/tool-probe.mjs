@@ -17,6 +17,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { countTokens } from './tokens.mjs';
+import { houseCloseout } from '../../memory-cockpit-v2/scripts/house-closeout.mjs';
+import { readHouseWriteAudit } from '../../memory-cockpit-v2/server/thinHouseSave.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const GLASS = path.join(REPO, 'memory-cockpit-v2');
@@ -469,6 +471,9 @@ export async function toolProbe() {
       encoding: 'utf8',
     });
     const houseAfterBash = readFileSync(path.join(sandbox, 'research-wiki/house-view-demo.md'), 'utf8');
+    const sandboxVault = path.join(sandbox, 'research-wiki');
+    const houseAudit = readHouseWriteAudit(sandboxVault, 'house-view-demo.md', houseAfterBash, { exists: true });
+    const houseClose = houseCloseout('demo', { vault: sandboxVault });
 
     writeFileSync(
       path.join(sandbox, 'store/DEMO.json'),
@@ -560,6 +565,10 @@ export async function toolProbe() {
         bytes_after: houseAfterBash.length,
         appended: houseAfterBash.includes('BASH-BYPASS-CANARY'),
         go_utterance_required: false,
+        audit_state: houseAudit.state,
+        audit_mismatch: houseAudit.mismatch === true,
+        gap: houseAudit.gap,
+        house_closeout_pass: houseClose.pass === true,
       },
       fat_pack: {
         chars: fat.chars,
