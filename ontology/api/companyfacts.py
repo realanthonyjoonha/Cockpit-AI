@@ -300,6 +300,19 @@ def extract_mapped_document(doc: dict[str, Any], tax: dict[str, Any] | None = No
     return extracted, inventory
 
 
+def latest_filing_facts(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Facts whose accession is latest_accession(facts). Empty when none."""
+    accn = latest_accession(facts or [])
+    if not accn:
+        return []
+    return [f for f in facts or [] if f.get("accession") == accn]
+
+
+def mapped_latest_facts(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Mapped true-totals from the chosen latest filing only. Never older filings."""
+    return mapped_facts(latest_filing_facts(facts), tax)
+
+
 def latest_accession(facts: list[dict[str, Any]]) -> str | None:
     """max (filed, accession) among ALLOWED_FORMS. None if empty."""
     best: tuple[tuple[str, str], str] | None = None
@@ -575,7 +588,7 @@ def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[s
     source = str(path.relative_to(wiki)) if wiki in path.parents else str(path)
     parsed = load_companyfacts_file(path, source_id=source)
     slots, gaps = latest_filing_slots(parsed["facts"])
-    kept = mapped_facts(parsed["facts"])
+    kept = mapped_latest_facts(parsed["facts"])
     notes = list(parsed.get("notes") or [])
     status_gap = cache_status_gap(path)
     if status_gap and status_gap not in notes:
