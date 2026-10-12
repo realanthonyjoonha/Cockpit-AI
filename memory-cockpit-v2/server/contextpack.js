@@ -4,7 +4,7 @@
 // metric, only with an amount of that slot's kind, and is marked low confidence.
 import { readFileSync } from 'fs';
 import path from 'path';
-import { canonicalMetric, conceptIndex, loadTaxonomy, sentenceFillAllowed, structuredMetric, taggedSlots } from './companyfacts.js';
+import { canonicalMetric, claimPeriodLines, conceptIndex, loadTaxonomy, sentenceFillAllowed, sortValues, structuredMetric, taggedSlots } from './companyfacts.js';
 
 const GRADE_W = { A: 3, B: 2, C: 1 };
 export const FISCAL_GAP = 'as_of is a fiscal label without a period-end date';
@@ -864,6 +864,29 @@ function slimClaimValuesHard(pack) {
   return changed;
 }
 
+function claimLatestAccession(claim) {
+  if (claim && claim.accession) return String(claim.accession);
+  let best = null;
+  for (const val of claim.values || []) {
+    if (!val || !val.accession) continue;
+    const filed = String(val.filed || '');
+    const accn = String(val.accession);
+    if (!best || filed > best.filed || (filed === best.filed && accn > best.accession)) {
+      best = { filed, accession: accn };
+    }
+  }
+  return best ? best.accession : '';
+}
+
+function rebuildTaggedClaim(claim, values) {
+  const ordered = sortValues(values);
+  return {
+    ...claim,
+    values: ordered,
+    text: claimPeriodLines({ values: ordered }).join('\n'),
+  };
+}
+
 function dropOlderClaimPeriods(pack) {
   let changed = false;
   const out = [];
@@ -873,22 +896,24 @@ function dropOlderClaimPeriods(pack) {
       continue;
     }
     const values = (claim.values || []).filter((v) => v && typeof v === 'object');
-    if (values.length <= 1) {
+    if (!values.length) {
       out.push(claim);
       continue;
     }
-    let latestEnd = '';
-    for (const v of values) {
-      const end = String((v.period || {}).end || '');
-      if (end > latestEnd) latestEnd = end;
-    }
-    const kept = values.filter((v) => String((v.period || {}).end || '') === latestEnd);
-    if (!kept.length || kept.length === values.length) {
+    const accn = claimLatestAccession(claim);
+    const kept = accn && values.some((v) => v.accession)
+      ? values.filter((v) => !v.accession || String(v.accession) === accn)
+      : values;
+    if (!kept.length) {
       out.push(claim);
       continue;
     }
-    out.push({ ...claim, values: kept });
-    changed = true;
+    const row = rebuildTaggedClaim(claim, kept);
+    if (accn) row.accession = accn;
+    if (JSON.stringify(row.values) !== JSON.stringify(values) || row.text !== claim.text) {
+      changed = true;
+    }
+    out.push(row);
   }
   if (changed) pack.claims = out;
   return changed;
@@ -1148,11 +1173,11 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => clipClaimTexts(pack, 160, null, { skipTagged: true }),
     () => dropOtherClaims(pack),
     () => dropClaimValues(pack),
+    () => dropOlderClaimPeriods(pack),
     () => slimClaimValuesHard(pack),
+    () => blankTaggedTexts(pack),
     () => clipClaimTexts(pack, 80, null, { skipTagged: true }),
     () => clipClaimTexts(pack, 160, null),
-    () => blankTaggedTexts(pack),
-    () => dropOlderClaimPeriods(pack),
     () => clipExcerpt(pack, 80),
     () => clearList(pack, 'catalysts'),
     () => clearList(pack, 'series_snapshot'),
@@ -1190,4 +1215,121 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     seal(pack, cap, true, size);
   }
   return pack;
+}
+
+function renderClaimPeriods(claim, head, sourceId) {
+  const periods = claimPeriodLines(claim);
+  const lines = [];
+  if (periods.length) {
+    lines.push(`${head} ${periods[0]}${sourceId != null ? ` ← ${sourceId}` : ''}`);
+    for (const extra of periods.slice(1)) lines.push(`  ${extra}`);
+  } else {
+    lines.push(sourceId != null ? `${head} ← ${sourceId}` : head);
+  }
+  return lines;
+}
+
+export function toAgentMarkdown(pack) {
+  const lines = [];
+  const f = pack.focus || {};
+  lines.push(`# ${f.ticker || '?'} — agent ContextPack v2`);
+  lines.push(`compiled_at: ${pack.compiled_at || '?'}`);
+  lines.push(
+    `store_claims: ${pack.store_claims ?? '?'} · live: ${(pack.claims || []).length} · `
+    + `superseded: ${pack.superseded_count || 0}`,
+  );
+  lines.push('');
+  const hp = pack.house_prior || {};
+  if (hp.play || hp.view_excerpt) {
+    lines.push(`## House (pinned) — ${hp.status || ''} · ${hp.date || 'n.d.'}`);
+    lines.push(hp.view_excerpt || '');
+    lines.push('');
+  }
+  const pin = pack.pin || {};
+  lines.push(`## WATCH (pinned) — ${(pin.watch || ['—']).join(', ')}`);
+  if (pin.fired && pin.fired.length) lines.push(`FIRED: ${pin.fired.join(', ')}`);
+  for (const r of pin.risks || []) {
+    lines.push(`- **${r.name}** [${r.status}] — ${r.summary || ''}`);
+  }
+  lines.push('');
+  const stale = pack.stale_tripwires || [];
+  if (stale.length) {
+    lines.push('## Stale tripwires (live claim disagrees)');
+    for (const s of stale) {
+      lines.push(
+        `- ${s.risk_name}: wire \`${s.tripwire_state}\` vs `
+        + `[${s.live_claim_as_of}] ${s.live_claim_text}`,
+      );
+    }
+    lines.push('');
+  }
+  const claims = pack.claims || [];
+  if (claims.length) {
+    lines.push('## Live claims (one per metric)');
+    for (const c of claims) {
+      let tag = '';
+      if (c.origin === 'companyfacts' || c.origin === 'xbrl') tag = ' · tagged';
+      else if (c.confidence === 'low') tag = ' · sentence, low confidence';
+      const head = `- \`${c.metric_id}\`${tag} [${c.grade}] (${c.as_of})`;
+      lines.push(...renderClaimPeriods(c, head, c.source_id));
+    }
+    lines.push('');
+  }
+  const context = pack.context_claims || [];
+  if (context.length) {
+    lines.push('## Context sentences (not live values)');
+    for (const c of context) {
+      lines.push(`- \`${c.metric_id}\` (${c.as_of}) ${c.text} — ${c.reason}`);
+    }
+    lines.push('');
+  }
+  const gaps = pack.gaps || [];
+  lines.push('## Gaps');
+  if (!gaps.length) lines.push('- (none listed)');
+  else for (const g of gaps) lines.push(`- ${g}`);
+  lines.push('');
+  lines.push('_Decision-support only. No buy/sell/hold/target/sizing._');
+  return lines.join('\n');
+}
+
+export function toMarkdown(pack) {
+  const lines = [];
+  const f = pack.focus || {};
+  lines.push(`# ${f.ticker || '?'} — ${pack.intent || 'overview'}`);
+  lines.push(`compiled_at: ${pack.compiled_at || '?'}`);
+  if (pack.budget) {
+    const b = pack.budget;
+    lines.push(`budget: ${b.used_chars}/${b.limit_chars} chars${b.trimmed ? ' (trimmed)' : ''}`);
+  }
+  lines.push('');
+  const hp = pack.house_prior;
+  if (hp) {
+    lines.push(`## House prior — ${hp.play} (${hp.status} · ${hp.date || 'n.d.'})`);
+    lines.push(String(hp.view_excerpt || '').slice(0, 900));
+    lines.push('');
+  }
+  const obj = pack.object || {};
+  if (obj.summary || obj.stance) {
+    lines.push(`## Company — ${obj.name} (${obj.ticker})`);
+    if (obj.summary) lines.push(obj.summary);
+    for (const s of obj.stance || []) lines.push(`- **${s.label}:** ${s.text}`);
+    lines.push('');
+  }
+  const claims = pack.claims || [];
+  if (claims.length) {
+    lines.push('## Claims (graded)');
+    for (const c of claims) {
+      const head = `- [${c.grade}] (${c.as_of})`;
+      lines.push(...renderClaimPeriods(c, head, c.source_id));
+    }
+    lines.push('');
+  }
+  const rs = pack.risk_summary || {};
+  const risks = pack.risks || [];
+  if (risks.length || Object.keys(rs).length) {
+    lines.push(`## Risks — ${rs.count ?? risks.length} total; WATCH: ${(rs.watch || ['—']).join(', ')}`);
+    for (const r of risks) lines.push(`- **${r.name}** [${r.status}] — ${r.summary}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
