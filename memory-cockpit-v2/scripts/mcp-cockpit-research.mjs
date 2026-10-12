@@ -337,6 +337,7 @@ server.tool(
         source_id: c.source_id,
         metric_id: c.metric_id || null,
         confidence: c.confidence || null,
+        ...(Array.isArray(c.values) ? { values: c.values } : {}),
       })),
       contextpack: 'v2',
       gaps,

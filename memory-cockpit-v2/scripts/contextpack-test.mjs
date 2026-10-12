@@ -16,6 +16,7 @@ import {
   parseAsOf,
   riskMetric,
   sentenceHasAmount,
+  staleTripwires,
 } from '../server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../server/assistContext.js';
 import { headlineGaps, mappedFacts, parseCompanyfacts, structuredMetric, taggedSlots } from '../server/companyfacts.js';
@@ -27,7 +28,7 @@ import {
   checkSectors,
   loadSectors,
 } from '../../harness-stress/lib/sector-check.mjs';
-import { checkReview, checkReviewerCases, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
+import { checkHonestyFixes, checkReview, checkReviewerCases, checkTaggedSectors } from '../../harness-stress/lib/review-check.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO = path.resolve(ROOT, '..');
@@ -74,7 +75,7 @@ if (classifyMetric('FY2026 Data Center revenue was $193.7 billion', rules) === '
   ok('JS files a revenue line as company_revenue');
 } else bad('JS still special-cases data-center revenue');
 
-const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric };
+const api = { rules, liveClaims, classifyClaim, classifyMetric, parseAsOf, parseAmounts, claimGaps, riskMetric, staleTripwires };
 const demoErrors = checkDemo(api);
 if (!demoErrors.length) ok('JS DEMO repros (dates, cash, guidance, goodwill, drops, grade)');
 else demoErrors.forEach((e) => bad(e));
@@ -183,6 +184,9 @@ else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
 const reviewerErrors = checkReviewerCases(xApi);
 if (!reviewerErrors.length) ok('JS constructed unique / two-periods / disagree / none');
 else reviewerErrors.forEach((e) => bad(e));
+const honestyErrors = checkHonestyFixes({ ...xApi, staleTripwires });
+if (!honestyErrors.length) ok('JS latest-filing-only / undated as_of / tripwire periods');
+else honestyErrors.forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
 process.exit(fail ? 1 : 0);
