@@ -549,6 +549,30 @@ def claim_period_lines(claim: dict[str, Any]) -> list[str]:
     return [text] if isinstance(text, str) and text else []
 
 
+def _span_group(val: dict[str, Any]) -> str:
+    span = val.get("span")
+    if span:
+        return str(span)
+    period = val.get("period") if isinstance(val.get("period"), dict) else {}
+    return "instant" if not period.get("start") else "other"
+
+
+def current_latest_filing_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Current period of each span on the latest filing. Quarter and YTD both stay."""
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for val in values or []:
+        if not isinstance(val, dict):
+            continue
+        groups.setdefault(_span_group(val), []).append(val)
+    kept: list[dict[str, Any]] = []
+    for rows in groups.values():
+        latest_end = max((str((v.get("period") or {}).get("end") or "") for v in rows), default="")
+        kept.extend(
+            v for v in rows if str((v.get("period") or {}).get("end") or "") == latest_end
+        )
+    return sort_values(kept)
+
+
 def _slot(mid: str, accn: str, values: list[dict[str, Any]]) -> dict[str, Any]:
     values = _sort_values(values)
     text = "\n".join(_value_block(v) for v in values)
