@@ -1,0 +1,48 @@
+{
+  "comment": "Vendored from PR #9 branch cursor/harness-p5-tool-catalog-440b (do not merge). CORE_TOOLS only.",
+  "ref": "origin/cursor/harness-p5-tool-catalog-440b",
+  "commit": "bbf4d65fe9e616f471549aaabc973a062a2e8c63",
+  "removed": ["propose_add_metric", "get_metric_sor"],
+  "tools": [
+    {
+      "name": "list_desks",
+      "description": "List thin desks in this tree. Product empty shell is desks: []."
+    },
+    {
+      "name": "get_house_view",
+      "description": "Read the live house markdown for one desk. Does not write."
+    },
+    {
+      "name": "get_pack_snapshot",
+      "description": "Read the compiled pack snapshot. Does not write."
+    },
+    {
+      "name": "propose_house_from_current",
+      "description": "Propose a CONFIRMED house edit from the current file. Does not write the vault. Human GO / ACCEPT commits."
+    },
+    {
+      "name": "commit_on_go",
+      "description": "Write house or register only after an explicit GO utterance. Never on FORMING. Never from this eval."
+    },
+    {
+      "name": "get_risk_sor",
+      "description": "Read the risk-register SoR (08). Does not write."
+    },
+    {
+      "name": "propose_add_risk",
+      "description": "Propose adding a named risk. Does not write the register."
+    },
+    {
+      "name": "propose_risk_status",
+      "description": "Propose a status change on an existing named risk. Does not write."
+    },
+    {
+      "name": "propose_keep_driver",
+      "description": "KEEP a named driver candidate. Not a house write."
+    },
+    {
+      "name": "get_driver_sor",
+      "description": "Read the drivers SoR. Does not write."
+    }
+  ]
+}
