@@ -717,6 +717,17 @@ export function staleTripwires(risks, live, rules, gaps = null) {
   return out;
 }
 
+const OBJECT_IDENTITY_KEYS = ['id', 'name', 'ticker'];
+
+export function objectIdentity(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return {};
+  const row = {};
+  for (const key of OBJECT_IDENTITY_KEYS) {
+    if (obj[key]) row[key] = obj[key];
+  }
+  return row;
+}
+
 export function assembleAgentPack(store, rules) {
   const gaps = [];
   const context = [];
@@ -739,6 +750,7 @@ export function assembleAgentPack(store, rules) {
     intent: 'agent',
     compiled_at: store.compiled_at || null,
     house_prior: store.house_prior || null,
+    object: objectIdentity(store.object),
     pin: {
       watch: (store.risk_summary || {}).watch || [],
       fired: (store.risk_summary || {}).fired || [],
@@ -1016,25 +1028,6 @@ function clipGaps(pack, n) {
   return changed;
 }
 
-function clipObject(pack, n) {
-  const obj = pack.object;
-  if (!obj || typeof obj !== 'object') return false;
-  const row = { ...obj };
-  let changed = false;
-  for (const key of ['summary', 'role_in_theses']) {
-    if (typeof row[key] === 'string' && row[key].length > n) {
-      row[key] = row[key].slice(0, n);
-      changed = true;
-    }
-  }
-  if (Array.isArray(row.stance) && row.stance.length > 4) {
-    row.stance = row.stance.slice(0, 4);
-    changed = true;
-  }
-  if (changed) pack.object = row;
-  return changed;
-}
-
 function clipRisks(pack, summaryN, tripN) {
   if (!Array.isArray(pack.risks)) return false;
   let changed = false;
@@ -1199,7 +1192,6 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => slimClaimValues(pack),
     () => clipClaimTexts(pack, 480, 'other'),
     () => clipClaimTexts(pack, 480, null, { skipTagged: true }),
-    () => clipObject(pack, 300),
     () => clipRisks(pack, 160, 2),
     () => clipPin(pack, 160),
     () => clipExcerpt(pack, 500),
@@ -1346,13 +1338,6 @@ export function toMarkdown(pack) {
   if (hp) {
     lines.push(`## House prior — ${hp.play} (${hp.status} · ${hp.date || 'n.d.'})`);
     lines.push(String(hp.view_excerpt || '').slice(0, 900));
-    lines.push('');
-  }
-  const obj = pack.object || {};
-  if (obj.summary || obj.stance) {
-    lines.push(`## Company — ${obj.name} (${obj.ticker})`);
-    if (obj.summary) lines.push(obj.summary);
-    for (const s of obj.stance || []) lines.push(`- **${s.label}:** ${s.text}`);
     lines.push('');
   }
   const claims = pack.claims || [];

@@ -821,6 +821,16 @@ def context_claim(c: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+OBJECT_IDENTITY_KEYS = ("id", "name", "ticker")
+
+
+def object_identity(obj: Any) -> dict[str, Any]:
+    """Focus identity only. Company/sector prose is not pack context."""
+    if not isinstance(obj, dict):
+        return {}
+    return {k: obj[k] for k in OBJECT_IDENTITY_KEYS if k in obj and obj[k]}
+
+
 def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict[str, Any]:
     """Pinned ContextPack v2 from a compiled store dict. Does not write."""
     rules = load_rules()
@@ -853,7 +863,6 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
     cc: list[str] = []
     stale = stale_tripwires(all_risks, live, rules, gaps=cc)
     hp = store.get("house_prior") or {}
-    obj = store.get("object") or {}
     rs = store.get("risk_summary") or {}
     src_cat = [
         {"id": s.get("id"), "title": s.get("title"), "kind": s.get("kind")}
@@ -874,13 +883,7 @@ def assemble_agent_pack(store: dict[str, Any], *, residual_cap: int = 8) -> dict
             "date": hp.get("date"),
             "view_excerpt": (hp.get("view_excerpt") or "")[:1800],
         },
-        "object": {
-            "id": obj.get("id"),
-            "name": obj.get("name"),
-            "ticker": obj.get("ticker"),
-            "summary": obj.get("summary"),
-            "role_in_theses": (obj.get("role_in_theses") or "")[:500],
-        },
+        "object": object_identity(store.get("object")),
         "pin": {
             "watch": rs.get("watch") or [],
             "fired": rs.get("fired") or [],

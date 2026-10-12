@@ -82,6 +82,12 @@ def main() -> int:
                 hp = pack.get("house_prior") or {}
                 row["house_keys"] = sorted(hp.keys())
                 row["notes_len"] = len(str(hp.get("notes") or ""))
+                obj = pack.get("object") or {}
+                row["object_keys"] = sorted(obj.keys())
+                row["has_background"] = any(
+                    key in obj for key in ("summary", "stance", "role_in_theses")
+                )
+                row["has_background_canary"] = "BACKGROUND-CANARY" in raw
             elif case.get("op") == "agent":
                 from api.agent import build_agent_context
 
@@ -97,6 +103,8 @@ def main() -> int:
                 row["has_gap_canary"] = "GAP-CANARY-TAIL" in text
                 row["has_end_marker"] = "END CONTEXT" in text
                 row["has_head_canary"] = "HEAD-CANARY" in text
+                row["has_background_canary"] = "BACKGROUND-CANARY" in text
+                row["has_company_section"] = "## Company —" in text
                 row["middle_omitted"] = "the middle was omitted" in text
                 row["tail"] = text[-400:]
             else:

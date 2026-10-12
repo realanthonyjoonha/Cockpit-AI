@@ -5,6 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   assembleAgentPack,
+  objectIdentity,
+  toMarkdown,
   claimGaps,
   classifyClaim,
   classifyMetric,
@@ -106,6 +108,37 @@ const fatJson = JSON.stringify(fatPack);
 if (fatJson.length <= OVERVIEW_BUDGET_CHARS && fatPack.budget.used_chars === fatJson.length && !fatPack.house_prior.notes) {
   ok('JS assemble stays under 10000 and drops notes');
 } else bad(`JS assemble cap ${fatJson.length} notes=${fatPack.house_prior && fatPack.house_prior.notes != null}`);
+
+const primerStore = {
+  compiled_at: '2026-01-15T00:00:00Z',
+  house_prior: { play: 'fixture', status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'HEAD-CANARY fixture excerpt' },
+  object: {
+    id: 'demo',
+    name: 'Demo Fixture',
+    ticker: 'DEMO',
+    summary: 'BACKGROUND-CANARY US G-SIB shape: consumer, CIB, asset management.',
+    stance: [{ label: 'Advantaged', text: 'BACKGROUND-CANARY product map.' }],
+    role_in_theses: 'BACKGROUND-CANARY sector thesis.',
+  },
+  claims: [
+    { id: 'rev', text: 'Net sales were $10 million', as_of: '2026-01-01', grade: 'A', source_id: 'fixture' },
+  ],
+  gaps: [],
+};
+const primerPack = assembleAgentPack(primerStore, rules);
+const primerObj = primerPack.object || {};
+const primerMd = toMarkdown(primerPack);
+if (
+  JSON.stringify(primerObj) === JSON.stringify(objectIdentity(primerStore.object))
+  && !primerObj.summary
+  && !primerObj.stance
+  && !primerObj.role_in_theses
+  && !JSON.stringify(primerPack).includes('BACKGROUND-CANARY')
+  && !primerMd.includes('BACKGROUND-CANARY')
+  && !primerMd.includes('## Company —')
+) {
+  ok('JS assemble omits pre-stuffed background');
+} else bad(`JS assemble still stuffs background ${JSON.stringify(primerObj)}`);
 
 const residual = [];
 for (let i = 1; i <= 12; i++) {

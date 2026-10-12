@@ -4,6 +4,8 @@ Read-only probes of Cockpit context handling and the `cockpit-research` MCP tool
 
 This directory does not change glass, ontology, or the empty desk registry. The tool probe copies the server into `/tmp`, serves a synthetic `DEMO` fixture, and deletes that copy.
 
+Context packs do not pre-stuff company/sector primers (`object.summary`, stance, `role_in_theses`). Tagged companyfacts, house/risks/notes, the 10k cap, GO gates, and empty-when-unsure gaps stay. The model searches for public background.
+
 ## Rerun
 
 ```bash
