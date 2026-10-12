@@ -363,6 +363,22 @@ export function assertP1() {
       max_chars: 1500,
       store: baseStore([longClaim], { gaps: ['GAP-CANARY-TAIL'], summary: 'HEAD-CANARY' }),
     },
+    {
+      id: 'C-retrieve-background',
+      op: 'retrieve',
+      intent: 'overview',
+      store: baseStore([claim('rev', 'Net sales were $10 million', '2026-01-01')], {
+        summary: 'BACKGROUND-CANARY US G-SIB shape: consumer, CIB, asset management.',
+      }),
+    },
+    {
+      id: 'C-agent-background',
+      op: 'agent',
+      question: 'how exposed is DEMO to pricing?',
+      store: baseStore([claim('rev', 'Net sales were $10 million', '2026-01-01')], {
+        summary: 'BACKGROUND-CANARY US G-SIB shape: consumer, CIB, asset management.',
+      }),
+    },
     { id: 'C-residual-cap', op: 'live', store: baseStore(residual) },
     { id: 'C-resolve-unknown', op: 'resolve', focus: 'not-a-filer' },
     { id: 'C-resolve-alias', op: 'resolve', focus: 'micron' },
@@ -403,6 +419,24 @@ export function assertP1() {
   const demoOnly = byId['C-retrieve-risks-demo-only'];
   if (!demoOnly || demoOnly.error) errors.push(`C-retrieve-risks-demo-only ${demoOnly?.error || 'missing'}`);
   else if (!(demoOnly.series_ids || []).includes('demo-price')) errors.push('demo-only series dropped');
+
+  const background = byId['C-retrieve-background'];
+  if (!background || background.error) errors.push(`C-retrieve-background ${background?.error || 'missing'}`);
+  else {
+    if (background.has_background) errors.push('overview pack kept company/sector primer fields');
+    if (background.has_background_canary) errors.push('overview pack leaked BACKGROUND-CANARY');
+    const keys = background.object_keys || [];
+    if (JSON.stringify(keys) !== JSON.stringify(['id', 'name', 'ticker'])) {
+      errors.push(`overview object keys ${keys.join(',') || '(none)'}`);
+    }
+  }
+  const agentBg = byId['C-agent-background'];
+  if (!agentBg || agentBg.error) errors.push(`C-agent-background ${agentBg?.error || 'missing'}`);
+  else {
+    if (agentBg.has_background_canary) errors.push('agent context leaked BACKGROUND-CANARY');
+    if (agentBg.has_company_section) errors.push('agent context still has Company section');
+    if (!agentBg.has_end_marker) errors.push('C-agent-background dropped END CONTEXT');
+  }
 
   const agent = byId['C-agent-tail-cut'];
   if (!agent || agent.error) errors.push(`C-agent-tail-cut ${agent?.error || 'missing'}`);

@@ -1,8 +1,8 @@
-# Ontology CONTRACT v0.1
+# Ontology CONTRACT v0.2
 
 **Status:** PROPOSED FREEZE — Anthony to confirm  
-**Effective:** 2026-07-19  
-**Supersedes:** none  
+**Effective:** 2026-10-12  
+**Supersedes:** v0.1 (2026-07-19)  
 
 This file is the agent and human law for iteration 1.  
 **Do not edit casually.** Changes → bump to v0.2 + entry in `DECISIONS.md`.
@@ -104,7 +104,7 @@ retrieve(focus, intent) -> ContextPack
 
 | intent | Contents (min) |
 |---|---|
-| `overview` | house_prior, object summary/stance, claims (capped), risks summary, series_snapshot, catalysts (few), gaps, provenance |
+| `overview` | house_prior, object identity (id/name/ticker), claims (capped), risks summary, series_snapshot, catalysts (few), gaps, provenance. No company/sector primer, stance, or role_in_theses — the model searches for public background. |
 | `risks` | full risk detail + tripwires for focus-related risks, gaps |
 | `catalysts` | catalyst list for focus, gaps |
 
@@ -153,6 +153,7 @@ Voice · multi-ticker depth · Nebius pack quality · X/firehose core · Neo4j �
 
 | Version | Date | Note |
 |---|---|---|
+| v0.2 | 2026-10-12 | Overview pack drops company/sector primer, stance, and role_in_theses (eval arm 0+d: no accuracy or cost gain vs bare+web). Identity, tagged facts, house/risks, 10k cap, and gaps stay. |
 | v0.1 | 2026-07-19 | Initial freeze proposal |
 
-**Anthony confirmation:** ☐ I freeze v0.1 · ☐ Request changes before freeze  
+**Anthony confirmation:** ☐ I freeze v0.2 · ☐ Request changes before freeze  

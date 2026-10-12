@@ -53,3 +53,9 @@
 **Decision:** Hand-accepted MU gold fixture before investing in parser sophistication.  
 **Why:** Stops compiler overfitting to bad structure; defines success.  
 **Kill criterion:** Shipping compile without Anthony-trusted gold.
+
+## D-ONTO-10 — No pre-stuffed background in the pack (2026-10-12)
+
+**Decision:** Retrieve and agent ContextPacks carry focus identity only (`id`, `name`, `ticker`). They do not copy `object.summary`, `stance`, or `role_in_theses`. The compiled store may still hold those fields for glass. The model searches for public company/sector background.  
+**Why:** Eval pilot PR #11 arm 0+d (pre-stuffed primer) did not separate from bare+web on accuracy or cost.  
+**Kill criterion:** A later measured run shows a company/sector primer beating bare+web under the pre-registered rule.
