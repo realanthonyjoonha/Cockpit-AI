@@ -757,6 +757,16 @@ def stale_tripwires(
     return out
 
 
+_PACKED_VALUE_KEYS = (
+    "concept", "tags", "value_text", "unit", "period", "span",
+    "form", "fp", "fy", "filed", "accession",
+)
+
+
+def _slim_labeled_value(val: dict[str, Any]) -> dict[str, Any]:
+    return {k: val.get(k) for k in _PACKED_VALUE_KEYS}
+
+
 def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
     row = {
         "id": c.get("id"),
@@ -770,9 +780,11 @@ def pack_claim(c: dict[str, Any]) -> dict[str, Any]:
         row["origin"] = c.get("origin")
         row["confidence"] = c.get("confidence")
     if c.get("origin") in ("companyfacts", "xbrl"):
-        for key in ("concept", "value", "value_text", "unit", "values"):
+        for key in ("concept", "value", "value_text", "unit"):
             if key in c:
                 row[key] = c.get(key)
+        if c.get("values"):
+            row["values"] = [_slim_labeled_value(v) for v in c.get("values") or [] if isinstance(v, dict)]
     return row
 
 

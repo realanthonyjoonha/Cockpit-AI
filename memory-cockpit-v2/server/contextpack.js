@@ -565,6 +565,17 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
   return indexed.map((item) => item.row);
 }
 
+const PACKED_VALUE_KEYS = [
+  'concept', 'tags', 'value_text', 'unit', 'period', 'span',
+  'form', 'fp', 'fy', 'filed', 'accession',
+];
+
+function slimLabeledValue(val) {
+  const row = {};
+  for (const key of PACKED_VALUE_KEYS) row[key] = val ? val[key] : null;
+  return row;
+}
+
 export function packClaim(c) {
   const row = {
     id: c.id,
@@ -579,9 +590,10 @@ export function packClaim(c) {
     row.confidence = c.confidence;
   }
   if (c.origin === 'companyfacts' || c.origin === 'xbrl') {
-    for (const key of ['concept', 'value', 'value_text', 'unit', 'values']) {
+    for (const key of ['concept', 'value', 'value_text', 'unit']) {
       if (Object.prototype.hasOwnProperty.call(c, key)) row[key] = c[key];
     }
+    if (Array.isArray(c.values)) row.values = c.values.filter((v) => v && typeof v === 'object').map(slimLabeledValue);
   }
   return row;
 }
@@ -698,6 +710,43 @@ function allowlist(pack) {
       changed = true;
     }
   }
+  return changed;
+}
+
+function slimClaimValues(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !Array.isArray(claim.values)) {
+      out.push(claim);
+      continue;
+    }
+    const slim = claim.values.filter((v) => v && typeof v === 'object').map(slimLabeledValue);
+    if (JSON.stringify(slim) !== JSON.stringify(claim.values)) {
+      out.push({ ...claim, values: slim });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function dropClaimValues(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (claim && typeof claim === 'object' && claim.values) {
+      const row = { ...claim };
+      delete row.values;
+      out.push(row);
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
   return changed;
 }
 
@@ -882,6 +931,7 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
   const steps = [
     () => clearList(pack, 'related'),
     () => clearList(pack, 'context_claims'),
+    () => slimClaimValues(pack),
     () => clipClaimTexts(pack, 480, 'other'),
     () => clipClaimTexts(pack, 480, null),
     () => clipObject(pack, 300),
@@ -896,6 +946,7 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => clipClaimTexts(pack, 160, 'other'),
     () => clipClaimTexts(pack, 160, null),
     () => dropOtherClaims(pack),
+    () => dropClaimValues(pack),
     () => clipClaimTexts(pack, 80, null),
     () => clipExcerpt(pack, 80),
     () => clearList(pack, 'catalysts'),
