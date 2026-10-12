@@ -134,7 +134,7 @@ function unitOk(unit, kind) {
 export function parseCompanyfacts(doc, opts = {}) {
   const notes = [];
   if (!doc || typeof doc !== 'object' || !doc.facts || typeof doc.facts !== 'object') {
-    return { facts: [], notes: [UNREADABLE], entity: null, cik: null };
+    return { facts: [], notes: [UNREADABLE], entity: null, cik: null, latest_accession: null };
   }
   const sourceId = opts.sourceId || null;
   const out = [];
@@ -178,7 +178,13 @@ export function parseCompanyfacts(doc, opts = {}) {
       }
     }
   }
-  return { facts: out, notes, entity: doc.entityName || null, cik: doc.cik ?? null };
+  return {
+    facts: out,
+    notes,
+    entity: doc.entityName || null,
+    cik: doc.cik ?? null,
+    latest_accession: latestAccessionInDocument(doc),
+  };
 }
 
 export function cacheStatusGap(cacheFile) {
@@ -199,7 +205,7 @@ export function loadCompanyfactsFile(filePath, opts = {}) {
     return parsed;
   } catch {
     const gap = cacheStatusGap(filePath);
-    return { facts: [], notes: [gap || UNREADABLE], entity: null, cik: null };
+    return { facts: [], notes: [gap || UNREADABLE], entity: null, cik: null, latest_accession: null };
   }
 }
 
@@ -275,6 +281,33 @@ export function mappedFacts(facts, taxonomy = null) {
   return (facts || []).filter((f) => known.has(f.concept) && !f.dimensional);
 }
 
+export function latestAccessionInDocument(doc) {
+  const factsRoot = doc && typeof doc === 'object' && doc.facts && typeof doc.facts === 'object' ? doc.facts : null;
+  if (!factsRoot) return null;
+  let best = null;
+  for (const group of Object.values(factsRoot)) {
+    if (!group || typeof group !== 'object') continue;
+    for (const node of Object.values(group)) {
+      const units = node && typeof node === 'object' ? node.units : null;
+      if (!units || typeof units !== 'object') continue;
+      for (const points of Object.values(units)) {
+        if (!Array.isArray(points)) continue;
+        for (const raw of points) {
+          if (!raw || typeof raw !== 'object') continue;
+          if (!ALLOWED_FORMS.has(formFamily(raw.form))) continue;
+          if (!raw.accn || !raw.filed) continue;
+          const filed = String(raw.filed);
+          const accn = String(raw.accn);
+          if (!best || filed > best.filed || (filed === best.filed && accn > best.accession)) {
+            best = { filed, accession: accn };
+          }
+        }
+      }
+    }
+  }
+  return best ? best.accession : null;
+}
+
 export function latestAccession(facts) {
   let best = null;
   for (const f of facts || []) {
@@ -289,14 +322,14 @@ export function latestAccession(facts) {
   return best ? best.accession : null;
 }
 
-export function latestFilingFacts(facts) {
-  const accn = latestAccession(facts || []);
+export function latestFilingFacts(facts, accession = null) {
+  const accn = accession || latestAccession(facts || []);
   if (!accn) return [];
   return (facts || []).filter((f) => f.accession === accn);
 }
 
-export function mappedLatestFacts(facts, taxonomy = null) {
-  return mappedFacts(latestFilingFacts(facts), taxonomy);
+export function mappedLatestFacts(facts, taxonomy = null, accession = null) {
+  return mappedFacts(latestFilingFacts(facts, accession), taxonomy);
 }
 
 export function periodKey(fact) {
@@ -454,9 +487,9 @@ function slot(mid, accn, values) {
   };
 }
 
-export function latestFilingSlots(facts, taxonomy = null) {
+export function latestFilingSlots(facts, taxonomy = null, accession = null) {
   const tax = taxonomy || loadTaxonomy();
-  const accn = latestAccession(facts || []);
+  const accn = accession || latestAccession(facts || []);
   const slots = {};
   const gaps = [];
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
@@ -481,12 +514,12 @@ export function latestFilingSlots(facts, taxonomy = null) {
   return { slots, gaps };
 }
 
-export function taggedSlots(facts, taxonomy = null) {
-  return latestFilingSlots(facts, taxonomy).slots;
+export function taggedSlots(facts, taxonomy = null, accession = null) {
+  return latestFilingSlots(facts, taxonomy, accession).slots;
 }
 
-export function headlineGaps(slots, taxonomy = null, facts = null) {
-  return latestFilingSlots(facts || [], taxonomy).gaps;
+export function headlineGaps(slots, taxonomy = null, facts = null, accession = null) {
+  return latestFilingSlots(facts || [], taxonomy, accession).gaps;
 }
 
 export function defaultCache(wikiRoot, slug) {
@@ -507,8 +540,9 @@ export function loadCompanyfacts(cfg, wikiRoot, slug) {
     return { facts: [], notes: [cacheStatusGap(filePath) || MISSING_CACHE], files: [], slots: {} };
   }
   const parsed = loadCompanyfactsFile(filePath, { sourceId: filePath });
-  const { slots, gaps } = latestFilingSlots(parsed.facts);
-  const kept = mappedLatestFacts(parsed.facts);
+  const accn = parsed.latest_accession || null;
+  const { slots, gaps } = latestFilingSlots(parsed.facts, null, accn);
+  const kept = mappedLatestFacts(parsed.facts, null, accn);
   const notes = [...(parsed.notes || [])];
   const statusGap = cacheStatusGap(filePath);
   if (statusGap && !notes.includes(statusGap)) notes.unshift(statusGap);

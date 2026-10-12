@@ -19,6 +19,7 @@ from api.companyfacts import (  # noqa: E402
     agree,
     headline_gaps,
     latest_accession,
+    latest_accession_in_document,
     latest_filing_slots,
     load_taxonomy,
     mapped_facts,
@@ -205,7 +206,89 @@ def _amendment_assets_only():
     return doc, older, later
 
 
+def _later_filing_only_in_other_namespace():
+    older = "0000000088-25-000010"
+    later = "0000000088-26-000020"
+    doc = {
+        "cik": 88,
+        "entityName": "Constructed Other Namespace Latest",
+        "facts": {
+            "dei": {
+                "EntityRegistrantName": {
+                    "units": {
+                        "pure": [{
+                            "end": "2026-06-30",
+                            "val": "Issuer",
+                            "accn": later,
+                            "fy": 2026,
+                            "fp": "Q2",
+                            "form": "6-K",
+                            "filed": "2026-08-20",
+                        }]
+                    }
+                }
+            },
+            "srt": {
+                "ConsolidatedEntitiesAxis": {
+                    "units": {
+                        "pure": [{
+                            "end": "2026-06-30",
+                            "val": 1,
+                            "accn": later,
+                            "fy": 2026,
+                            "fp": "Q2",
+                            "form": "6-K",
+                            "filed": "2026-08-20",
+                        }]
+                    }
+                }
+            },
+            "us-gaap": {
+                "Revenues": {
+                    "units": {
+                        "USD": [{
+                            "start": "2025-01-01",
+                            "end": "2025-03-31",
+                            "val": 11,
+                            "accn": older,
+                            "fy": 2025,
+                            "fp": "Q1",
+                            "form": "10-Q",
+                            "filed": "2025-05-01",
+                        }]
+                    }
+                }
+            },
+        },
+    }
+    return doc, older, later
+
+
 class LatestFilingOnly(unittest.TestCase):
+    def test_raw_document_latest_is_every_namespace_and_unit(self):
+        doc, older, later = _later_filing_only_in_other_namespace()
+        parsed = parse_companyfacts(doc, source_id="companyfacts/other-namespace-latest")
+        self.assertEqual(latest_accession_in_document(doc), later)
+        self.assertEqual(parsed["latest_accession"], later)
+        self.assertEqual(latest_accession(parsed["facts"]), older)
+        slots, gaps = latest_filing_slots(parsed["facts"], accession=parsed["latest_accession"])
+        self.assertNotIn("company_revenue", slots)
+        self.assertTrue(any("company_revenue" in g and later in g and older not in g for g in gaps))
+        kept = mapped_latest_facts(parsed["facts"], accession=parsed["latest_accession"])
+        self.assertFalse(any(str(f.get("concept") or "").endswith(":Revenues") for f in kept))
+        gout = []
+        live, _ = live_claims(
+            [{"id": "sent", "text": "Revenue was $11.", "as_of": "2025-03-31", "grade": "A", "source_id": "review"}],
+            load_rules(),
+            facts=kept,
+            gaps_out=gout,
+        )
+        rev = next((c for c in live if c.get("metric_id") == "company_revenue"), None)
+        if rev is not None:
+            self.assertNotIn(rev.get("origin"), ("companyfacts", "xbrl"))
+            self.assertNotEqual(rev.get("origin"), "sentence")
+
+
     def test_later_amendment_without_the_metric_does_not_resurrect_an_older_filing(self):
         doc, older, later = _amendment_assets_only()
         facts = parse_companyfacts(doc, source_id="companyfacts/amendment-assets-only")["facts"]

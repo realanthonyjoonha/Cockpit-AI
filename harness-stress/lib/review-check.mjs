@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import {
   agree,
   latestAccession,
+  latestAccessionInDocument,
   latestFilingFacts,
   latestFilingSlots,
   mappedFacts,
@@ -258,7 +259,68 @@ export function checkCompanyfactsExact(api) {
   return errors;
 }
 
-/** Later 10-Q/A tags only Assets; older 10-Q tags Revenues. Values stay local. */
+/** Later 6-K exists only under dei/srt; older 10-Q tags us-gaap Revenues. Values stay local. */
+export function laterFilingOnlyInOtherNamespaceDoc() {
+  const older = '0000000088-25-000010';
+  const later = '0000000088-26-000020';
+  return {
+    older,
+    later,
+    doc: {
+      cik: 88,
+      entityName: 'Constructed Other Namespace Latest',
+      facts: {
+        dei: {
+          EntityRegistrantName: {
+            units: {
+              pure: [{
+                end: '2026-06-30',
+                val: 'Issuer',
+                accn: later,
+                fy: 2026,
+                fp: 'Q2',
+                form: '6-K',
+                filed: '2026-08-20',
+              }],
+            },
+          },
+        },
+        srt: {
+          ConsolidatedEntitiesAxis: {
+            units: {
+              pure: [{
+                end: '2026-06-30',
+                val: 1,
+                accn: later,
+                fy: 2026,
+                fp: 'Q2',
+                form: '6-K',
+                filed: '2026-08-20',
+              }],
+            },
+          },
+        },
+        'us-gaap': {
+          Revenues: {
+            units: {
+              USD: [{
+                start: '2025-01-01',
+                end: '2025-03-31',
+                val: 11,
+                accn: older,
+                fy: 2025,
+                fp: 'Q1',
+                form: '10-Q',
+                filed: '2025-05-01',
+              }],
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 export function amendmentAssetsOnlyDoc() {
   const older = '0000000099-25-000010';
   const later = '0000000099-25-000020';
@@ -346,6 +408,44 @@ export function checkHonestyFixes(api) {
   }
   if (rev && rev.origin === 'sentence') {
     errors.push('sentence filled company_revenue when the latest filing left it empty');
+  }
+
+  const otherNs = laterFilingOnlyInOtherNamespaceDoc();
+  const otherParsed = api.parseCompanyfacts(otherNs.doc, { sourceId: 'companyfacts/other-namespace-latest' });
+  if (latestAccessionInDocument(otherNs.doc) !== otherNs.later) {
+    errors.push(`raw-document latest ${latestAccessionInDocument(otherNs.doc)} != ${otherNs.later}`);
+  }
+  if (otherParsed.latest_accession !== otherNs.later) {
+    errors.push(`parsed latest_accession ${otherParsed.latest_accession} != ${otherNs.later}`);
+  }
+  if (latestAccession(otherParsed.facts || []) !== otherNs.older) {
+    errors.push('parsed-facts latest should still be the older us-gaap filing');
+  }
+  const otherSlots = latestFilingSlots(otherParsed.facts, null, otherParsed.latest_accession);
+  if (otherSlots.slots.company_revenue) {
+    errors.push('other-namespace latest resurrected company_revenue from an older filing');
+  }
+  const otherNamed = (otherSlots.gaps || []).some(
+    (g) => g.includes('company_revenue') && g.includes(otherNs.later) && !g.includes(otherNs.older),
+  );
+  if (!otherNamed) errors.push(`other-namespace gap did not name later accession: ${JSON.stringify(otherSlots.gaps)}`);
+  const otherKept = mappedLatestFacts(otherParsed.facts, null, otherParsed.latest_accession);
+  if (otherKept.some((f) => f.concept && String(f.concept).endsWith(':Revenues'))) {
+    errors.push('mappedLatestFacts(accession=raw-latest) kept older Revenues');
+  }
+  const otherLive = api.liveClaims(
+    [{ id: 'sent-ns', text: 'Revenue was $11.', as_of: '2025-03-31', grade: 'A', source_id: 'review' }],
+    api.rules,
+    8,
+    [],
+    { facts: otherKept },
+  );
+  const otherRev = otherLive.find((c) => c.metric_id === 'company_revenue');
+  if (otherRev && (otherRev.origin === 'companyfacts' || otherRev.origin === 'xbrl')) {
+    errors.push('liveClaims used an older filing company_revenue after raw-document pin');
+  }
+  if (otherRev && otherRev.origin === 'sentence') {
+    errors.push('sentence filled company_revenue when the raw-document latest left it empty');
   }
 
   const twoFacts = factsFor(api, 'two-periods').facts;

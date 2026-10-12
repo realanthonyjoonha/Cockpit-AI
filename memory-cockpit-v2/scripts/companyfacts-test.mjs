@@ -5,13 +5,19 @@ import { fileURLToPath } from 'url';
 import {
   headlineGaps,
   latestAccession,
+  latestAccessionInDocument,
   latestFilingSlots,
   loadCompanyfactsFile,
   mappedLatestFacts,
   parseCompanyfacts,
   taggedSlots,
 } from '../server/companyfacts.js';
-import { CONSTRUCTED, amendmentAssetsOnlyDoc, slotPropertyErrors } from '../../harness-stress/lib/review-check.mjs';
+import {
+  CONSTRUCTED,
+  amendmentAssetsOnlyDoc,
+  laterFilingOnlyInOtherNamespaceDoc,
+  slotPropertyErrors,
+} from '../../harness-stress/lib/review-check.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIX = path.resolve(HERE, '../../harness-stress/fixtures/companyfacts');
@@ -59,5 +65,19 @@ if (!(amendmentSlots.gaps || []).some((g) => g.includes('company_revenue') && g.
   fail('amendment gap did not name later accession');
 }
 if (taggedSlots(mappedLatestFacts(amendment.facts)).company_revenue) fail('mappedLatest kept older revenue');
+
+const otherNs = laterFilingOnlyInOtherNamespaceDoc();
+const otherParsed = parseCompanyfacts(otherNs.doc, { sourceId: 'companyfacts/other-namespace-latest' });
+if (latestAccessionInDocument(otherNs.doc) !== otherNs.later) fail('raw-document latest accession');
+if (otherParsed.latest_accession !== otherNs.later) fail('parsed latest_accession from raw document');
+if (latestAccession(otherParsed.facts) !== otherNs.older) fail('parsed-facts latest should be the older us-gaap filing');
+const otherSlots = latestFilingSlots(otherParsed.facts, null, otherParsed.latest_accession);
+if (otherSlots.slots.company_revenue) fail('other-namespace latest resurrected company_revenue');
+if (!(otherSlots.gaps || []).some((g) => g.includes('company_revenue') && g.includes(otherNs.later) && !g.includes(otherNs.older))) {
+  fail('other-namespace gap did not name later accession');
+}
+if (mappedLatestFacts(otherParsed.facts, null, otherParsed.latest_accession).some((f) => String(f.concept || '').endsWith(':Revenues'))) {
+  fail('mappedLatest(accession=raw-latest) kept older Revenues');
+}
 
 if (!process.exitCode) console.log(`companyfacts JS properties ${dirs.length} fixtures`);
