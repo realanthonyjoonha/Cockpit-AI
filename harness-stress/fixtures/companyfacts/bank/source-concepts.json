@@ -1,0 +1,65 @@
+{
+  "id": "bank",
+  "cik": "0000019617",
+  "extract": "full-mapped",
+  "comment": "Mapped concepts present in the live SEC companyfacts at extract time. The fixture must contain every name and the same per-unit point counts. Unmapped tags may be omitted.",
+  "concepts": {
+    "us-gaap:CashAndCashEquivalentsAtCarryingValue": {
+      "USD": 16
+    },
+    "us-gaap:CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents": {
+      "USD": 120
+    },
+    "us-gaap:EarningsPerShareDiluted": {
+      "USD/shares": 236
+    },
+    "us-gaap:Goodwill": {
+      "USD": 352
+    },
+    "us-gaap:GoodwillImpairmentLoss": {
+      "USD": 45
+    },
+    "us-gaap:InterestAndDividendIncomeOperating": {
+      "USD": 54
+    },
+    "us-gaap:InterestIncomeExpenseNet": {
+      "USD": 236
+    },
+    "us-gaap:LongTermDebt": {
+      "USD": 46
+    },
+    "us-gaap:NetCashProvidedByUsedInOperatingActivities": {
+      "USD": 164
+    },
+    "us-gaap:NetIncomeLoss": {
+      "USD": 241
+    },
+    "us-gaap:PaymentsForRepurchaseOfCommonStock": {
+      "USD": 93
+    },
+    "us-gaap:PaymentsOfDividends": {
+      "USD": 164
+    },
+    "us-gaap:ProfitLoss": {
+      "USD": 30
+    },
+    "us-gaap:ProvisionForLoanAndLeaseLosses": {
+      "USD": 29
+    },
+    "us-gaap:ProvisionForLoanLeaseAndOtherLosses": {
+      "USD": 236
+    },
+    "us-gaap:Revenues": {
+      "USD": 120
+    },
+    "us-gaap:RevenuesNetOfInterestExpense": {
+      "USD": 149
+    },
+    "us-gaap:UnrecordedUnconditionalPurchaseObligationBalanceSheetAmount": {
+      "USD": 2
+    },
+    "us-gaap:WeightedAverageNumberOfDilutedSharesOutstanding": {
+      "shares": 236
+    }
+  }
+}
