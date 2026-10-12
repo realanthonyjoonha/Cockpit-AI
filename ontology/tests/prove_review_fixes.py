@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -22,13 +23,21 @@ FIX = ROOT / "harness-stress" / "fixtures" / "companyfacts"
 JS_MOD = JS.resolve().as_posix()
 
 
+def _clear_pyc() -> None:
+    cache = ONT / "api" / "__pycache__"
+    if cache.is_dir():
+        shutil.rmtree(cache)
+
+
 def run_py(expr: str) -> subprocess.CompletedProcess:
+    _clear_pyc()
+    env = {**os.environ, "PYTHONPATH": str(ONT), "PYTHONDONTWRITEBYTECODE": "1"}
     return subprocess.run(
         [sys.executable, "-c", expr],
         cwd=str(ONT),
         capture_output=True,
         text=True,
-        env={**os.environ, "PYTHONPATH": str(ONT)},
+        env=env,
     )
 
 
@@ -108,8 +117,8 @@ TENKTSHORT_REV = "s, e, g = pair('tenkt-short'); assert s['company_revenue']['va
 TENKTSHORT_JS = "const s=pair('tenkt-short').slots; if (s.company_revenue?.value_text!=='340000000' || s.company_revenue?.form!=='10-KT') process.exit(1);"
 LEASE_REV = "s, e, g = pair('lease-only'); assert s['company_revenue']['concept']=='us-gaap:OperatingLeaseLeaseIncome' and any('lease income only' in x for x in g)"
 LEASE_JS = "const r=pair('lease-only'); if (r.slots.company_revenue?.concept!=='us-gaap:OperatingLeaseLeaseIncome' || !r.gaps.includes('company_revenue: lease income only')) process.exit(1);"
-PAD_REV = "s, e, g = pair('stale-pad'); assert s['total_debt']['value_text']=='500000000' and 'interest_revenue' not in s and STALE_DAYS==760"
-PAD_JS = "const r=pair('stale-pad'); if (r.slots.total_debt?.value_text!=='500000000' || r.slots.interest_revenue || STALE_DAYS!==760) process.exit(1);"
+PAD_REV = "s, e, g = pair('stale-pad'); assert 'total_debt' in s and s['total_debt']['value_text']=='500000000' and 'interest_revenue' not in s"
+PAD_JS = "const r=pair('stale-pad'); if (r.slots.total_debt?.value_text!=='500000000' || r.slots.interest_revenue) process.exit(1);"
 
 
 def check_py(snippet: str) -> bool:
@@ -143,6 +152,9 @@ def replace_once(path: Path, old: str, new: str) -> None:
     if old not in text:
         raise SystemExit(f"missing patch needle in {path}")
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    if old in path.read_text(encoding="utf-8"):
+        raise SystemExit(f"patch did not land in {path}")
+    _clear_pyc()
 
 
 def main() -> None:
@@ -151,6 +163,7 @@ def main() -> None:
     def restore() -> None:
         for p, text in backups.items():
             p.write_text(text, encoding="utf-8")
+        _clear_pyc()
 
     try:
         tax = json.loads(TAX.read_text())
@@ -169,10 +182,15 @@ def main() -> None:
         expect_fail("bank/rnie", BANK_REV, BANK_JS)
         restore()
 
-        replace_once(PY, "STALE_DAYS = 760", "STALE_DAYS = 730")
-        replace_once(JS, "export const STALE_DAYS = 760;", "export const STALE_DAYS = 730;")
+        replace_once(PY, "\nSTALE_DAYS = 760\n", "\nSTALE_DAYS = 730\n")
+        replace_once(JS, "\nexport const STALE_DAYS = 760;\n", "\nexport const STALE_DAYS = 730;\n")
         expect_fail("stale-pad", PAD_REV, PAD_JS)
+        restore()
+
+        replace_once(PY, '        if fact_is_stale(win["period"]["end"], latest_periodic):\n            stale[mid] = win["period"]["end"]\n            continue\n', "")
+        replace_once(JS, "    if (factIsStale(win.period.end, latestPeriodic)) {\n      stale[mid] = win.period.end;\n      continue;\n    }\n", "")
         expect_fail("stale-slot", STALE_REV, STALE_JS)
+        expect_fail("bank/stale", BANK_REV, BANK_JS)
         restore()
 
         replace_once(PY, 'INTERIM_FORMS = {"10-Q", "6-K"}', 'INTERIM_FORMS = {"10-Q"}')

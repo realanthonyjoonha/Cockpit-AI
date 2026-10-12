@@ -80,7 +80,7 @@ const TAXLIST = "const t=loadTaxonomy(); const listed=[...(t.metrics.company_rev
 const SIXKFY = "const s=pair('sixk-fy-q').slots; if (s.company_revenue?.value_text!=='250000000' || s.company_revenue?.ytd) process.exit(1);";
 const TENKTSHORT = "const s=pair('tenkt-short').slots; if (s.company_revenue?.value_text!=='340000000' || s.company_revenue?.form!=='10-KT') process.exit(1);";
 const LEASE = "const r=pair('lease-only'); if (r.slots.company_revenue?.concept!=='us-gaap:OperatingLeaseLeaseIncome' || !r.gaps.includes('company_revenue: lease income only')) process.exit(1);";
-const PAD = "const r=pair('stale-pad'); if (r.slots.total_debt?.value_text!=='500000000' || r.slots.interest_revenue || STALE_DAYS!==760) process.exit(1);";
+const PAD = "const r=pair('stale-pad'); if (r.slots.total_debt?.value_text!=='500000000' || r.slots.interest_revenue) process.exit(1);";
 
 try {
   const tax = JSON.parse(readFileSync(TAX, 'utf8'));
@@ -98,9 +98,13 @@ try {
   expectFail('bank/rnie', BANK);
   restore();
 
-  replaceOnce(JS, 'export const STALE_DAYS = 760;', 'export const STALE_DAYS = 730;');
+  replaceOnce(JS, '\nexport const STALE_DAYS = 760;\n', '\nexport const STALE_DAYS = 730;\n');
   expectFail('stale-pad', PAD);
+  restore();
+
+  replaceOnce(JS, '    if (factIsStale(win.period.end, latestPeriodic)) {\n      stale[mid] = win.period.end;\n      continue;\n    }\n', '');
   expectFail('stale-slot', STALE);
+  expectFail('bank/stale', BANK);
   restore();
 
   replaceOnce(JS, "const INTERIM_FORMS = new Set(['10-Q', '6-K']);", "const INTERIM_FORMS = new Set(['10-Q']);");
