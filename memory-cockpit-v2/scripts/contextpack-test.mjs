@@ -89,7 +89,7 @@ else bad(`stems: ${stems.join(', ')}`);
 
 const xApi = { ...api, sentenceHasAmount, parseCompanyfacts, structuredMetric, taggedSlots, headlineGaps };
 const exactErrors = checkCompanyfactsExact(xApi);
-if (!exactErrors.length) ok('JS companyfacts fixtures match expected.json');
+if (!exactErrors.length) ok('JS companyfacts properties + constructed documents');
 else exactErrors.forEach((e) => bad(e));
 const taggedErrors = checkTaggedSectors(loadSectors(), xApi);
 if (!taggedErrors.length) ok('JS companyfacts slots own the ten-sector live values');
@@ -98,7 +98,7 @@ const reviewRun = checkReview(xApi);
 if (!reviewRun.errors.length) ok(`JS ${reviewRun.sentences} review sentences leave structured slots alone`);
 else reviewRun.errors.slice(0, 20).forEach((e) => bad(e));
 const reviewerErrors = checkReviewerCases(xApi);
-if (!reviewerErrors.length) ok('JS reviewer restatement and 10-Q YTD cases');
+if (!reviewerErrors.length) ok('JS constructed unique / two-periods / disagree / none');
 else reviewerErrors.forEach((e) => bad(e));
 
 console.log(fail ? `\n${fail} failed` : '\ncontextpack JS OK');
