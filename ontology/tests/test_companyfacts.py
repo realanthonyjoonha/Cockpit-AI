@@ -21,12 +21,14 @@ from api.companyfacts import (  # noqa: E402
     latest_accession,
     latest_filing_slots,
     load_taxonomy,
+    mapped_facts,
+    mapped_latest_facts,
     parse_companyfacts,
     structured_metric,
     tagged_slots,
     value_text,
 )
-from api.contextpack import live_claims, load_rules  # noqa: E402
+from api.contextpack import live_claims, load_rules, stale_tripwires  # noqa: E402
 
 FIXTURES = REPO / "harness-stress" / "fixtures" / "companyfacts"
 REVIEW = REPO / "harness-stress" / "fixtures" / "review-sentences.json"
@@ -160,6 +162,143 @@ class ConstructedDocuments(unittest.TestCase):
         self.assertIn(f"company_revenue: not reported in latest filing {accn}", gaps)
         self.assertIn("cash", slots)
         self.assertEqual(slot_properties(parsed["facts"], slots, gaps), [])
+
+
+def _amendment_assets_only():
+    older = "0000000099-25-000010"
+    later = "0000000099-25-000020"
+    doc = {
+        "cik": 99,
+        "entityName": "Constructed Amendment Assets Only",
+        "facts": {
+            "us-gaap": {
+                "Revenues": {
+                    "units": {
+                        "USD": [{
+                            "start": "2025-01-01",
+                            "end": "2025-03-31",
+                            "val": 11,
+                            "accn": older,
+                            "fy": 2025,
+                            "fp": "Q1",
+                            "form": "10-Q",
+                            "filed": "2025-05-01",
+                        }]
+                    }
+                },
+                "Assets": {
+                    "units": {
+                        "USD": [{
+                            "end": "2025-06-30",
+                            "val": 22,
+                            "accn": later,
+                            "fy": 2025,
+                            "fp": "Q2",
+                            "form": "10-Q/A",
+                            "filed": "2025-08-15",
+                        }]
+                    }
+                },
+            }
+        },
+    }
+    return doc, older, later
+
+
+class LatestFilingOnly(unittest.TestCase):
+    def test_later_amendment_without_the_metric_does_not_resurrect_an_older_filing(self):
+        doc, older, later = _amendment_assets_only()
+        facts = parse_companyfacts(doc, source_id="companyfacts/amendment-assets-only")["facts"]
+        self.assertEqual(latest_accession(facts), later)
+        slots, gaps = latest_filing_slots(facts)
+        self.assertNotIn("company_revenue", slots)
+        self.assertTrue(any("company_revenue" in g and later in g and older not in g for g in gaps))
+        mapped_all = mapped_facts(facts)
+        self.assertTrue(any(f.get("accession") == older for f in mapped_all))
+        kept = mapped_latest_facts(facts)
+        self.assertFalse(any(f.get("accession") != later for f in kept))
+        self.assertFalse(any(str(f.get("concept") or "").endswith(":Revenues") for f in kept))
+        self.assertNotIn("company_revenue", tagged_slots(kept))
+        gout = []
+        live, _ = live_claims(
+            [{"id": "sent", "text": "Revenue was $11.", "as_of": "2025-03-31", "grade": "A", "source_id": "review"}],
+            load_rules(),
+            facts=kept,
+            gaps_out=gout,
+        )
+        rev = next((c for c in live if c.get("metric_id") == "company_revenue"), None)
+        if rev is not None:
+            self.assertNotIn(rev.get("origin"), ("companyfacts", "xbrl"))
+            self.assertNotEqual(rev.get("origin"), "sentence")
+
+
+class UndatedNeverNewer(unittest.TestCase):
+    def test_null_as_of_does_not_make_a_sentence_newer_than_the_filing(self):
+        two = parse_id("two-periods")["facts"]
+        slot = tagged_slots(two)["company_revenue"]
+        self.assertIsNone(slot.get("as_of"))
+        undated = []
+        live_claims(
+            [{"id": "u", "text": "Revenue was higher this quarter.", "as_of": None, "grade": "A", "source_id": "review"}],
+            load_rules(),
+            facts=two,
+            gaps_out=undated,
+        )
+        self.assertFalse(any("newer sentence" in g for g in undated))
+        dated = []
+        live_claims(
+            [{"id": "d", "text": "Revenue was higher this quarter.", "as_of": "2026-12-31", "grade": "A", "source_id": "review"}],
+            load_rules(),
+            facts=two,
+            gaps_out=dated,
+        )
+        self.assertFalse(any("newer sentence" in g for g in dated))
+        unique = parse_id("unique")["facts"]
+        self.assertIsNotNone(tagged_slots(unique)["company_revenue"].get("as_of"))
+        undated_unique = []
+        live_claims(
+            [{"id": "u2", "text": "Revenue was discussed.", "as_of": None, "grade": "A", "source_id": "review"}],
+            load_rules(),
+            facts=unique,
+            gaps_out=undated_unique,
+        )
+        self.assertFalse(any("newer sentence" in g for g in undated_unique))
+        newer = []
+        live_claims(
+            [{"id": "n2", "text": "Revenue was discussed.", "as_of": "2099-12-31", "grade": "A", "source_id": "review"}],
+            load_rules(),
+            facts=unique,
+            gaps_out=newer,
+        )
+        self.assertTrue(any("newer sentence" in g for g in newer))
+
+
+class TripwireEachPeriod(unittest.TestCase):
+    def test_each_labeled_period_is_compared(self):
+        two = parse_id("two-periods")["facts"]
+        slot = tagged_slots(two)["company_revenue"]
+        self.assertGreaterEqual(len(slot.get("values") or []), 2)
+        rules = load_rules()
+        rules = {**rules, "risk_metric": list(rules.get("risk_metric") or []) + [["company_revenue", "company_revenue"]]}
+        first, second = slot["values"][0]["value_text"], slot["values"][1]["value_text"]
+        self.assertEqual(stale_tripwires(
+            [{"id": "r", "name": "company_revenue", "status": "WATCH", "tripwires": [{"state": f"${first}"}]}],
+            [slot],
+            rules,
+        ), [])
+        self.assertEqual(stale_tripwires(
+            [{"id": "r", "name": "company_revenue", "status": "WATCH", "tripwires": [{"state": f"${second}"}]}],
+            [slot],
+            rules,
+        ), [])
+        amounts = [float(v["value_text"]) for v in slot["values"] if v.get("value_text") is not None]
+        disagree = max(amounts) * 3
+        stale = stale_tripwires(
+            [{"id": "r", "name": "company_revenue", "status": "WATCH", "tripwires": [{"state": f"${disagree}"}]}],
+            [slot],
+            rules,
+        )
+        self.assertEqual(len(stale), 1)
 
 
 class PropertiesOnCachedExtracts(unittest.TestCase):

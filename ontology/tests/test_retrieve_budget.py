@@ -225,7 +225,7 @@ class TestRetrieveBudget(unittest.TestCase):
             self.assertLessEqual(len(text), 28_000)
 
     def test_tagged_slots_survive_the_cap(self):
-        from api.companyfacts import mapped_facts, parse_companyfacts, tagged_slots
+        from api.companyfacts import latest_filing_slots, mapped_latest_facts, parse_companyfacts
 
         fixture = json.loads((REPO / "harness-stress" / "fixtures" / "sectors.json").read_text())
         for issuer in fixture["issuers"]:
@@ -233,8 +233,9 @@ class TestRetrieveBudget(unittest.TestCase):
             doc = json.loads(
                 (REPO / "harness-stress" / "fixtures" / "companyfacts" / cf_id / "companyfacts.json").read_text(encoding="utf-8")
             )
-            facts = mapped_facts(parse_companyfacts(doc, source_id=f"companyfacts/{cf_id}")["facts"])
-            want = {s["id"] for s in tagged_slots(facts).values()}
+            all_facts = parse_companyfacts(doc, source_id=f"companyfacts/{cf_id}")["facts"]
+            facts = mapped_latest_facts(all_facts)
+            want = {s["id"] for s in latest_filing_slots(all_facts)[0].values()}
             ticker = "".join(ch for ch in issuer["id"].upper() if ch.isalnum())[:12]
             store = _store([dict(c) for c in issuer["claims"]], ticker=ticker, focus_id=issuer["id"], gaps=[])
             store["facts"] = facts
@@ -243,6 +244,105 @@ class TestRetrieveBudget(unittest.TestCase):
                 self._assert_under(pack)
                 got = {c.get("id") for c in pack.get("claims") or [] if c.get("origin") in ("companyfacts", "xbrl")}
                 self.assertEqual(got, want, issuer["id"])
+
+    def test_latest_filing_periods_stay_labeled_under_the_cap(self):
+        from api.companyfacts import latest_filing_slots, mapped_latest_facts, parse_companyfacts
+
+        index = json.loads((REPO / "harness-stress" / "fixtures" / "companyfacts" / "index.json").read_text())
+        checked = 0
+        for row in index["issuers"]:
+            if row.get("kind") not in ("extract", "constructed"):
+                continue
+            doc = json.loads(
+                (REPO / "harness-stress" / "fixtures" / "companyfacts" / row["id"] / "companyfacts.json").read_text(encoding="utf-8")
+            )
+            all_facts = parse_companyfacts(doc, source_id=f"companyfacts/{row['id']}")["facts"]
+            slots, _ = latest_filing_slots(all_facts)
+            want = {}
+            for mid, slot in slots.items():
+                values = [v for v in (slot.get("values") or []) if isinstance(v, dict)]
+                if not values:
+                    continue
+                latest_end = max(str((v.get("period") or {}).get("end") or "") for v in values)
+                want[mid] = {
+                    (
+                        (v.get("period") or {}).get("start"),
+                        (v.get("period") or {}).get("end"),
+                    )
+                    for v in values
+                    if str((v.get("period") or {}).get("end") or "") == latest_end
+                }
+            if not want:
+                continue
+            ticker = "".join(ch for ch in row["id"].upper() if ch.isalnum())[:12]
+            fat = [
+                _claim(f"sent-{i}", f"Gross margin was {40 + i} percent. " + ("WORD " * 80), f"2026-01-{i + 1:02d}")
+                for i in range(12)
+            ]
+            store = _store(
+                fat,
+                ticker=ticker,
+                focus_id=row["id"],
+                house_prior={"notes": "N" * 20_000, "view_excerpt": "E" * 5000},
+                gaps=[],
+            )
+            store["facts"] = mapped_latest_facts(all_facts)
+            self._write(ticker, store)
+            packs = [retrieve(ticker, "overview"), assemble_agent_pack(store)]
+            live, _ = live_claims(fat, facts=mapped_latest_facts(all_facts))
+            snapshot = {
+                "available": True,
+                "ticker": ticker,
+                "house_prior": {
+                    "status": "CONFIRMED",
+                    "date": "2026-01-15",
+                    "view_excerpt": "E" * 5000,
+                    "notes": "N" * 20_000,
+                },
+                "claims": [
+                    {
+                        "text": c.get("text"),
+                        "grade": c.get("grade"),
+                        "as_of": c.get("as_of"),
+                        "source_id": c.get("source_id"),
+                        "metric_id": c.get("metric_id"),
+                        "confidence": c.get("confidence"),
+                        "origin": c.get("origin"),
+                        "values": c.get("values"),
+                    }
+                    for c in live
+                ],
+                "gaps": [],
+            }
+            pretty = enforce_char_budget(
+                snapshot,
+                paths.OVERVIEW_BUDGET_CHARS,
+                lambda r: len(json.dumps(r, indent=2)),
+            )
+            self.assertLessEqual(len(json.dumps(pretty, indent=2)), paths.OVERVIEW_BUDGET_CHARS)
+            packs.append(pretty)
+            for pack in packs:
+                if pack is not pretty:
+                    self._assert_under(pack)
+                by_mid = {
+                    c.get("metric_id"): c
+                    for c in pack.get("claims") or []
+                    if c.get("origin") in ("companyfacts", "xbrl")
+                }
+                for mid, periods in want.items():
+                    claim = by_mid.get(mid)
+                    self.assertIsNotNone(claim, f"{row['id']} lost {mid}")
+                    got = {
+                        (
+                            (v.get("period") or {}).get("start"),
+                            (v.get("period") or {}).get("end"),
+                        )
+                        for v in (claim.get("values") or [])
+                        if isinstance(v, dict)
+                    }
+                    self.assertTrue(periods <= got, f"{row['id']} {mid} lost labeled periods {periods - got}")
+            checked += 1
+        self.assertGreaterEqual(checked, 1)
 
     def test_over_budget_keeps_tagged_before_sentences(self):
         pack = {

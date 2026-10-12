@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 import {
   agree,
   latestAccession,
+  latestFilingFacts,
   latestFilingSlots,
+  mappedFacts,
+  mappedLatestFacts,
 } from '../../memory-cockpit-v2/server/companyfacts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -250,6 +253,186 @@ export function checkCompanyfactsExact(api) {
     if (api.headlineGaps) {
       const fromApi = api.headlineGaps(slots, null, parsed.facts);
       if (stable(fromApi) !== stable(gaps)) errors.push(`${id} headlineGaps drifted from latestFilingSlots`);
+    }
+  }
+  return errors;
+}
+
+/** Later 10-Q/A tags only Assets; older 10-Q tags Revenues. Values stay local. */
+export function amendmentAssetsOnlyDoc() {
+  const older = '0000000099-25-000010';
+  const later = '0000000099-25-000020';
+  return {
+    older,
+    later,
+    doc: {
+      cik: 99,
+      entityName: 'Constructed Amendment Assets Only',
+      facts: {
+        'us-gaap': {
+          Revenues: {
+            units: {
+              USD: [{
+                start: '2025-01-01',
+                end: '2025-03-31',
+                val: 11,
+                accn: older,
+                fy: 2025,
+                fp: 'Q1',
+                form: '10-Q',
+                filed: '2025-05-01',
+              }],
+            },
+          },
+          Assets: {
+            units: {
+              USD: [{
+                end: '2025-06-30',
+                val: 22,
+                accn: later,
+                fy: 2025,
+                fp: 'Q2',
+                form: '10-Q/A',
+                filed: '2025-08-15',
+              }],
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
+export function checkHonestyFixes(api) {
+  const errors = [];
+  const { older, later, doc } = amendmentAssetsOnlyDoc();
+  const parsed = api.parseCompanyfacts(doc, { sourceId: 'companyfacts/amendment-assets-only' });
+  const allFacts = parsed.facts || [];
+  if (latestAccession(allFacts) !== later) {
+    errors.push(`amendment latest ${latestAccession(allFacts)} != ${later}`);
+  }
+  const { slots, gaps } = latestFilingSlots(allFacts);
+  if (slots.company_revenue) {
+    errors.push('amendment resurrected company_revenue from the older 10-Q');
+  }
+  const named = (gaps || []).some((g) => g.includes('company_revenue') && g.includes(later) && !g.includes(older));
+  if (!named) errors.push(`amendment gap did not name later accession: ${JSON.stringify(gaps)}`);
+  const mappedAll = mappedFacts(allFacts);
+  if (!mappedAll.some((f) => f.accession === older)) {
+    errors.push('construct lost the older mapped revenue');
+  }
+  const kept = mappedLatestFacts(allFacts);
+  if (kept.some((f) => f.accession !== later)) {
+    errors.push('mappedLatestFacts kept an older filing');
+  }
+  if (kept.some((f) => f.concept && String(f.concept).endsWith(':Revenues'))) {
+    errors.push('mappedLatestFacts kept older Revenues');
+  }
+  const liveSlots = api.taggedSlots(kept);
+  if (liveSlots.company_revenue) {
+    errors.push('taggedSlots(mappedLatest) filled company_revenue from an older filing');
+  }
+  const gout = [];
+  const live = api.liveClaims(
+    [{ id: 'sent', text: 'Revenue was $11.', as_of: '2025-03-31', grade: 'A', source_id: 'review' }],
+    api.rules,
+    8,
+    gout,
+    { facts: kept },
+  );
+  const rev = live.find((c) => c.metric_id === 'company_revenue');
+  if (rev && (rev.origin === 'companyfacts' || rev.origin === 'xbrl')) {
+    errors.push('liveClaims used an older filing company_revenue');
+  }
+  if (rev && rev.origin === 'sentence') {
+    errors.push('sentence filled company_revenue when the latest filing left it empty');
+  }
+
+  const twoFacts = factsFor(api, 'two-periods').facts;
+  const twoSlot = api.taggedSlots(twoFacts).company_revenue;
+  if (!twoSlot || (twoSlot.values || []).length < 2) {
+    errors.push('two-periods fixture lost labeled periods');
+  } else {
+    const undated = [];
+    api.liveClaims(
+      [{ id: 'u', text: 'Revenue was higher this quarter.', as_of: null, grade: 'A', source_id: 'review' }],
+      api.rules,
+      8,
+      undated,
+      { facts: twoFacts },
+    );
+    if (undated.some((g) => /newer sentence/.test(g))) {
+      errors.push('null as_of sentence counted newer than a multi-period filing');
+    }
+    const dated = [];
+    api.liveClaims(
+      [{ id: 'd', text: 'Revenue was higher this quarter.', as_of: '2026-12-31', grade: 'A', source_id: 'review' }],
+      api.rules,
+      8,
+      dated,
+      { facts: twoFacts },
+    );
+    if (dated.some((g) => /newer sentence/.test(g))) {
+      errors.push('dated sentence counted newer than a filing with null as_of');
+    }
+    if (typeof api.staleTripwires === 'function') {
+      const claim = { ...twoSlot };
+      const rules = {
+        ...api.rules,
+        risk_metric: [...(api.rules.risk_metric || []), ['company_revenue', 'company_revenue']],
+      };
+      const matchVal = twoSlot.values[0].value_text;
+      const otherVal = twoSlot.values[1].value_text;
+      const match = api.staleTripwires(
+        [{ id: 'r', name: 'company_revenue', status: 'WATCH', tripwires: [{ state: `$${matchVal}` }] }],
+        [claim],
+        rules,
+        [],
+      );
+      if (match.length) errors.push('tripwire matching one labeled period was marked stale');
+      const other = api.staleTripwires(
+        [{ id: 'r', name: 'company_revenue', status: 'WATCH', tripwires: [{ state: `$${otherVal}` }] }],
+        [claim],
+        rules,
+        [],
+      );
+      if (other.length) errors.push('tripwire matching the other labeled period was marked stale');
+      const amounts = twoSlot.values.map((v) => Number(v.value_text)).filter((n) => Number.isFinite(n) && n > 0);
+      const disagree = Math.max(...amounts) * 3;
+      const stale = api.staleTripwires(
+        [{ id: 'r', name: 'company_revenue', status: 'WATCH', tripwires: [{ state: `$${disagree}` }] }],
+        [claim],
+        rules,
+        [],
+      );
+      if (!stale.length) errors.push('tripwire matching no labeled period was skipped');
+    }
+  }
+
+  const uniqueFacts = factsFor(api, 'unique').facts;
+  const uniqueSlot = api.taggedSlots(uniqueFacts).company_revenue;
+  if (uniqueSlot && uniqueSlot.as_of) {
+    const undatedUnique = [];
+    api.liveClaims(
+      [{ id: 'u2', text: 'Revenue was discussed.', as_of: null, grade: 'A', source_id: 'review' }],
+      api.rules,
+      8,
+      undatedUnique,
+      { facts: uniqueFacts },
+    );
+    if (undatedUnique.some((g) => /newer sentence/.test(g))) {
+      errors.push('undated sentence counted newer than a dated structured slot');
+    }
+    const newer = [];
+    api.liveClaims(
+      [{ id: 'n2', text: 'Revenue was discussed.', as_of: '2099-12-31', grade: 'A', source_id: 'review' }],
+      api.rules,
+      8,
+      newer,
+      { facts: uniqueFacts },
+    );
+    if (!newer.some((g) => /newer sentence/.test(g))) {
+      errors.push('dated later sentence should still count newer than a dated slot');
     }
   }
   return errors;

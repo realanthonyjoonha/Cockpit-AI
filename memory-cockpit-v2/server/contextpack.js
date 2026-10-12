@@ -521,9 +521,9 @@ export function liveClaims(claims, rules, residualCap = 8, gapsOut = null, opts 
     if (mid) {
       if (Object.prototype.hasOwnProperty.call(slots, mid)) {
         context.push({ i, row: contextRow(c, mid, 'structured_slot') });
-        const slotKey = parseAsOf(slots[mid].as_of).sort_key || '';
-        const ownKey = parseAsOf(c.as_of).sort_key || '';
-        if (ownKey > slotKey) newer.set(mid, (newer.get(mid) || 0) + 1);
+        const slotKey = parseAsOf(slots[mid].as_of).sort_key;
+        const ownKey = parseAsOf(c.as_of).sort_key;
+        if (slotKey && ownKey && ownKey > slotKey) newer.set(mid, (newer.get(mid) || 0) + 1);
       } else if (structuredMetric(mid, tax) || !sentenceFillAllowed(mid, tax)) {
         context.push({ i, row: contextRow(c, mid, 'no_structured_fact') });
         blocked.set(mid, (blocked.get(mid) || 0) + 1);
@@ -622,6 +622,101 @@ export function claimGaps(claims, rules, residualCap = 8, facts = null) {
   return gaps;
 }
 
+function currencyValues(text) {
+  const by = {};
+  for (const amt of parseAmounts(text)) {
+    if (amt.unit !== 'currency' || !amt.currency) continue;
+    if (!by[amt.currency]) by[amt.currency] = [];
+    by[amt.currency].push(Number(amt.value));
+  }
+  return by;
+}
+
+export function labeledCurrencyAmounts(claim) {
+  if (claim && (claim.origin === 'companyfacts' || claim.origin === 'xbrl')) {
+    const by = {};
+    let rows = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (!rows.length) rows = [claim];
+    for (const row of rows) {
+      const unit = String(row.unit || '');
+      if (!/^[A-Z]{3}$/.test(unit)) continue;
+      const raw = row.value_text != null ? row.value_text : row.value;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      if (!by[unit]) by[unit] = [];
+      by[unit].push(n);
+    }
+    return by;
+  }
+  return currencyValues((claim && claim.text) || '');
+}
+
+export function staleTripwires(risks, live, rules, gaps = null) {
+  const byMetric = {};
+  for (const c of live || []) {
+    if (c && c.metric_id && c.metric_id !== 'other') byMetric[c.metric_id] = c;
+  }
+  const out = [];
+  for (const r of risks || []) {
+    const st = String((r && r.status) || '').toUpperCase();
+    if (st !== 'WATCH' && st !== 'FIRED') continue;
+    const mid = riskMetric((r && (r.name || r.id)) || '', rules);
+    if (!mid || !Object.prototype.hasOwnProperty.call(byMetric, mid)) continue;
+    const claim = byMetric[mid];
+    const claimBy = labeledCurrencyAmounts(claim);
+    if (!Object.keys(claimBy).length) continue;
+    for (const tw of r.tripwires || []) {
+      if (!tw || typeof tw !== 'object') continue;
+      const state = String(tw.state || '');
+      const twBy = currencyValues(state);
+      if (!Object.keys(twBy).length) continue;
+      const shared = Object.keys(claimBy).filter((cur) => Object.prototype.hasOwnProperty.call(twBy, cur));
+      if (!shared.length) {
+        if (Array.isArray(gaps)) {
+          const msg = 'cross-currency tripwire; currencies not compared';
+          if (!gaps.includes(msg)) gaps.push(msg);
+        }
+        continue;
+      }
+      const close = (a, b) => {
+        if (a <= 0 || b <= 0) return false;
+        return Math.abs(a - b) / Math.max(a, b) <= 0.15;
+      };
+      let disagreed = false;
+      let compared = false;
+      for (const cur of shared) {
+        const twAmts = twBy[cur];
+        let matched = false;
+        for (const liveAmt of claimBy[cur]) {
+          const sameScale = twAmts.filter((a) => a >= 0.2 * liveAmt && a <= 5 * liveAmt);
+          if (!sameScale.length) continue;
+          compared = true;
+          if (sameScale.some((a) => close(a, liveAmt))) {
+            matched = true;
+            break;
+          }
+        }
+        if (compared && !matched) {
+          disagreed = true;
+          break;
+        }
+      }
+      if (!disagreed) continue;
+      out.push({
+        risk_id: r.id,
+        risk_name: r.name,
+        metric_id: mid,
+        tripwire_state: state,
+        live_claim_as_of: claim.as_of,
+        live_claim_text: claim.text,
+        live_claim_id: claim.id,
+      });
+      break;
+    }
+  }
+  return out;
+}
+
 export function assembleAgentPack(store, rules) {
   const gaps = [];
   const context = [];
@@ -634,8 +729,11 @@ export function assembleAgentPack(store, rules) {
     return st === 'WATCH' || st === 'FIRED';
   });
   const storeGaps = Array.isArray(store.gaps) ? store.gaps : [];
+  const staleGaps = [];
+  const stale = staleTripwires(store.risks || [], live, rules, staleGaps);
   const merged = storeGaps.slice();
   for (const g of gaps) if (!merged.includes(g)) merged.push(g);
+  for (const g of staleGaps) if (!merged.includes(g)) merged.push(g);
   const pack = {
     schema: 'contextpack.v2',
     intent: 'agent',
@@ -654,6 +752,7 @@ export function assembleAgentPack(store, rules) {
     },
     claims: live.map(packClaim),
     context_claims: context.slice(0, CONTEXT_CAP).map(contextClaim),
+    stale_tripwires: stale,
     store_claims: (store.claims || []).length,
     gaps: merged,
     decision_support_only: true,
@@ -733,11 +832,88 @@ function slimClaimValues(pack) {
   return changed;
 }
 
+const LABEL_VALUE_KEYS = ['value_text', 'unit', 'period', 'span'];
+
+function labelPeriod(val) {
+  const period = val && val.period && typeof val.period === 'object' ? val.period : {};
+  return {
+    value_text: val ? val.value_text : null,
+    unit: val ? val.unit : null,
+    period: { start: period.start ?? null, end: period.end ?? null },
+    span: val ? val.span : null,
+  };
+}
+
+function slimClaimValuesHard(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !claim.values) {
+      out.push(claim);
+      continue;
+    }
+    const slim = claim.values.filter((v) => v && typeof v === 'object').map(labelPeriod);
+    if (JSON.stringify(slim) !== JSON.stringify(claim.values)) {
+      out.push({ ...claim, values: slim });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function dropOlderClaimPeriods(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !isTaggedClaim(claim)) {
+      out.push(claim);
+      continue;
+    }
+    const values = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (values.length <= 1) {
+      out.push(claim);
+      continue;
+    }
+    let latestEnd = '';
+    for (const v of values) {
+      const end = String((v.period || {}).end || '');
+      if (end > latestEnd) latestEnd = end;
+    }
+    const kept = values.filter((v) => String((v.period || {}).end || '') === latestEnd);
+    if (!kept.length || kept.length === values.length) {
+      out.push(claim);
+      continue;
+    }
+    out.push({ ...claim, values: kept });
+    changed = true;
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function blankTaggedTexts(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (claim && typeof claim === 'object' && isTaggedClaim(claim) && claim.values && typeof claim.text === 'string' && claim.text) {
+      out.push({ ...claim, text: '' });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
 function dropClaimValues(pack) {
   let changed = false;
   const out = [];
   for (const claim of pack.claims || []) {
-    if (claim && typeof claim === 'object' && claim.values) {
+    if (claim && typeof claim === 'object' && claim.values && !isTaggedClaim(claim)) {
       const row = { ...claim };
       delete row.values;
       out.push(row);
@@ -750,7 +926,7 @@ function dropClaimValues(pack) {
   return changed;
 }
 
-function clipClaimTexts(pack, n, metricId) {
+function clipClaimTexts(pack, n, metricId, opts = {}) {
   let changed = false;
   const out = [];
   for (const claim of pack.claims || []) {
@@ -759,6 +935,10 @@ function clipClaimTexts(pack, n, metricId) {
       continue;
     }
     const row = { ...claim };
+    if (opts.skipTagged && isTaggedClaim(row)) {
+      out.push(row);
+      continue;
+    }
     if (metricId == null || row.metric_id === metricId) {
       if (typeof row.text === 'string' && row.text.length > n) {
         row.text = row.text.slice(0, n);
@@ -768,6 +948,21 @@ function clipClaimTexts(pack, n, metricId) {
     out.push(row);
   }
   if (changed) pack.claims = out;
+  return changed;
+}
+
+function clipGaps(pack, n) {
+  const gaps = pack.gaps;
+  if (!Array.isArray(gaps)) return false;
+  let changed = false;
+  const out = gaps.map((gap) => {
+    if (typeof gap === 'string' && gap.length > n) {
+      changed = true;
+      return gap.slice(0, n);
+    }
+    return gap;
+  });
+  if (changed) pack.gaps = out;
   return changed;
 }
 
@@ -880,7 +1075,7 @@ function dropTailClaim(pack) {
       break;
     }
   }
-  if (idx < 0) idx = claims.length - 1;
+  if (idx < 0) return false;
   const dropped = claims[idx];
   pack.claims = claims.filter((_, i) => i !== idx);
   addGap(pack, `dropped claim ${dropped.id || dropped.metric_id || 'claim'}`);
@@ -910,7 +1105,13 @@ function stubPack(pack, limit, measure) {
       date: String(hp.date || '').slice(0, 32),
     },
     gaps: gaps.slice(0, 12),
-    claims: [],
+    claims: (pack.claims || []).filter(isTaggedClaim).map((c) => ({
+      id: c.id,
+      metric_id: c.metric_id,
+      origin: c.origin,
+      confidence: c.confidence,
+      values: (c.values || []).filter((v) => v && typeof v === 'object').map(labelPeriod),
+    })),
     budget: { limit_chars: limit, used_chars: 0, trimmed: true },
   };
   if (measure(stub) > limit) {
@@ -933,7 +1134,7 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => clearList(pack, 'context_claims'),
     () => slimClaimValues(pack),
     () => clipClaimTexts(pack, 480, 'other'),
-    () => clipClaimTexts(pack, 480, null),
+    () => clipClaimTexts(pack, 480, null, { skipTagged: true }),
     () => clipObject(pack, 300),
     () => clipRisks(pack, 160, 2),
     () => clipPin(pack, 160),
@@ -944,10 +1145,14 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => takeList(pack, 'sources', 4),
     () => clipExcerpt(pack, 200),
     () => clipClaimTexts(pack, 160, 'other'),
-    () => clipClaimTexts(pack, 160, null),
+    () => clipClaimTexts(pack, 160, null, { skipTagged: true }),
     () => dropOtherClaims(pack),
     () => dropClaimValues(pack),
-    () => clipClaimTexts(pack, 80, null),
+    () => slimClaimValuesHard(pack),
+    () => clipClaimTexts(pack, 80, null, { skipTagged: true }),
+    () => clipClaimTexts(pack, 160, null),
+    () => blankTaggedTexts(pack),
+    () => dropOlderClaimPeriods(pack),
     () => clipExcerpt(pack, 80),
     () => clearList(pack, 'catalysts'),
     () => clearList(pack, 'series_snapshot'),
@@ -960,7 +1165,11 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => dropUntaggedClaims(pack),
     () => dropTailClaim(pack),
     () => dropTailClaim(pack),
-    () => clearList(pack, 'claims'),
+    () => clipGaps(pack, 180),
+    () => takeList(pack, 'gaps', 8),
+    () => takeList(pack, 'gaps', 4),
+    () => takeList(pack, 'gaps', 2),
+    () => clearList(pack, 'gaps'),
     () => clearList(pack, 'risks'),
     () => clearList(pack, 'stale_tripwires'),
   ];
