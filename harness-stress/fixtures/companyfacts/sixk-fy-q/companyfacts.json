@@ -1,0 +1,34 @@
+{
+  "cik": 14,
+  "entityName": "6-K full year and same-end quarter keep both roles",
+  "facts": {
+    "ifrs-full": {
+      "Revenue": {
+        "units": {
+          "EUR": [
+            {
+              "start": "2025-01-01",
+              "end": "2025-12-31",
+              "val": 1000000000,
+              "accn": "0000000014-26-000010",
+              "fy": 2025,
+              "fp": "FY",
+              "form": "6-K",
+              "filed": "2026-02-15"
+            },
+            {
+              "start": "2025-10-01",
+              "end": "2025-12-31",
+              "val": 250000000,
+              "accn": "0000000014-26-000010",
+              "fy": 2025,
+              "fp": "Q4",
+              "form": "6-K",
+              "filed": "2026-02-15"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

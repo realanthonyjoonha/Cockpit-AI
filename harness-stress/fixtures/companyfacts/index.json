@@ -1,5 +1,5 @@
 {
-  "comment": "Trimmed public SEC companyfacts. Not a desk. Not a house view.",
+  "comment": "Public SEC companyfacts. Full-mapped sector extracts keep every mapped live concept (source-concepts.json). Synthetic reviewer cases stay synthetic. Not a desk. Not a house view.",
   "issuers": [
     {
       "id": "bank",
@@ -7,7 +7,8 @@
       "sector": "bank",
       "form": "10-K",
       "reporting": "us-gaap",
-      "currency": "USD"
+      "currency": "USD",
+      "extract": "full-mapped"
     },
     {
       "id": "insurer",
@@ -214,6 +215,38 @@
       "src": "review",
       "sector": "selection",
       "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "sixk-fy-q",
+      "src": "review",
+      "sector": "selection",
+      "form": "6-K",
+      "reporting": "ifrs-full",
+      "currency": "EUR"
+    },
+    {
+      "id": "tenkt-short",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-KT",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "lease-only",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-K",
+      "reporting": "us-gaap",
+      "currency": "USD"
+    },
+    {
+      "id": "stale-pad",
+      "src": "review",
+      "sector": "selection",
+      "form": "10-Q",
       "reporting": "us-gaap",
       "currency": "USD"
     }
