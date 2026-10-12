@@ -12,7 +12,19 @@ export function contactUa(cfg = loadConfig()) {
   return contactUserAgent(cfg.pilot.sec.user_agent);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+let lastSec = 0;
+
 export async function fetchCompanyfacts(company, cfg = loadConfig()) {
+  const min = cfg.pilot.sec.min_interval_ms || 100;
+  const maxPerSec = cfg.pilot.sec.max_requests_per_sec || 10;
+  const floor = Math.max(min, Math.ceil(1000 / maxPerSec));
+  const wait = lastSec + floor - Date.now();
+  if (wait > 0) await sleep(wait);
+  lastSec = Date.now();
   const dest = path.join(factsDir(cfg), `${company.ticker}.json`);
   mkdirSync(path.dirname(dest), { recursive: true });
   const wikiRoot = path.join(factsDir(cfg), '_wiki');

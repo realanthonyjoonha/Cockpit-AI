@@ -90,7 +90,7 @@ export function rollup(scoredItems, traces, cfg) {
     const tokCached = mean(armTraces.map((t) => t.cached_tokens || 0));
     const tokTools = mean(armTraces.map((t) => t.tool_def_tokens || 0));
     const lat = armTraces.map((t) => t.latency_ms || 0).filter((n) => n > 0).sort((a, b) => a - b);
-    const cost = armTraces.reduce((s, t) => s + (t.cost_usd || 0), 0);
+    const tokensTotal = armTraces.reduce((s, t) => s + (t.prompt_tokens || 0) + (t.completion_tokens || 0), 0);
     const correct = acc.reduce((s, n) => s + n, 0);
     byArm[arm.id] = {
       arm: arm.id,
@@ -107,10 +107,11 @@ export function rollup(scoredItems, traces, cfg) {
       tokens_out: tokOut,
       tokens_cached: tokCached,
       tokens_tool_def: tokTools,
+      tokens_total: tokensTotal,
+      tokens_per_correct: correct ? tokensTotal / correct : null,
       latency_p50: lat.length ? quantile(lat, 0.5) : null,
       latency_p95: lat.length ? quantile(lat, 0.95) : null,
-      cost_usd: cost,
-      cost_per_correct: correct ? cost / correct : null,
+      models: [...new Set(armTraces.map((t) => t.model).filter(Boolean))],
       failure_tags: Object.entries(tags).sort((a, b) => b[1] - a[1]),
     };
   }
@@ -141,20 +142,22 @@ export function rollup(scoredItems, traces, cfg) {
     const accGapPts = (diff.mean || 0) * 100;
     const excludes0 = diff.lo != null && diff.hi != null && (diff.lo > 0 || diff.hi < 0);
     const bigEnough = Math.abs(accGapPts) >= scoring.keep_min_accuracy_pts;
-    const baseCost = byArm[baseline]?.cost_per_correct;
-    const armCost = byArm[arm.id]?.cost_per_correct;
-    const costRatio = (baseCost && armCost && byArm[arm.id].accuracy >= (byArm[baseline].accuracy || 0) - 1e-9)
-      ? armCost / baseCost
-      : null;
+    const baseTok = byArm[baseline]?.tokens_per_correct;
+    const armTok = byArm[arm.id]?.tokens_per_correct;
+    const equalAcc = byArm[arm.id].accuracy >= (byArm[baseline].accuracy || 0) - 1e-9;
+    const costRatio = (baseTok && armTok && equalAcc) ? armTok / baseTok : null;
     const costSignal = costRatio != null && costRatio <= (1 / scoring.keep_min_cost_ratio);
     const keep = (excludes0 && bigEnough) || costSignal;
     diffs[arm.id] = {
       ...diff,
       acc_gap_pts: accGapPts,
       ci_excludes_0: excludes0,
+      token_cost_ratio: costRatio,
       keep: keep ? 'keep' : 'cut',
       reason: keep
-        ? (excludes0 && bigEnough ? `CI excludes 0 and |Δacc|=${accGapPts.toFixed(1)} pts` : '≥20% cheaper at equal accuracy')
+        ? (excludes0 && bigEnough
+          ? `CI excludes 0 and |Δacc|=${accGapPts.toFixed(1)} pts`
+          : '≥20% fewer tokens/correct at equal accuracy')
         : 'tie / no material separation from 0',
     };
   }

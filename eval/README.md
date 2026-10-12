@@ -1,20 +1,21 @@
-# Cockpit-AI eval PILOT
+# Cockpit-AI LARGE eval
 
 **Question:** which context genuinely beats a strong bare model with web search?
 
-Anthony approved the **pilot only**. The full 2,400-run job needs a separate GO after the cost quote in `REPORT.md`.
+Decision-support only. Synthetic vault only. Product `thin-desks.json` stays `desks: []`. No `XAI_API_KEY`. **Every subject and grader call is Cursor Grok 4.6** (`cursor-grok-4.6-high-fast`). The runner aborts if the configured subject or grader is not Grok 4.6.
 
-Decision-support only. Synthetic vault only. Product `thin-desks.json` stays `desks: []`. No `XAI_API_KEY`. Models run via Cursor, same host as `harness-stress`.
+Harness under test = `main` + PR #12 (pre-stuffed background removed). Closed PRs #8 / #9: arms `0+d` / `0+e` / `0+f` are dropped.
 
 ## Single command
 
 ```bash
 npm install --ignore-scripts --no-audit --no-fund --prefix eval
 node eval/run.mjs --self-test
-node eval/run.mjs
+node eval/run.mjs --prepare
+node eval/run.mjs --score --report
 ```
 
-`node eval/run.mjs` fetches live SEC companyfacts (contact User-Agent, ≤5 req/s), writes the answer key (gitignored), and emits job prompts. If `eval/results/traces/` already has Cursor replies, it scores and writes `eval/REPORT.md`.
+`--prepare` fetches live SEC companyfacts (contact User-Agent, ≤10 req/s), writes the answer key (gitignored), and emits job prompts. If `eval/results/traces/` already has Cursor Grok 4.6 replies, `--score` grades and writes `eval/REPORT-large.md`.
 
 ```bash
 node eval/run.mjs --prepare          # live fetch + keys + jobs
@@ -23,44 +24,41 @@ node eval/run.mjs --persist JOB_ID /tmp/eval-subject/JOB_ID.json
 node eval/run.mjs --score --report   # after traces land
 ```
 
-## Arms
+## Arms (5)
 
 Same model, same tasks, one change vs `0`:
 
 | id | Change |
 | --- | --- |
-| `0` | bare model + web search |
-| `0+a` | tagged latest-filing companyfacts (main) |
-| `0+b` | synthetic house / risks / notes |
+| `0` | bare Grok 4.6 + web search |
+| `0+a` | tagged latest-filing companyfacts |
+| `0+b` | synthetic house / risks / notes (opinion/risk; no SEC figures) |
 | `0+c` | GO gates, ~10k cap, empty-when-unsure |
-| `0+d` | pre-stuffed background primer |
-| `0+e` | slice-card step summaries from open PR #8 (`cursor/harness-p3-slice-cards-04a4`) — **do not merge** |
-| `0+f` | trimmed 10-tool catalog from open PR #9 (`cursor/harness-p5-tool-catalog-440b`) — **do not merge** |
-| `full` | all of the above |
+| `full` | current harness: facts + vault + guardrails |
 
-Companies are a data list in `config/companies.json` (bank, mega-cap tech, 20-F IFRS, energy, healthcare). No per-ticker branches in code.
+Companies are a data list in `config/companies.json` (bank, insurer, REIT, energy, 20-F IFRS, small-cap, plus sector diversity). No per-ticker branches in code. Vault text is generated from `fixtures/vault-templates.json` by sector.
 
 ## Cursor model arm
 
-The runner does not call xAI. Drop one JSON per job in `eval/results/traces/<job_id>.json`:
+The runner does not call xAI. Drop one JSON per job in `eval/results/traces/<job_id>.json`. Every trace must log `model: "cursor-grok-4.6-high-fast"`.
 
 ```json
 {
-  "job_id": "0__r1",
+  "job_id": "0__s0__r1",
   "arm": "0",
   "repeat": 1,
-  "model": "gpt-5.6-sol-high-fast",
-  "item_ids": ["jpm::latest_quarter", "..."],
+  "model": "cursor-grok-4.6-high-fast",
+  "item_ids": ["bac::latest_quarter", "..."],
   "prompt_tokens": 0,
   "latency_ms": 0,
   "raw_text": "[...json array of answers...]"
 }
 ```
 
-Job prompts live in `eval/results/jobs/` (gitignored). The subject must not read `eval/results/keys/`.
+Job prompts live in `eval/results/jobs/` (gitignored). The subject must not read `eval/results/keys/`. If subscription usage runs out, stop and score what landed.
 
 ## Scoring
 
-Answer key is pulled **live** from companyfacts at prepare time (not frozen). Numeric tolerance ±0.5% or rounding. Trap items pass as honest-gap. Open-ended items use a 1–5 rubric; ~10% are marked for Anthony. Stats are paired by task with 95% bootstrap CIs clustered by company.
+Answer key is pulled **live** from companyfacts at prepare time (not frozen). Numeric tolerance ±0.5% or rounding. Trap items pass as honest-gap. Open-ended items use a 1–5 anchored rubric; the grader must cite the missing/incorrect element. Seeded-bad calibration answers must score ≤2; the run fails if the grader cannot separate them from good. Stats are paired by task with 95% bootstrap CIs clustered by company.
 
-A difference **keeps** only if the CI excludes 0 and |Δacc| ≥ 5 points, or cost/correct is ≥20% cheaper at equal accuracy. Ties = cut.
+A difference **keeps** only if the CI excludes 0 and |Δacc| ≥ 5 points, or tokens/correct are ≥20% cheaper at equal accuracy. Ties = cut. Report token counts only — no dollar quotes.

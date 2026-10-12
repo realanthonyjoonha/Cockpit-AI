@@ -287,6 +287,7 @@ export function scoreTrace(trace, answerKey, cfg = loadConfig()) {
       question_id: questionId,
       arm: trace.arm,
       repeat: trace.repeat,
+      model: trace.model || null,
       ...scored,
       rubric: extras.rubric ?? ans?.rubric ?? null,
       answer: String(ans?.answer || ''),

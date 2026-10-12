@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * PILOT eval runner. Single command: node eval/run.mjs
- * Models run via Cursor (harness-stress model arm). Never XAI_API_KEY.
+ * LARGE eval runner. Single command: node eval/run.mjs
+ * Models run via Cursor Grok 4.6. Never XAI_API_KEY.
  */
 import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAnswerKey, persistAnswerKey } from './lib/answer-key.mjs';
@@ -12,14 +12,19 @@ import { buildJobs, persistJobs } from './lib/jobs.mjs';
 import {
   assertNoXai, EVAL_ROOT, jobsDir, keysDir, loadConfig, REPO_ROOT, tracesDir,
 } from './lib/load-config.mjs';
+import {
+  assertGrok46, collectTraceModels, isGrok46, logModel, REQUIRED_GROK46,
+} from './lib/models.mjs';
 import { writeReport } from './lib/report.mjs';
-import { persistBlindBatch, applyGrades, collectOpenEnded } from './lib/grader.mjs';
+import {
+  persistBlindBatch, applyGrades, collectOpenEnded, checkCalibration, scoreDistribution, CALIBRATION,
+} from './lib/grader.mjs';
 import { persistTrace } from './lib/persist-trace.mjs';
 import { extractJsonArray, scoreTrace } from './lib/score.mjs';
 import { fetchCompanyfacts, readCachedFacts, writeJson } from './lib/sec.mjs';
-import { estimateCost, rollup } from './lib/stats.mjs';
+import { rollup } from './lib/stats.mjs';
 import { countTokens } from './vendor/tokens.mjs';
-import { checkSliceCard } from './vendor/slice-card-check.mjs';
+import { vaultHasForbiddenFigures } from './lib/vault.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,8 +52,13 @@ function parseArgs(argv) {
   };
 }
 
+function assertConfiguredModels(cfg) {
+  assertGrok46([cfg.pilot.models.subject, cfg.pilot.models.grader], 'configured subject/grader');
+}
+
 export async function prepareLive(cfg) {
   assertNoXai();
+  assertConfiguredModels(cfg);
   const docs = {};
   const fetchMeta = [];
   for (const company of cfg.companies) {
@@ -75,10 +85,11 @@ export async function prepareLive(cfg) {
     n_jobs: index.length,
     n_items: jobs.reduce((s, j) => s + j.items.length, 0),
     model: cfg.pilot.models.subject,
+    grader: cfg.pilot.models.grader,
     xai_key_used: false,
   };
   writeJson(path.join(keysDir(cfg), 'pin.json'), pin);
-  writeJson(path.join(jobsDir(cfg), 'pin.json'), { git_commit: pin.git_commit, fetched_at: pin.fetched_at });
+  writeJson(path.join(jobsDir(cfg), 'pin.json'), { git_commit: pin.git_commit, fetched_at: pin.fetched_at, model: pin.model });
   return { key, jobs, index, pin, keyPath };
 }
 
@@ -106,12 +117,18 @@ function loadKey(cfg) {
 function loadTraces(cfg) {
   const dir = tracesDir(cfg);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(path.join(dir, f), 'utf8')));
+  return readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => {
+    const trace = JSON.parse(readFileSync(path.join(dir, f), 'utf8'));
+    logModel(trace);
+    assertGrok46(trace.model, `trace ${trace.job_id || f}`);
+    return trace;
+  });
 }
 
 function markSpotCheck(scored, cfg) {
   const open = scored.filter((r) => r.question_id === 'risk_propose' || r.question_id === 'steelman');
-  const n = Math.max(1, Math.round(open.length * cfg.pilot.scoring.spot_check_rate));
+  const want = cfg.pilot.scoring.spot_check_n || Math.max(1, Math.round(open.length * (cfg.pilot.scoring.spot_check_rate || 0.1)));
+  const n = Math.min(24, Math.max(1, want));
   const shuffled = [...open].sort((a, b) => `${a.item_id}${a.arm}${a.repeat}`.localeCompare(`${b.item_id}${b.arm}${b.repeat}`));
   const step = Math.max(1, Math.floor(shuffled.length / n));
   const picked = [];
@@ -139,46 +156,40 @@ export function scoreAll(cfg) {
     const promptTokens = trace.prompt_tokens || 0;
     const cached = trace.cached_tokens || 0;
     trace.completion_tokens = trace.completion_tokens ?? completion;
-    trace.cost_usd = estimateCost(promptTokens, trace.completion_tokens, cached, cfg.pilot.pricing);
     scored.push(...scoreTrace({ ...trace, item_ids: itemIds, answers: rawAnswers }, key, cfg));
   }
   let graded = scored;
   const open = collectOpenEnded(scored);
   const blind = persistBlindBatch(open, cfg);
   const gradePath = path.join(keysDir(cfg), '..', 'grader', 'grades.json');
+  let calibration = null;
   if (existsSync(gradePath)) {
-    const grades = JSON.parse(readFileSync(gradePath, 'utf8'));
-    graded = applyGrades(scored, Array.isArray(grades) ? grades : grades.items || [], blind.map);
+    const gradesDoc = JSON.parse(readFileSync(gradePath, 'utf8'));
+    const grades = Array.isArray(gradesDoc) ? gradesDoc : gradesDoc.items || [];
+    if (gradesDoc.model) assertGrok46(gradesDoc.model, 'grader grades.json');
+    graded = applyGrades(scored, grades, blind.map);
+    calibration = checkCalibration(grades, blind.map);
+    writeJson(path.join(keysDir(cfg), '..', 'grader', 'calibration.json'), calibration);
   }
   const rolled = rollup(graded, traces, cfg);
   const spot = markSpotCheck(graded, cfg);
+  const distribution = scoreDistribution(graded);
+  const models = collectTraceModels(traces);
   writeJson(path.join(keysDir(cfg), '..', 'scored.json'), { n: graded.length, items: graded });
   writeJson(path.join(keysDir(cfg), '..', 'rollup.json'), rolled);
   writeJson(path.join(keysDir(cfg), '..', 'spot-check.json'), spot);
-  return { key, traces, scored: graded, rolled, spot, blind };
+  writeJson(path.join(keysDir(cfg), '..', 'distribution.json'), distribution);
+  return { key, traces, scored: graded, rolled, spot, blind, calibration, distribution, models };
 }
 
-export function quoteFrom(traces, rolled, cfg) {
-  const pilotUsd = traces.reduce((s, t) => s + (t.cost_usd || 0), 0);
-  const nItems = traces.reduce((s, t) => s + (t.item_ids?.length || 0), 0) || scoredLen(rolled);
-  const perItem = nItems ? pilotUsd / nItems : 0;
-  const fullN = cfg.pilot.full_run.companies * cfg.pilot.full_run.questions * cfg.pilot.full_run.arms * cfg.pilot.full_run.repeats;
-  const anyKeep = Object.values(rolled.diffs || {}).some((d) => d.keep === 'keep');
-  const smaller = anyKeep ? null : {
-    label: '10 held-out × 6 × 2 arms (0, 0+a) × 5 repeats = 600',
-    n: 10 * 6 * 2 * 5,
-    usd: perItem * 10 * 6 * 2 * 5,
-  };
+export function quoteFrom(traces) {
   return {
-    pilot_usd: pilotUsd,
-    per_item_usd: perItem,
-    full_2400_usd: perItem * fullN,
-    smaller_run: smaller,
+    tokens_in: traces.reduce((s, t) => s + (t.prompt_tokens || 0), 0),
+    tokens_out: traces.reduce((s, t) => s + (t.completion_tokens || 0), 0),
+    tokens_cached: traces.reduce((s, t) => s + (t.cached_tokens || 0), 0),
+    n_traces: traces.length,
+    n_items: traces.reduce((s, t) => s + (t.item_ids?.length || 0), 0),
   };
-}
-
-function scoredLen(rolled) {
-  return Object.values(rolled.byArm || {}).reduce((s, a) => s + (a.n || 0), 0);
 }
 
 export function emitReport(payload, cfg) {
@@ -189,17 +200,17 @@ async function main() {
   assertNoXai();
   const args = parseArgs(process.argv);
   const cfg = loadConfig();
+  assertConfiguredModels(cfg);
   mkdirSync(path.join(HERE, 'results'), { recursive: true });
 
   if (args.persistJob) {
     const raw = readFileSync(args.persistPath, 'utf8');
-    const dest = persistTrace(args.persistJob, raw, { latency_ms: 0 });
-    console.log(JSON.stringify({ persisted: dest }, null, 2));
+    const dest = persistTrace(args.persistJob, raw, { latency_ms: 0, model: cfg.pilot.models.subject });
+    console.log(JSON.stringify({ persisted: dest, model: cfg.pilot.models.subject }, null, 2));
     return;
   }
 
   if (args.selfTest) {
-    // bind real helpers for the test body
     const scoreMod = await import('./lib/score.mjs');
     const statsMod = await import('./lib/stats.mjs');
     globalThis.__score = scoreMod;
@@ -211,7 +222,7 @@ async function main() {
   if (args.jobsOnly || args.prepare) {
     if (args.offline) {
       const { jobs } = prepareOfflineConstructed(cfg);
-      console.log(JSON.stringify({ mode: 'offline', jobs: jobs.length }, null, 2));
+      console.log(JSON.stringify({ mode: 'offline', jobs: jobs.length, model: cfg.pilot.models.subject }, null, 2));
     } else {
       const out = await prepareLive(cfg);
       console.log(JSON.stringify({
@@ -221,27 +232,41 @@ async function main() {
         jobs: out.index.length,
         items: out.pin.n_items,
         key: out.keyPath,
+        model: out.pin.model,
       }, null, 2));
     }
   }
 
   const haveTraces = existsSync(tracesDir(cfg)) && readdirSync(tracesDir(cfg)).some((f) => f.endsWith('.json'));
   if ((args.score || args.report) && haveTraces) {
-    const { traces, scored, rolled, spot, key } = scoreAll(cfg);
+    const { traces, scored, rolled, spot, key, calibration, distribution, models } = scoreAll(cfg);
     const pin = existsSync(path.join(keysDir(cfg), 'pin.json'))
       ? JSON.parse(readFileSync(path.join(keysDir(cfg), 'pin.json'), 'utf8'))
       : { git_commit: gitCommit(), fetched_at: key.fetched_at };
-    const quote = quoteFrom(traces, rolled, cfg);
+    const quote = quoteFrom(traces);
     const report = emitReport({
-      meta: { ...pin, n_traces: traces.length, n_items: scored.length },
+      meta: { ...pin, n_traces: traces.length, n_items: scored.length, models: models.models },
       rollup: rolled,
       spotCheck: spot,
       quote,
+      calibration,
+      distribution,
+      models: { ...models, grader: cfg.pilot.models.grader },
     }, cfg);
     writeJson(path.join(keysDir(cfg), '..', 'quote.json'), quote);
-    console.log(JSON.stringify({ scored: scored.length, traces: traces.length, report, quote }, null, 2));
+    console.log(JSON.stringify({
+      scored: scored.length,
+      traces: traces.length,
+      report,
+      quote,
+      model: cfg.pilot.models.subject,
+      calibration_ok: calibration ? calibration.ok : null,
+    }, null, 2));
+    if (calibration && !calibration.ok) {
+      throw new Error('HARD FAIL: grader could not separate seeded-bad from good. See eval/results/grader/calibration.json');
+    }
   } else if (args.score || args.report) {
-    console.log('no traces yet — write Cursor subagent replies to eval/results/traces/<job_id>.json then rerun node eval/run.mjs --score');
+    console.log('no traces yet — write Cursor Grok 4.6 replies to eval/results/traces/<job_id>.json then rerun node eval/run.mjs --score');
   }
 }
 
@@ -250,20 +275,66 @@ function selfTestPatched() {
   const statsMod = globalThis.__stats;
   const cfg = loadConfig();
   const errors = [];
+  try {
+    assertConfiguredModels(cfg);
+  } catch (err) {
+    errors.push(`configured models: ${err.message}`);
+  }
+  if (!isGrok46(cfg.pilot.models.subject) || !isGrok46(cfg.pilot.models.grader)) {
+    errors.push('subject and grader must be Grok 4.6');
+  }
+  try {
+    assertGrok46('gpt-5.6-sol-high-fast', 'probe');
+    errors.push('assertGrok46 missed gpt-5.6');
+  } catch { /* expected */ }
+  try {
+    assertGrok46('claude-opus-5-5-high', 'probe');
+    errors.push('assertGrok46 missed claude');
+  } catch { /* expected */ }
+  try {
+    assertGrok46('gemini-3.8-flash-low', 'probe');
+    errors.push('assertGrok46 missed gemini');
+  } catch { /* expected */ }
+  if (cfg.pilot.models.subject !== REQUIRED_GROK46 && !isGrok46(cfg.pilot.models.subject)) {
+    errors.push('subject model id is not Grok 4.6');
+  }
   const tickers = cfg.companies.map((c) => c.ticker);
-  if (tickers.length !== 5) errors.push('need 5 companies');
-  if (!cfg.companies.some((c) => c.sector === 'bank')) errors.push('need a bank');
-  if (!cfg.companies.some((c) => c.sector === 'mega_cap_tech')) errors.push('need mega-cap tech');
-  if (!cfg.companies.some((c) => c.form_family === '20-F')) errors.push('need a 20-F');
+  if (tickers.length !== 10) errors.push(`need 10 companies, got ${tickers.length}`);
+  const sectors = new Set(cfg.companies.map((c) => c.sector));
+  const forms = new Set(cfg.companies.map((c) => c.form_family));
+  const caps = new Set(cfg.companies.map((c) => c.cap));
+  if (!sectors.has('bank')) errors.push('need a bank');
+  if (!sectors.has('insurer') && !sectors.has('reit')) errors.push('need an insurer or REIT');
+  if (!sectors.has('energy')) errors.push('need energy');
+  if (!forms.has('20-F')) errors.push('need a 20-F IFRS filer');
+  if (!caps.has('small')) errors.push('need a small-cap');
   const banned = ['MSFT', 'MU', 'NBIS', 'NVDA', 'LLY', 'AVGO'];
   if (cfg.companies.some((c) => banned.includes(c.ticker))) errors.push('banned real-desk ticker');
+  const armIds = cfg.arms.map((a) => a.id);
+  if (armIds.some((id) => ['0+d', '0+e', '0+f'].includes(id))) errors.push('closed-PR arms 0+d/0+e/0+f must be dropped');
+  if (armIds.join(',') !== '0,0+a,0+b,0+c,full') errors.push(`arms should be 0,0+a,0+b,0+c,full got ${armIds}`);
+  const full = cfg.arms.find((a) => a.id === 'full');
+  const inj = [...(full?.inject || [])].sort().join(',');
+  if (inj !== 'facts,guardrails,vault') errors.push(`full inject should be facts+vault+guardrails, got ${inj}`);
+  if ((full?.inject || []).some((x) => ['background', 'slices', 'tools_core'].includes(x))) {
+    errors.push('full must not inject dropped background/slices/tools');
+  }
   const desks = JSON.parse(readFileSync(path.join(REPO_ROOT, 'memory-cockpit-v2/config/thin-desks.json'), 'utf8'));
   if (!Array.isArray(desks.desks) || desks.desks.length !== 0) errors.push('product desks must stay []');
-  for (const [id, desk] of Object.entries(cfg.desks.desks)) {
-    for (const card of desk.slices || []) {
-      const chk = checkSliceCard(card);
-      if (!chk.ok) errors.push(`slice card ${id}: ${chk.errors.join('; ')}`);
+  const vaultSrc = readFileSync(path.join(HERE, 'lib/vault.mjs'), 'utf8');
+  for (const t of tickers) {
+    if (new RegExp(`['"]${t}['"]`).test(vaultSrc)) errors.push(`vault.mjs hard-codes ticker ${t}`);
+  }
+  for (const company of cfg.companies) {
+    const desk = cfg.desks.desks[company.id];
+    if (!desk) {
+      errors.push(`missing generated desk ${company.id}`);
+      continue;
     }
+    const fig = vaultHasForbiddenFigures(desk);
+    if (!fig.ok) errors.push(`vault figures ${company.id}: ${fig.hits[0]}`);
+    if (!desk.house.includes(desk.house_canary)) errors.push(`vault missing canary ${company.id}`);
+    if (!/named watch/i.test(desk.house)) errors.push(`vault missing watch language ${company.id}`);
   }
   const { scoreItem, scoreYtd, withinTolerance, numbersInText } = scoreMod;
   const scoring = cfg.pilot.scoring;
@@ -276,26 +347,28 @@ function selfTestPatched() {
     ...cfg,
     pilot: { ...cfg.pilot, paths: { ...cfg.pilot.paths, results: 'results-offline' } },
   };
-  const jpm = key.companies.find((c) => c.company_id === 'jpm');
-  if (jpm.tasks.latest_quarter.expect !== 'number' || Number(jpm.tasks.latest_quarter.value) !== 42000000) {
-    errors.push(`constructed NII quarter expected 42000000 got ${JSON.stringify(jpm.tasks.latest_quarter)}`);
+  const bankCo = cfg.companies.find((c) => c.sector === 'bank');
+  const revCo = cfg.companies.find((c) => c.sector !== 'bank' && (c.preferred_metrics || [])[0] === 'company_revenue');
+  const bank = key.companies.find((c) => c.company_id === bankCo.id);
+  const rev = key.companies.find((c) => c.company_id === revCo.id);
+  if (bank.tasks.latest_quarter.expect !== 'number' || Number(bank.tasks.latest_quarter.value) !== 42000000) {
+    errors.push(`constructed NII quarter expected 42000000 got ${JSON.stringify(bank.tasks.latest_quarter)}`);
   }
-  const aapl = key.companies.find((c) => c.company_id === 'aapl');
-  if (Number(aapl.tasks.latest_quarter.value) !== 100000000) errors.push('constructed revenue quarter');
-  if (Number(aapl.tasks.ytd_vs_quarter.ytd.value) !== 190000000) errors.push('constructed ytd');
-  if (aapl.tasks.yoy.expect !== 'yoy' || Math.abs(aapl.tasks.yoy.pct - 0.25) > 1e-9) errors.push('constructed yoy 25%');
-  const trap = scoreItem({ answer: 'GAP — not a tagged companyfacts metric', gap: true, numbers: [] }, aapl.tasks.trap_untagged, '');
+  if (Number(rev.tasks.latest_quarter.value) !== 100000000) errors.push('constructed revenue quarter');
+  if (Number(rev.tasks.ytd_vs_quarter.ytd.value) !== 190000000) errors.push('constructed ytd');
+  if (rev.tasks.yoy.expect !== 'yoy' || Math.abs(rev.tasks.yoy.pct - 0.25) > 1e-9) errors.push('constructed yoy 25%');
+  const trap = scoreItem({ answer: 'GAP — not a tagged companyfacts metric', gap: true, numbers: [] }, rev.tasks.trap_untagged, '');
   if (!trap.accuracy || !trap.honest_gap) errors.push('honest gap should pass');
-  const trapBad = scoreItem({ answer: 'AI revenue was $12 billion', number: 12e9, gap: false }, aapl.tasks.trap_untagged, 'AI revenue was $12 billion');
+  const trapBad = scoreItem({ answer: 'AI revenue was $12 billion', number: 12e9, gap: false }, rev.tasks.trap_untagged, 'AI revenue was $12 billion');
   if (!trapBad.hallucination) errors.push('invented trap number should hallucinate');
   const numHit = scoreItem({
     answer: '100000000 for 2025-04-01 to 2025-06-30',
     number: 100000000,
     period_start: '2025-04-01',
     period_end: '2025-06-30',
-  }, aapl.tasks.latest_quarter, '100000000 for 2025-04-01 to 2025-06-30');
+  }, rev.tasks.latest_quarter, '100000000 for 2025-04-01 to 2025-06-30');
   if (!numHit.accuracy || !numHit.period_ok) errors.push('numeric+period should pass');
-  const ytd = scoreYtd({ answer: 'YTD 190000000 (2025-01-01 to 2025-06-30) vs quarter 100000000 (2025-04-01 to 2025-06-30)' }, aapl.tasks.ytd_vs_quarter, '');
+  const ytd = scoreYtd({ answer: 'YTD 190000000 (2025-01-01 to 2025-06-30) vs quarter 100000000 (2025-04-01 to 2025-06-30)' }, rev.tasks.ytd_vs_quarter, '');
   if (!ytd.accuracy) errors.push('ytd vs quarter should pass');
   const mixed = scoreYtd(
     { answer: 'Quarter 100000000 for 2025-04-01 to 2025-06-30. GAP: YTD span is not tagged.', number: 100000000, gap: true },
@@ -317,12 +390,43 @@ function selfTestPatched() {
   const arma = jobs.find((j) => j.arm === '0+a');
   const mda = readFileSync(path.join(jobsDir(isolated), `${String(arma.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
   if (!mda.includes('Tagged SEC companyfacts')) errors.push('0+a should inject tagged facts');
+  const armb = jobs.find((j) => j.arm === '0+b');
+  const mdb = readFileSync(path.join(jobsDir(isolated), `${String(armb.job_id).replace(/[^A-Za-z0-9._+-]+/g, '_')}.md`), 'utf8');
+  if (/\b\d{3,}\b/.test(mdb.replace(/\d{4}-\d{2}-\d{2}/g, '')) && /\$\d/.test(mdb)) {
+    errors.push('0+b vault prompt leaked figures');
+  }
+  if (!mdb.includes('CANARY-HOUSE-')) errors.push('0+b should inject generated house canary');
+  const expectedJobs = cfg.arms.length * cfg.pilot.repeats * Math.ceil(cfg.companies.length / (cfg.pilot.shard_companies || cfg.companies.length));
+  if (jobs.length !== expectedJobs) errors.push(`expected ${expectedJobs} jobs, got ${jobs.length}`);
+  if (jobs[0].model !== cfg.pilot.models.subject) errors.push('job model is not configured subject');
   const { pairedClusterDiff, bootstrapMeanCI } = statsMod;
   const pairs = cfg.companies.map((c) => ({ company_id: c.id, base: 0.4, treat: 0.9 }));
   const diff = pairedClusterDiff(pairs, { draws: 400 });
   if (!(diff.lo > 0)) errors.push('clustered CI should exclude 0 on a 50-pt gap');
   const ci = bootstrapMeanCI([1, 1, 1, 1], { draws: 200 });
   if (ci.lo < 0.9) errors.push('tight CI on all-ones');
+  const goodGrades = CALIBRATION.map((c, i) => ({
+    grade_id: `G-CAL-${String(i + 1).padStart(2, '0')}`,
+    rubric: c.kind === 'bad' ? 1 : 5,
+    cite: c.kind === 'bad' ? c.flaw : '',
+  }));
+  const calMap = CALIBRATION.map((c, i) => ({
+    grade_id: `G-CAL-${String(i + 1).padStart(2, '0')}`,
+    calibration: true,
+    cal_id: c.cal_id,
+    kind: c.kind,
+    max_rubric: c.max_rubric ?? null,
+    min_rubric: c.min_rubric ?? null,
+  }));
+  const passCal = checkCalibration(goodGrades, calMap);
+  if (!passCal.ok) errors.push(`calibration should pass on separated scores: ${passCal.failures[0]?.reason}`);
+  const badGrades = CALIBRATION.map((c, i) => ({
+    grade_id: `G-CAL-${String(i + 1).padStart(2, '0')}`,
+    rubric: 5,
+    cite: '',
+  }));
+  const failCal = checkCalibration(badGrades, calMap);
+  if (failCal.ok) errors.push('calibration should fail when every seeded-bad scores 5');
   try { assertNoXai(['node', 'run', '--xai']); errors.push('assertNoXai missed --xai'); } catch { /* expected */ }
   if (errors.length) {
     for (const e of errors) console.error(`✗ ${e}`);
@@ -331,9 +435,12 @@ function selfTestPatched() {
   console.log('self-test ok');
   console.log(JSON.stringify({
     companies: tickers,
-    constructed_metric_jpm: jpm.metric_id,
+    constructed_metric_bank: bank.metric_id,
     jobs: jobs.length,
     items_per_job: jobs[0].items.length,
+    model: cfg.pilot.models.subject,
+    grader: cfg.pilot.models.grader,
+    arms: armIds,
   }));
 }
 

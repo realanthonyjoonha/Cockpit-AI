@@ -1,50 +1,105 @@
 {
-  "comment": "Pilot issuers are a data list. Extraction and scoring are ticker-agnostic. Avoid Anthony desk tickers (MSFT, MU, NBIS, NVDA, LLY, AVGO).",
+  "comment": "Held-out issuers are a data list. Extraction and scoring are ticker-agnostic. Avoid Anthony desk tickers (MSFT, MU, NBIS, NVDA, LLY, AVGO) and the pilot five (JPM, AAPL, ASML, XOM, JNJ).",
   "companies": [
     {
-      "id": "jpm",
-      "ticker": "JPM",
-      "cik": "0000019617",
-      "name": "JPMorgan Chase & Co.",
+      "id": "bac",
+      "ticker": "BAC",
+      "cik": "0000070858",
+      "name": "Bank of America Corporation",
       "sector": "bank",
+      "cap": "large",
       "form_family": "10-K/10-Q",
       "preferred_metrics": ["net_interest_income", "company_revenue", "net_income"]
     },
     {
-      "id": "aapl",
-      "ticker": "AAPL",
-      "cik": "0000320193",
-      "name": "Apple Inc.",
-      "sector": "mega_cap_tech",
+      "id": "pgr",
+      "ticker": "PGR",
+      "cik": "0000080661",
+      "name": "The Progressive Corporation",
+      "sector": "insurer",
+      "cap": "large",
       "form_family": "10-K/10-Q",
       "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
     },
     {
-      "id": "asml",
-      "ticker": "ASML",
-      "cik": "0000937966",
-      "name": "ASML Holding N.V.",
-      "sector": "semi_equipment",
-      "form_family": "20-F",
+      "id": "o",
+      "ticker": "O",
+      "cik": "0000726728",
+      "name": "Realty Income Corporation",
+      "sector": "reit",
+      "cap": "large",
+      "form_family": "10-K/10-Q",
       "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
     },
     {
-      "id": "xom",
-      "ticker": "XOM",
-      "cik": "0000034088",
-      "name": "Exxon Mobil Corporation",
+      "id": "cvx",
+      "ticker": "CVX",
+      "cik": "0000093410",
+      "name": "Chevron Corporation",
       "sector": "energy",
+      "cap": "large",
       "form_family": "10-K/10-Q",
       "preferred_metrics": ["company_revenue", "operating_income", "net_income"]
     },
     {
-      "id": "jnj",
-      "ticker": "JNJ",
-      "cik": "0000200406",
-      "name": "Johnson & Johnson",
+      "id": "sap",
+      "ticker": "SAP",
+      "cik": "0001000184",
+      "name": "SAP SE",
+      "sector": "enterprise_software",
+      "cap": "large",
+      "form_family": "20-F",
+      "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
+    },
+    {
+      "id": "play",
+      "ticker": "PLAY",
+      "cik": "0001525769",
+      "name": "Dave & Buster's Entertainment, Inc.",
+      "sector": "consumer_discretionary",
+      "cap": "small",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "net_income", "operating_income"]
+    },
+    {
+      "id": "unh",
+      "ticker": "UNH",
+      "cik": "0000731766",
+      "name": "UnitedHealth Group Incorporated",
       "sector": "healthcare",
+      "cap": "large",
       "form_family": "10-K/10-Q",
       "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
+    },
+    {
+      "id": "cat",
+      "ticker": "CAT",
+      "cik": "0000018230",
+      "name": "Caterpillar Inc.",
+      "sector": "industrial",
+      "cap": "large",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "operating_income", "net_income"]
+    },
+    {
+      "id": "ko",
+      "ticker": "KO",
+      "cik": "0000021344",
+      "name": "The Coca-Cola Company",
+      "sector": "consumer_staples",
+      "cap": "large",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
+    },
+    {
+      "id": "nem",
+      "ticker": "NEM",
+      "cik": "0001166126",
+      "name": "Newmont Corporation",
+      "sector": "materials",
+      "cap": "large",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "operating_income", "net_income"]
     }
   ]
 }

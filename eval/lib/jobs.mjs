@@ -3,17 +3,19 @@ import path from 'node:path';
 import { countTokens } from '../vendor/tokens.mjs';
 import { buildContext, enumerateTasks, renderQuestion } from './arms.mjs';
 import { jobsDir, loadConfig } from './load-config.mjs';
+import { assertGrok46, REQUIRED_GROK46 } from './models.mjs';
 import { writeJson } from './sec.mjs';
 
 const SYSTEM = `You are scoring-subject for a Cockpit-AI evaluation. Decision-support only.
 
 Hard rules:
 - No buy/sell/hold, price target, or position sizing.
-- Do not read eval/results, eval/results/keys, answer-key.json, or any scoring file.
-- Do not use XAI_API_KEY or any xAI HTTP API.
+- Do not read eval/results/keys, answer-key.json, scored.json, or any scoring file.
+- Do not use XAI_API_KEY or any xAI HTTP API. Only Cursor Grok 4.6 subscription usage.
 - If a number is not tagged or you are unsure, say GAP. Do not invent.
 - Treat each item independently. Do not reuse a figure from another item.
 - House and registers are human-owned. Propose only. Never claim a write.
+- Web search is allowed and expected for public facts when tagged companyfacts are not in context.
 `;
 
 function itemPrompt(task, company, q, metricId, context, cfg) {
@@ -29,47 +31,81 @@ function itemPrompt(task, company, q, metricId, context, cfg) {
   };
 }
 
+function shardList(items, size) {
+  const n = Math.max(1, Number(size) || items.length);
+  const out = [];
+  for (let i = 0; i < items.length; i += n) out.push(items.slice(i, i + n));
+  return out;
+}
+
 export function buildJobs(answerKey, cfg = loadConfig()) {
+  assertGrok46([cfg.pilot.models.subject, cfg.pilot.models.grader], 'configured model');
   const keyById = Object.fromEntries((answerKey.companies || []).map((c) => [c.company_id, c]));
   const jobs = [];
   const bundle = cfg.pilot.bundle;
+  const shardSize = bundle === 'arm_repeat_shard'
+    ? (cfg.pilot.shard_companies || 5)
+    : (bundle === 'arm_repeat' ? cfg.companies.length : 1);
+  const shards = bundle === 'none' || !bundle || bundle === 'item'
+    ? null
+    : shardList(cfg.companies, shardSize);
   for (const arm of cfg.arms) {
     for (let rep = 1; rep <= cfg.pilot.repeats; rep += 1) {
-      const items = [];
-      for (const company of cfg.companies) {
-        const companyKey = keyById[company.id];
-        const ctx = buildContext(arm, company, companyKey, cfg);
-        const metricId = companyKey?.metric_id;
-        for (const q of cfg.questions.questions) {
-          items.push(itemPrompt(
-            { task_id: `${company.id}::${q.id}` },
-            company,
-            q,
-            metricId,
-            ctx.text,
-            cfg,
-          ));
-        }
-      }
-      if (bundle === 'arm_repeat') {
-        jobs.push({
-          job_id: `${arm.id}__r${rep}`,
-          arm: arm.id,
-          repeat: rep,
-          model: cfg.pilot.models.subject,
-          web_search: !!arm.web_search,
-          items,
-        });
-      } else {
-        for (const item of items) {
+      if (shards) {
+        shards.forEach((shard, si) => {
+          const items = [];
+          for (const company of shard) {
+            const companyKey = keyById[company.id];
+            const ctx = buildContext(arm, company, companyKey, cfg);
+            const metricId = companyKey?.metric_id;
+            for (const q of cfg.questions.questions) {
+              items.push(itemPrompt(
+                { task_id: `${company.id}::${q.id}` },
+                company,
+                q,
+                metricId,
+                ctx.text,
+                cfg,
+              ));
+            }
+          }
+          const jobId = shards.length === 1
+            ? `${arm.id}__r${rep}`
+            : `${arm.id}__s${si}__r${rep}`;
           jobs.push({
-            job_id: `${arm.id}__${item.item_id}__r${rep}`,
+            job_id: jobId,
             arm: arm.id,
             repeat: rep,
+            shard: si,
             model: cfg.pilot.models.subject,
             web_search: !!arm.web_search,
-            items: [item],
+            items,
           });
+        });
+      } else {
+        for (const company of cfg.companies) {
+          const companyKey = keyById[company.id];
+          const ctx = buildContext(arm, company, companyKey, cfg);
+          const metricId = companyKey?.metric_id;
+          for (const q of cfg.questions.questions) {
+            const item = itemPrompt(
+              { task_id: `${company.id}::${q.id}` },
+              company,
+              q,
+              metricId,
+              ctx.text,
+              cfg,
+            );
+            jobs.push({
+              job_id: `${arm.id}__${item.item_id}__r${rep}`,
+              arm: arm.id,
+              repeat: rep,
+              shard: 0,
+              model: cfg.pilot.models.subject,
+              web_search: !!arm.web_search,
+              items: [item],
+            });
+          }
         }
       }
     }
@@ -80,7 +116,7 @@ export function buildJobs(answerKey, cfg = loadConfig()) {
 export function jobPromptMarkdown(job) {
   const lines = [
     SYSTEM,
-    `Arm id is hidden from you on purpose. Model: ${job.model}. Web search: ${job.web_search ? 'allowed and expected for public facts' : 'off'}.`,
+    `Arm id is hidden from you on purpose. Model: ${job.model || REQUIRED_GROK46}. Web search: ${job.web_search ? 'allowed and expected for public facts' : 'off'}.`,
     `Reply with a JSON array of ${job.items.length} objects in this exact order, one per item, no extra keys:`,
     '`{"item_id":"...","answer":"...","number":null,"numbers":[],"period_start":null,"period_end":null,"gap":false,"gap_reason":"","citations":[]}`',
     'number = primary figure in native units (not millions unless you say so). numbers = every figure you stated. gap=true if you refuse or the line is untagged.',
@@ -121,6 +157,7 @@ export function persistJobs(jobs, cfg = loadConfig()) {
       job_id: job.job_id,
       arm: job.arm,
       repeat: job.repeat,
+      shard: job.shard ?? 0,
       model: job.model,
       item_ids: job.items.map((i) => i.item_id),
       prompt_tokens: countTokens(md),

@@ -60,8 +60,8 @@ cockpit-kernel-fresh/
 harness-stress/results/
 harness-stress/REPORT.md
 
-# Eval pilot traces, live companyfacts, and answer keys (never commit).
-# The runner and REPORT.md stay tracked. Keys must not reach the model arm.
+# Eval traces, live companyfacts, and answer keys (never commit).
+# The runner, REPORT.md, and REPORT-large.md stay tracked. Keys must not reach the model arm.
 eval/results/
 eval/results-offline/
 eval/traces/
