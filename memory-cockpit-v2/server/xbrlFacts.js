@@ -10,6 +10,7 @@ export {
   taggedSlots,
   headlineGaps,
   claimPeriodLines,
+  currentLatestFilingValues,
   labeledPeriodLine,
   latestAccession,
   latestAccessionInDocument,
