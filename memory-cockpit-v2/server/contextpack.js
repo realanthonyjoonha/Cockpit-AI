@@ -832,11 +832,88 @@ function slimClaimValues(pack) {
   return changed;
 }
 
+const LABEL_VALUE_KEYS = ['value_text', 'unit', 'period', 'span'];
+
+function labelPeriod(val) {
+  const period = val && val.period && typeof val.period === 'object' ? val.period : {};
+  return {
+    value_text: val ? val.value_text : null,
+    unit: val ? val.unit : null,
+    period: { start: period.start ?? null, end: period.end ?? null },
+    span: val ? val.span : null,
+  };
+}
+
+function slimClaimValuesHard(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !claim.values) {
+      out.push(claim);
+      continue;
+    }
+    const slim = claim.values.filter((v) => v && typeof v === 'object').map(labelPeriod);
+    if (JSON.stringify(slim) !== JSON.stringify(claim.values)) {
+      out.push({ ...claim, values: slim });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function dropOlderClaimPeriods(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (!claim || typeof claim !== 'object' || !isTaggedClaim(claim)) {
+      out.push(claim);
+      continue;
+    }
+    const values = (claim.values || []).filter((v) => v && typeof v === 'object');
+    if (values.length <= 1) {
+      out.push(claim);
+      continue;
+    }
+    let latestEnd = '';
+    for (const v of values) {
+      const end = String((v.period || {}).end || '');
+      if (end > latestEnd) latestEnd = end;
+    }
+    const kept = values.filter((v) => String((v.period || {}).end || '') === latestEnd);
+    if (!kept.length || kept.length === values.length) {
+      out.push(claim);
+      continue;
+    }
+    out.push({ ...claim, values: kept });
+    changed = true;
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
+function blankTaggedTexts(pack) {
+  let changed = false;
+  const out = [];
+  for (const claim of pack.claims || []) {
+    if (claim && typeof claim === 'object' && isTaggedClaim(claim) && claim.values && typeof claim.text === 'string' && claim.text) {
+      out.push({ ...claim, text: '' });
+      changed = true;
+    } else {
+      out.push(claim);
+    }
+  }
+  if (changed) pack.claims = out;
+  return changed;
+}
+
 function dropClaimValues(pack) {
   let changed = false;
   const out = [];
   for (const claim of pack.claims || []) {
-    if (claim && typeof claim === 'object' && claim.values) {
+    if (claim && typeof claim === 'object' && claim.values && !isTaggedClaim(claim)) {
       const row = { ...claim };
       delete row.values;
       out.push(row);
@@ -849,7 +926,7 @@ function dropClaimValues(pack) {
   return changed;
 }
 
-function clipClaimTexts(pack, n, metricId) {
+function clipClaimTexts(pack, n, metricId, opts = {}) {
   let changed = false;
   const out = [];
   for (const claim of pack.claims || []) {
@@ -858,6 +935,10 @@ function clipClaimTexts(pack, n, metricId) {
       continue;
     }
     const row = { ...claim };
+    if (opts.skipTagged && isTaggedClaim(row)) {
+      out.push(row);
+      continue;
+    }
     if (metricId == null || row.metric_id === metricId) {
       if (typeof row.text === 'string' && row.text.length > n) {
         row.text = row.text.slice(0, n);
@@ -867,6 +948,21 @@ function clipClaimTexts(pack, n, metricId) {
     out.push(row);
   }
   if (changed) pack.claims = out;
+  return changed;
+}
+
+function clipGaps(pack, n) {
+  const gaps = pack.gaps;
+  if (!Array.isArray(gaps)) return false;
+  let changed = false;
+  const out = gaps.map((gap) => {
+    if (typeof gap === 'string' && gap.length > n) {
+      changed = true;
+      return gap.slice(0, n);
+    }
+    return gap;
+  });
+  if (changed) pack.gaps = out;
   return changed;
 }
 
@@ -979,7 +1075,7 @@ function dropTailClaim(pack) {
       break;
     }
   }
-  if (idx < 0) idx = claims.length - 1;
+  if (idx < 0) return false;
   const dropped = claims[idx];
   pack.claims = claims.filter((_, i) => i !== idx);
   addGap(pack, `dropped claim ${dropped.id || dropped.metric_id || 'claim'}`);
@@ -1009,7 +1105,13 @@ function stubPack(pack, limit, measure) {
       date: String(hp.date || '').slice(0, 32),
     },
     gaps: gaps.slice(0, 12),
-    claims: [],
+    claims: (pack.claims || []).filter(isTaggedClaim).map((c) => ({
+      id: c.id,
+      metric_id: c.metric_id,
+      origin: c.origin,
+      confidence: c.confidence,
+      values: (c.values || []).filter((v) => v && typeof v === 'object').map(labelPeriod),
+    })),
     budget: { limit_chars: limit, used_chars: 0, trimmed: true },
   };
   if (measure(stub) > limit) {
@@ -1032,7 +1134,7 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => clearList(pack, 'context_claims'),
     () => slimClaimValues(pack),
     () => clipClaimTexts(pack, 480, 'other'),
-    () => clipClaimTexts(pack, 480, null),
+    () => clipClaimTexts(pack, 480, null, { skipTagged: true }),
     () => clipObject(pack, 300),
     () => clipRisks(pack, 160, 2),
     () => clipPin(pack, 160),
@@ -1043,10 +1145,14 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => takeList(pack, 'sources', 4),
     () => clipExcerpt(pack, 200),
     () => clipClaimTexts(pack, 160, 'other'),
-    () => clipClaimTexts(pack, 160, null),
+    () => clipClaimTexts(pack, 160, null, { skipTagged: true }),
     () => dropOtherClaims(pack),
     () => dropClaimValues(pack),
-    () => clipClaimTexts(pack, 80, null),
+    () => slimClaimValuesHard(pack),
+    () => clipClaimTexts(pack, 80, null, { skipTagged: true }),
+    () => clipClaimTexts(pack, 160, null),
+    () => blankTaggedTexts(pack),
+    () => dropOlderClaimPeriods(pack),
     () => clipExcerpt(pack, 80),
     () => clearList(pack, 'catalysts'),
     () => clearList(pack, 'series_snapshot'),
@@ -1059,7 +1165,11 @@ export function enforceCharBudget(pack, limit = OVERVIEW_BUDGET_CHARS, measure =
     () => dropUntaggedClaims(pack),
     () => dropTailClaim(pack),
     () => dropTailClaim(pack),
-    () => clearList(pack, 'claims'),
+    () => clipGaps(pack, 180),
+    () => takeList(pack, 'gaps', 8),
+    () => takeList(pack, 'gaps', 4),
+    () => takeList(pack, 'gaps', 2),
+    () => clearList(pack, 'gaps'),
     () => clearList(pack, 'risks'),
     () => clearList(pack, 'stale_tripwires'),
   ];
