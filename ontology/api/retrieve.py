@@ -128,6 +128,42 @@ def _allowlist(pack: dict[str, Any]) -> bool:
     return changed
 
 
+def _slim_claim_values(pack: dict[str, Any]) -> bool:
+    from api.contextpack import _slim_labeled_value
+
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if not isinstance(claim, dict) or not claim.get("values"):
+            out.append(claim)
+            continue
+        slim = [_slim_labeled_value(v) for v in claim.get("values") or [] if isinstance(v, dict)]
+        row = dict(claim)
+        if slim != claim.get("values"):
+            row["values"] = slim
+            changed = True
+        out.append(row)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
+def _drop_claim_values(pack: dict[str, Any]) -> bool:
+    changed = False
+    out: list[Any] = []
+    for claim in pack.get("claims") or []:
+        if isinstance(claim, dict) and claim.get("values"):
+            row = dict(claim)
+            row.pop("values", None)
+            out.append(row)
+            changed = True
+        else:
+            out.append(claim)
+    if changed:
+        pack["claims"] = out
+    return changed
+
+
 def _clip_claim_texts(pack: dict[str, Any], n: int, metric_id: str | None) -> bool:
     changed = False
     out: list[Any] = []
@@ -352,6 +388,7 @@ def enforce_char_budget(
     steps = [
         lambda: _clear_list(pack, "related"),
         lambda: _clear_list(pack, "context_claims"),
+        lambda: _slim_claim_values(pack),
         lambda: _clip_claim_texts(pack, 480, "other"),
         lambda: _clip_claim_texts(pack, 480, None),
         lambda: _clip_object(pack, 300),
@@ -366,6 +403,7 @@ def enforce_char_budget(
         lambda: _clip_claim_texts(pack, 160, "other"),
         lambda: _clip_claim_texts(pack, 160, None),
         lambda: _drop_other_claims(pack),
+        lambda: _drop_claim_values(pack),
         lambda: _clip_claim_texts(pack, 80, None),
         lambda: _clip_excerpt(pack, 80),
         lambda: _clear_list(pack, "catalysts"),

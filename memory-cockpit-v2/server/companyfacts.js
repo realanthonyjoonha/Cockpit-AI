@@ -1,28 +1,18 @@
-// companyfacts.js — JS mirror of ontology/api/companyfacts.py (same taxonomy JSON).
+// companyfacts.js — JS twin of ontology/api/companyfacts.py (same taxonomy JSON).
 // Parse a local SEC companyfacts cache. No network. No model. No writes.
+// V2: latest filing, group by period, unique-or-gap. No ranking engine.
 import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const DEFAULT_ONTOLOGY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../ontology');
 const ALLOWED_FORMS = new Set(['10-K', '10-Q', '20-F', '40-F', '6-K', '10-KT']);
-const ANNUAL_FORMS = new Set(['10-K', '20-F', '40-F', '10-KT']);
-const INTERIM_FORMS = new Set(['10-Q', '6-K']);
-const QUARTER_FP = new Set(['Q1', 'Q2', 'Q3']);
 const ISO4217 = /^[A-Z]{3}$/;
 const TAXONOMIES = ['us-gaap', 'ifrs-full'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-// Two missed annual periods as a day count: 2*365 plus a leap/53-week pad.
-// 730 (2*365) flips after a leap year or a 53-week year (731–742). Counting
-// fy labels was rejected: 6-K and short 10-KT often lack a reliable fy series.
-export const STALE_DAYS = 760;
-const LEASE_REVENUE = 'us-gaap:OperatingLeaseLeaseIncome';
 
 export const MISSING_CACHE = 'companyfacts cache missing; headline slots empty';
 export const UNREADABLE = 'companyfacts cache unreadable';
-export const STRUCTURED_GAP = (mid) => `${mid}: not reported in structured data`;
-export const STALE_GAP = (mid, end) => `${mid}: stale: last reported ${end}`;
-export const LEASE_ONLY_GAP = (mid) => `${mid}: lease income only`;
 
 let taxonomyCache = null;
 
@@ -44,14 +34,14 @@ export function canonicalMetric(metricId, taxonomy = null) {
 
 export function sentenceFillAllowed(metricId, taxonomy = null) {
   const spec = ((taxonomy || loadTaxonomy()).metrics || {})[canonicalMetric(metricId, taxonomy)] || {};
-  if ((spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length)) return false;
+  if (spec.concepts && spec.concepts.length) return false;
   return spec.sentence_fill !== false;
 }
 
 export function structuredMetric(metricId, taxonomy = null) {
   const spec = ((taxonomy || loadTaxonomy()).metrics || {})[metricId] || {};
   if (spec.alias_of) return true;
-  return Boolean((spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length));
+  return Boolean(spec.concepts && spec.concepts.length);
 }
 
 export function conceptIndex(taxonomy = null) {
@@ -59,10 +49,10 @@ export function conceptIndex(taxonomy = null) {
   const idx = {};
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
     if (spec.alias_of) continue;
-    for (const concept of [...(spec.concepts || []), ...(spec.fallback || [])]) {
+    for (const concept of (spec.concepts || [])) {
       if (!idx[concept]) idx[concept] = mid;
-      const local = concept.split(':').pop();
-      if (!idx[local]) idx[local] = mid;
+      const localName = concept.split(':').pop();
+      if (!idx[localName]) idx[localName] = mid;
     }
   }
   return idx;
@@ -116,35 +106,11 @@ export function formFamily(form) {
 }
 
 function days(start, end) {
-  if (!start || !end) return 0;
+  if (!start || !end) return null;
   const a = Date.parse(`${start}T00:00:00Z`);
   const b = Date.parse(`${end}T00:00:00Z`);
-  if (Number.isNaN(a) || Number.isNaN(b)) return 0;
+  if (Number.isNaN(a) || Number.isNaN(b)) return null;
   return Math.round((b - a) / 86400000);
-}
-
-export function durationKind(n, fp, form, peerDays) {
-  const family = formFamily(form);
-  const fpU = String(fp || '').toUpperCase();
-  const peers = (peerDays || []).map((p) => Number(p)).filter((p) => Number.isFinite(p));
-  const longer = peers.some((p) => p > n + 14);
-  const shorter = peers.some((p) => p < n - 14);
-  if (family === '10-KT' && fpU === 'FY') return 'annual';
-  if (fpU === 'FY' && ANNUAL_FORMS.has(family)) return 'annual';
-  if (longer && n <= 200) return 'quarter';
-  if (shorter && n <= 340) return 'ytd';
-  if (ANNUAL_FORMS.has(family) || fpU === 'FY') {
-    if (n >= 300 || fpU === 'FY') return 'annual';
-  }
-  if (QUARTER_FP.has(fpU)) {
-    if (n <= 130) return 'quarter';
-    if (n <= 340) return 'ytd';
-    return 'annual';
-  }
-  if (n >= 341) return 'annual';
-  if (n >= 70 && n <= 130) return 'quarter';
-  if (n >= 131 && n <= 340) return 'ytd';
-  return 'other';
 }
 
 function unitKind(unit) {
@@ -165,14 +131,6 @@ function unitOk(unit, kind) {
   return unitKind(unit) === kind;
 }
 
-function cmpTuple(a, b) {
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] < b[i]) return -1;
-    if (a[i] > b[i]) return 1;
-  }
-  return 0;
-}
-
 export function parseCompanyfacts(doc, opts = {}) {
   const notes = [];
   if (!doc || typeof doc !== 'object' || !doc.facts || typeof doc.facts !== 'object') {
@@ -180,7 +138,6 @@ export function parseCompanyfacts(doc, opts = {}) {
   }
   const sourceId = opts.sourceId || null;
   const out = [];
-  let order = 0;
   for (const tax of TAXONOMIES) {
     const group = doc.facts[tax];
     if (!group || typeof group !== 'object') continue;
@@ -208,6 +165,7 @@ export function parseCompanyfacts(doc, opts = {}) {
             unit: String(unit),
             currency: currencyOf(String(unit)),
             period: { type: start ? 'duration' : 'instant', start, end },
+            duration_days: start ? days(start, end) : null,
             fy: Number.isInteger(raw.fy) ? raw.fy : null,
             fp: typeof raw.fp === 'string' ? raw.fp : null,
             form,
@@ -215,9 +173,7 @@ export function parseCompanyfacts(doc, opts = {}) {
             accession: String(raw.accn),
             dimensional: false,
             source_id: sourceId || `companyfacts:${raw.accn}`,
-            order,
           });
-          order += 1;
         }
       }
     }
@@ -252,7 +208,7 @@ export function mappedConcepts(taxonomy = null) {
   const out = new Set();
   for (const spec of Object.values(tax.metrics || {})) {
     if (spec.alias_of) continue;
-    for (const c of [...(spec.concepts || []), ...(spec.fallback || [])]) out.add(c);
+    for (const c of (spec.concepts || [])) out.add(c);
   }
   return [...out].sort();
 }
@@ -314,195 +270,238 @@ export function mappedFacts(facts, taxonomy = null) {
   const known = new Set();
   for (const spec of Object.values(tax.metrics || {})) {
     if (spec.alias_of) continue;
-    for (const c of [...(spec.concepts || []), ...(spec.fallback || [])]) known.add(c);
+    for (const c of (spec.concepts || [])) known.add(c);
   }
   return (facts || []).filter((f) => known.has(f.concept) && !f.dimensional);
 }
 
-function periodDesc(p) {
-  return p.type === 'duration' ? `${p.start} to ${p.end}` : String(p.end);
-}
-
-function periodLabel(p) {
-  return p.type === 'duration' ? `${p.start}/${p.end}` : String(p.end);
-}
-
-function latestPeriodicEnd(facts) {
-  let latest = '';
+export function latestAccession(facts) {
+  let best = null;
   for (const f of facts || []) {
     if (!ALLOWED_FORMS.has(formFamily(f.form))) continue;
-    const end = f.period && f.period.end;
-    if (end && end > latest) latest = end;
+    const filed = String(f.filed || '');
+    const accn = String(f.accession || '');
+    if (!accn) continue;
+    if (!best || filed > best.filed || (filed === best.filed && accn > best.accession)) {
+      best = { filed, accession: accn };
+    }
   }
-  return latest || null;
+  return best ? best.accession : null;
 }
 
-export function factIsStale(end, latest) {
-  return Boolean(end && latest && days(end, latest) > STALE_DAYS);
+export function periodKey(fact) {
+  const period = (fact && fact.period) || {};
+  return [period.start ?? null, period.end ?? null];
 }
 
-export function selectSlots(facts, taxonomy = null) {
+export function spanLabel(durationDays, periodType) {
+  if (periodType === 'instant') return null;
+  if (durationDays == null) return 'other';
+  if (durationDays >= 70 && durationDays <= 130) return 'quarter';
+  if (durationDays >= 131 && durationDays <= 340) return 'ytd';
+  if (durationDays >= 341) return 'annual';
+  return 'other';
+}
+
+export function candidatesFor(metricId, facts, accession, taxonomy = null) {
   const tax = taxonomy || loadTaxonomy();
+  const spec = (tax.metrics || {})[metricId] || {};
+  const concepts = spec.concepts || [];
+  if (spec.alias_of || !concepts.length) return [];
+  const out = [];
+  for (const f of facts || []) {
+    if (f.dimensional) continue;
+    if (f.accession !== accession) continue;
+    if (!concepts.includes(f.concept)) continue;
+    const period = f.period || {};
+    if (period.type !== spec.period || !period.end) continue;
+    if (!unitOk(String(f.unit || ''), String(spec.unit))) continue;
+    out.push(f);
+  }
+  return out;
+}
+
+export function groupByPeriod(facts) {
+  const groups = new Map();
+  for (const f of facts || []) {
+    const [start, end] = periodKey(f);
+    const key = `${start || ''}|${end || ''}`;
+    if (!groups.has(key)) groups.set(key, { start: start ?? null, end: end ?? null, rows: [] });
+    groups.get(key).rows.push(f);
+  }
+  return groups;
+}
+
+export function agree(a, b) {
+  return a.value_text === b.value_text && a.unit === b.unit;
+}
+
+function periodAgrees(rows) {
+  if (!rows.length) return true;
+  const first = rows[0];
+  return rows.every((row) => agree(first, row));
+}
+
+function labeled(rows) {
+  const picked = [...rows].sort((a, b) => String(a.concept || '').localeCompare(String(b.concept || '')))[0];
+  const period = { ...(picked.period || {}) };
+  let durationDays = picked.duration_days;
+  if (durationDays == null && period.start) durationDays = days(period.start, period.end);
+  const tags = [...new Set(rows.map((f) => f.concept).filter(Boolean))].sort();
+  return {
+    concept: picked.concept,
+    tags,
+    value_text: picked.value_text,
+    unit: picked.unit,
+    currency: picked.currency ?? null,
+    period,
+    duration_days: durationDays ?? null,
+    span: spanLabel(durationDays ?? null, String(period.type || '')),
+    form: picked.form ?? null,
+    fp: picked.fp ?? null,
+    fy: picked.fy ?? null,
+    filed: picked.filed ?? null,
+    accession: picked.accession ?? null,
+    source_id: picked.source_id ?? null,
+    value: picked.value,
+  };
+}
+
+function periodWhen(period) {
+  if (period.type === 'duration' && period.start) return `for ${period.start} to ${period.end}`;
+  return `at ${period.end}`;
+}
+
+function valueBlock(lab) {
+  const bits = [];
+  if (lab.span) bits.push(String(lab.span));
+  bits.push(`form ${lab.form || ''}`.trimEnd());
+  if (lab.fp) bits.push(`fp=${lab.fp}`);
+  if (lab.fy != null) bits.push(`fy=${lab.fy}`);
+  if (lab.filed) bits.push(`filed ${lab.filed}`);
+  if (lab.accession) bits.push(`accn ${lab.accession}`);
+  return `${local(lab.concept)} ${lab.unit} ${groupDigits(lab.value_text)} ${periodWhen(lab.period)}\n(${bits.join(', ')})`;
+}
+
+function periodGapKey(start, end) {
+  return `${start || ''}/${end || ''}`;
+}
+
+function conflictGap(mid, accn, start, end, rows) {
+  const header = `${mid} ${periodGapKey(start, end)}: latest filing ${accn} has ${rows.length} disagreeing tagged facts`;
+  const lines = [header];
+  const ordered = [...rows].sort((a, b) => {
+    const c = String(a.concept || '').localeCompare(String(b.concept || ''));
+    if (c) return c;
+    const u = String(a.unit || '').localeCompare(String(b.unit || ''));
+    if (u) return u;
+    return String(a.value_text || '').localeCompare(String(b.value_text || ''));
+  });
+  for (const row of ordered) {
+    const fp = row.fp || '';
+    lines.push(`  - ${row.concept} ${row.unit} ${row.value_text} ${row.form} ${fp}`.trimEnd());
+  }
+  return lines;
+}
+
+function sortValues(values) {
+  return [...values].sort((a, b) => {
+    const ae = (a.period && a.period.end) || '';
+    const be = (b.period && b.period.end) || '';
+    if (ae !== be) return ae < be ? -1 : 1;
+    const as = (a.period && a.period.start) || '';
+    const bs = (b.period && b.period.start) || '';
+    if (as !== bs) return as < bs ? -1 : 1;
+    return 0;
+  });
+}
+
+function slot(mid, accn, values) {
+  const ordered = sortValues(values);
+  const text = ordered.map(valueBlock).join('\n');
+  const sole = ordered.length === 1 ? ordered[0] : null;
+  return {
+    id: `xbrl:${mid}:${accn}`,
+    metric_id: mid,
+    text,
+    as_of: sole ? sole.period.end : null,
+    grade: 'A',
+    source_id: sole ? (sole.source_id ?? null) : `companyfacts:${accn}`,
+    origin: 'companyfacts',
+    confidence: 'tagged',
+    values: ordered,
+    concept: sole ? sole.concept : null,
+    value: sole ? sole.value : null,
+    value_text: sole ? sole.value_text : null,
+    unit: sole ? sole.unit : null,
+    currency: sole ? (sole.currency ?? null) : null,
+    period: sole ? { ...sole.period } : null,
+    fy: sole ? (sole.fy ?? null) : null,
+    fp: sole ? (sole.fp ?? null) : null,
+    form: sole ? (sole.form ?? null) : null,
+    filed: sole ? (sole.filed ?? null) : null,
+    accession: accn,
+  };
+}
+
+export function latestFilingSlots(facts, taxonomy = null) {
+  const tax = taxonomy || loadTaxonomy();
+  const accn = latestAccession(facts || []);
   const slots = {};
-  const stale = {};
-  const notes = {};
-  const latestPeriodic = latestPeriodicEnd(facts || []);
-  for (const [mid, spec] of Object.entries(tax.metrics || {})) {
-    if (spec.alias_of) continue;
-    const primary = spec.concepts || [];
-    const fallback = spec.fallback || [];
-    let concepts = [...primary, ...fallback.filter((c) => !primary.includes(c))];
-    if (!concepts.length) continue;
-    const pool = (facts || []).filter((f) => !f.dimensional
-      && f.period && f.period.type === spec.period
-      && f.period.end
-      && unitOk(String(f.unit || ''), String(spec.unit)));
-    let cands = pool.filter((f) => concepts.includes(f.concept));
-    let leaseOnly = false;
-    const trueTotalOnFiler = (facts || []).some((f) => !f.dimensional && concepts.includes(f.concept));
-    if (!cands.length && mid === 'company_revenue' && !trueTotalOnFiler) {
-      cands = pool.filter((f) => f.concept === LEASE_REVENUE);
-      leaseOnly = cands.length > 0;
-      if (leaseOnly) concepts = [...concepts, LEASE_REVENUE];
-    }
-    if (!cands.length) continue;
-
-    const groups = new Map();
-    for (const f of cands) {
-      const key = `${f.concept}|${f.period.start || ''}|${f.period.end}|${f.unit}`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(f);
-    }
-    const winners = [];
-    for (const rows of groups.values()) {
-      rows.sort((a, b) => cmpTuple(
-        [a.filed || '', a.accession || '', Number(a.order || 0)],
-        [b.filed || '', b.accession || '', Number(b.order || 0)],
-      ));
-      const win = rows[rows.length - 1];
-      let prior = null;
-      for (let i = rows.length - 2; i >= 0; i--) {
-        if (rows[i].value_text !== win.value_text) {
-          prior = rows[i];
-          break;
-        }
-      }
-      winners.push([win, prior]);
-    }
-    const latestEnd = winners.reduce((acc, [w]) => (w.period.end > acc ? w.period.end : acc), '');
-    const atEnd = winners.filter(([w]) => w.period.end === latestEnd);
-    const families = new Set(atEnd.map(([w]) => formFamily(w.form)));
-    const onlyAnnual = [...families].every((f) => ANNUAL_FORMS.has(f));
-    const hasInterimForm = [...families].some((f) => INTERIM_FORMS.has(f));
-
-    const kindOf = (w) => durationKind(
-      days(w.period.start, w.period.end),
-      w.fp,
-      w.form,
-      atEnd.filter(([o]) => o !== w).map(([o]) => days(o.period.start, o.period.end)),
-    );
-    const annualFormAnnual = atEnd.some(([w]) => kindOf(w) === 'annual' && ANNUAL_FORMS.has(formFamily(w.form)));
-    const interim = hasInterimForm && !onlyAnnual && !annualFormAnnual;
-
-    const rank = ([w]) => {
-      const kind = kindOf(w);
-      const dur = interim ? ({ quarter: 2, ytd: 1 }[kind] || 0) : (kind === 'annual' ? 2 : 0);
-      const cidx = concepts.indexOf(w.concept);
-      const n = days(w.period.start, w.period.end);
-      const span = interim ? -n : n;
-      return [dur, -(cidx < 0 ? 99 : cidx), span, w.filed || '', w.accession || ''];
-    };
-    const best = atEnd.reduce((acc, row) => (acc == null || cmpTuple(rank(row), rank(acc)) > 0 ? row : acc), null);
-    const win = best[0];
-    const restatedFrom = best[1];
-    if (factIsStale(win.period.end, latestPeriodic)) {
-      stale[mid] = win.period.end;
-      continue;
-    }
-    let ytd = null;
-    if (spec.period === 'duration' && kindOf(win) === 'quarter') {
-      const ytdRows = atEnd.map(([w]) => w).filter((w) => kindOf(w) === 'ytd');
-      if (ytdRows.length) {
-        ytd = ytdRows.reduce((acc, w) => {
-          const rankOf = (row) => {
-            const same = row.concept === win.concept ? 1 : 0;
-            const cidx = concepts.indexOf(row.concept);
-            return [same, -(cidx < 0 ? 99 : cidx), row.filed || '', row.accession || ''];
-          };
-          return acc == null || cmpTuple(rankOf(w), rankOf(acc)) > 0 ? w : acc;
-        }, null);
-      }
-    }
-    let text = `${local(win.concept)} ${win.unit} ${groupDigits(win.value_text)} for ${periodDesc(win.period)} (consolidated companyfacts`;
-    let prior = null;
-    if (restatedFrom) {
-      text += `; restated from ${groupDigits(restatedFrom.value_text)}`;
-      prior = {
-        end: restatedFrom.period.end,
-        value: restatedFrom.value,
-        value_text: restatedFrom.value_text,
-        restated: true,
-        filed: restatedFrom.filed ?? null,
-        accession: restatedFrom.accession ?? null,
-        source_id: restatedFrom.source_id ?? null,
-      };
-    }
-    if (ytd) text += `; ytd ${groupDigits(ytd.value_text)}`;
-    text += ')';
-    slots[mid] = {
-      id: `xbrl:${win.concept}:${periodLabel(win.period)}`,
-      metric_id: mid,
-      text,
-      as_of: win.period.end,
-      grade: 'A',
-      source_id: win.source_id ?? null,
-      origin: 'companyfacts',
-      confidence: 'tagged',
-      concept: win.concept,
-      value: win.value,
-      value_text: win.value_text,
-      unit: win.unit,
-      currency: win.currency ?? null,
-      period: { ...win.period },
-      fy: win.fy ?? null,
-      fp: win.fp ?? null,
-      form: win.form ?? null,
-      filed: win.filed ?? null,
-      accession: win.accession ?? null,
-      prior,
-      ytd: ytd ? {
-        start: ytd.period.start,
-        end: ytd.period.end,
-        value: ytd.value,
-        value_text: ytd.value_text,
-        concept: ytd.concept,
-      } : null,
-    };
-    if (leaseOnly) notes[mid] = LEASE_ONLY_GAP(mid);
-  }
-  return { slots, stale, notes };
-}
-
-export function taggedSlots(facts, taxonomy = null) {
-  return selectSlots(facts, taxonomy).slots;
-}
-
-export function headlineGaps(slots, taxonomy = null, facts = null) {
-  const tax = taxonomy || loadTaxonomy();
-  const selected = facts != null ? selectSlots(facts, tax) : { stale: {}, notes: {} };
-  const stale = selected.stale || {};
-  const notes = selected.notes || {};
   const gaps = [];
   for (const [mid, spec] of Object.entries(tax.metrics || {})) {
     if (spec.alias_of) continue;
-    const structured = (spec.concepts && spec.concepts.length) || (spec.fallback && spec.fallback.length);
-    if (!structured && !notes[mid]) continue;
-    if (slots[mid]) {
-      if (notes[mid]) gaps.push(notes[mid]);
+    if (!(spec.concepts && spec.concepts.length)) continue;
+    if (!accn) {
+      gaps.push(`${mid}: not reported in latest filing`);
       continue;
     }
-    if (stale[mid]) gaps.push(STALE_GAP(mid, stale[mid]));
-    else if (structured) gaps.push(STRUCTURED_GAP(mid));
+    const cands = candidatesFor(mid, facts || [], accn, tax);
+    if (!cands.length) {
+      gaps.push(`${mid}: not reported in latest filing ${accn}`);
+      continue;
+    }
+    const values = [];
+    for (const group of groupByPeriod(cands).values()) {
+      if (periodAgrees(group.rows)) values.push(labeled(group.rows));
+      else gaps.push(...conflictGap(mid, accn, group.start, group.end, group.rows));
+    }
+    if (values.length) slots[mid] = slot(mid, accn, values);
   }
-  return gaps;
+  return { slots, gaps };
+}
+
+export function taggedSlots(facts, taxonomy = null) {
+  return latestFilingSlots(facts, taxonomy).slots;
+}
+
+export function headlineGaps(slots, taxonomy = null, facts = null) {
+  return latestFilingSlots(facts || [], taxonomy).gaps;
+}
+
+export function defaultCache(wikiRoot, slug) {
+  return path.join(wikiRoot, 'raw', `${slug}-research`, 'sec', 'companyfacts.json');
+}
+
+export function loadCompanyfacts(cfg, wikiRoot, slug) {
+  const override = cfg && cfg.companyfacts_path;
+  let filePath;
+  if (override) {
+    filePath = path.isAbsolute(override) ? override : path.join(wikiRoot, override);
+  } else {
+    filePath = defaultCache(wikiRoot, slug);
+  }
+  try {
+    readFileSync(filePath);
+  } catch {
+    return { facts: [], notes: [cacheStatusGap(filePath) || MISSING_CACHE], files: [], slots: {} };
+  }
+  const parsed = loadCompanyfactsFile(filePath, { sourceId: filePath });
+  const { slots, gaps } = latestFilingSlots(parsed.facts);
+  const kept = mappedFacts(parsed.facts);
+  const notes = [...(parsed.notes || [])];
+  const statusGap = cacheStatusGap(filePath);
+  if (statusGap && !notes.includes(statusGap)) notes.unshift(statusGap);
+  notes.push(...gaps);
+  return { facts: kept, notes, files: [filePath], slots };
 }

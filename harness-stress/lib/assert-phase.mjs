@@ -131,7 +131,7 @@ export function assertSectors() {
   else console.log(`review sentences=${review.sentences} pairs=${review.pairs} tagged slots held`);
   const reviewer = checkReviewerCases(api);
   if (reviewer.length) errors.push(...reviewer.slice(0, 20), `reviewer ${reviewer.length} problem(s)`);
-  else console.log('reviewer restatement/headline/dimension cases held');
+  else console.log('reviewer constructed unique/two-periods/disagree/none held');
   const rulesText = readFileSync(path.join(ont, 'schema/contextpack_metrics.json'), 'utf8');
   const xbrlText = readFileSync(path.join(ont, 'schema/taxonomy_xbrl.json'), 'utf8');
   for (const hit of bannedWordHits(rulesText)) errors.push(`metrics JSON contains ${hit}`);

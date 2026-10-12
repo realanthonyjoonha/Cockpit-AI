@@ -1,17 +1,23 @@
 /**
  * Review-comment sentences against companyfacts slots.
  * A sentence never changes a structured numeric slot, including an empty one.
+ * V2: properties + constructed documents. No frozen dollars.
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { missingMappedFromSource } from '../../memory-cockpit-v2/server/companyfacts.js';
+import {
+  agree,
+  latestAccession,
+  latestFilingSlots,
+} from '../../memory-cockpit-v2/server/companyfacts.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURES = path.join(HERE, '../fixtures');
 export const REVIEW_PATH = path.join(FIXTURES, 'review-sentences.json');
 export const CF_DIR = path.join(FIXTURES, 'companyfacts');
 export const FACT_SETS = { 'us-gaap': 'industrial', 'ifrs-full': 'fpi' };
+export const CONSTRUCTED = ['unique', 'two-periods', 'same-period-disagree', 'none'];
 
 export function stable(value) {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
@@ -25,8 +31,8 @@ export function loadReview() {
   return JSON.parse(readFileSync(REVIEW_PATH, 'utf8'));
 }
 
-export function loadExpected(id) {
-  return JSON.parse(readFileSync(path.join(CF_DIR, id, 'expected.json'), 'utf8'));
+export function loadIndex() {
+  return JSON.parse(readFileSync(path.join(CF_DIR, 'index.json'), 'utf8'));
 }
 
 export function factsFor(api, id) {
@@ -47,8 +53,13 @@ export function taggedSnapshot(api, claims, facts) {
   return {
     slots: Object.fromEntries(Object.entries(slots).map(([mid, s]) => [mid, {
       id: s.id,
-      value_text: s.value_text,
-      prior: s.prior ? s.prior.value_text : null,
+      value_text: s.value_text ?? null,
+      values: (s.values || []).map((v) => ({
+        value_text: v.value_text,
+        period: v.period,
+        accession: v.accession,
+        concept: v.concept,
+      })),
     }])),
     live: live.map((c) => [c.id, c.metric_id, c.confidence || null]),
     gaps,
@@ -58,6 +69,36 @@ export function taggedSnapshot(api, claims, facts) {
 
 function claim(id, text, asOf) {
   return { id, text, as_of: asOf, grade: 'A', source_id: 'review' };
+}
+
+export function slotPropertyErrors(facts, slots) {
+  const errors = [];
+  const accn = latestAccession(facts);
+  for (const [mid, slot] of Object.entries(slots || {})) {
+    if (slot.ytd || slot.prior) errors.push(`${mid} has ranking sidecar`);
+    const values = slot.values || [];
+    if (slot.value_text != null && values.length !== 1) errors.push(`${mid} value_text set with ${values.length} periods`);
+    if (slot.value_text == null && values.length === 1) errors.push(`${mid} value_text null with one period`);
+    if (slot.accession !== accn) errors.push(`${mid} accession ${slot.accession} != latest ${accn}`);
+    for (const val of values) {
+      if (val.accession !== accn) errors.push(`${mid} shown period not latest filing`);
+      const matches = (facts || []).filter((f) => (
+        f.value_text === val.value_text
+        && f.unit === val.unit
+        && (f.period || {}).start === (val.period || {}).start
+        && (f.period || {}).end === (val.period || {}).end
+        && f.form === val.form
+        && f.filed === val.filed
+        && f.accession === val.accession
+        && (f.concept === val.concept || (val.tags || []).includes(f.concept))
+      ));
+      if (!matches.length) errors.push(`${mid} shown value is not a tagged fact`);
+      for (const other of matches) {
+        if (!agree(val, other)) errors.push(`${mid} invented a value`);
+      }
+    }
+  }
+  return errors;
 }
 
 function slotProperties(api, tag, claims, facts) {
@@ -108,15 +149,15 @@ export function checkReview(api) {
     const tax = pair.taxonomy || 'us-gaap';
     const claims = [claim('older', pair.older.text, pair.older.as_of), claim('newer', pair.newer.text, pair.newer.as_of)];
     const factsId = pair.companyfacts || issuerFor[tax];
-    const want = (loadExpected(factsId).slots || {})[pair.metric_id];
-    if (!want) {
+    const pairFacts = pair.companyfacts ? factsFor(api, pair.companyfacts).facts : factSets[tax];
+    const slot = api.taggedSlots(pairFacts)[pair.metric_id];
+    if (!slot) {
       errors.push(`pair ${pair.id} has no tagged ${pair.metric_id} in ${factsId}`);
       continue;
     }
-    const pairFacts = pair.companyfacts ? factsFor(api, pair.companyfacts).facts : factSets[tax];
     const tagged = runLive(api, claims, pairFacts).live.find((c) => c.metric_id === pair.metric_id);
-    if (!tagged || (tagged.origin !== 'companyfacts' && tagged.origin !== 'xbrl') || tagged.value_text !== want.value_text || tagged.concept !== want.concept) {
-      errors.push(`pair ${pair.id} tagged ${pair.metric_id} is ${tagged ? `${tagged.id}=${tagged.value_text}` : 'missing'}`);
+    if (!tagged || (tagged.origin !== 'companyfacts' && tagged.origin !== 'xbrl') || tagged.id !== slot.id) {
+      errors.push(`pair ${pair.id} tagged ${pair.metric_id} is ${tagged ? tagged.id : 'missing'}`);
     }
     const bare = runLive(api, claims, []).live.find((c) => c.metric_id === pair.metric_id);
     if (bare) errors.push(`pair ${pair.id} sentence filled ${bare.id}`);
@@ -135,14 +176,7 @@ export function checkTaggedSectors(fixture, api) {
       errors.push(`${issuer.id} companyfacts missing: ${err.message}`);
       continue;
     }
-    const slots = api.taggedSlots(parsed.facts);
-    const want = (loadExpected(id).slots || {});
-    for (const [mid, exp] of Object.entries(want)) {
-      const got = slots[mid];
-      if (!got || got.value_text !== exp.value_text || got.concept !== exp.concept || got.period.end !== exp.end) {
-        errors.push(`${issuer.id} slot ${mid} ${got ? got.value_text : 'missing'} != ${exp.value_text}`);
-      }
-    }
+    errors.push(...slotPropertyErrors(parsed.facts, api.taggedSlots(parsed.facts)).map((e) => `${issuer.id} ${e}`));
     errors.push(...slotProperties(api, `${issuer.id}/tagged`, issuer.claims || [], parsed.facts));
     errors.push(...slotProperties(api, `${issuer.id}/sentence-only`, issuer.claims || [], []));
   }
@@ -153,16 +187,33 @@ export function checkReviewerCases(api) {
   const errors = [];
   const claimRow = (id, text, asOf) => ({ id, text, as_of: asOf, grade: 'A', source_id: 'review' });
 
-  const rest = factsFor(api, 'restate');
-  const slot = api.taggedSlots(rest.facts).company_revenue;
-  if (slot?.value_text !== '29520000000' || slot?.prior?.value_text !== '30871000000') {
-    errors.push(`restate ${slot?.value_text} prior ${slot?.prior?.value_text}`);
+  const unique = latestFilingSlots(factsFor(api, 'unique').facts);
+  if ((unique.slots.company_revenue?.values || []).length !== 1 || unique.slots.company_revenue?.value_text == null) {
+    errors.push('unique did not fill one labeled period');
+  }
+  errors.push(...slotPropertyErrors(factsFor(api, 'unique').facts, unique.slots));
+
+  const two = latestFilingSlots(factsFor(api, 'two-periods').facts);
+  if ((two.slots.company_revenue?.values || []).length !== 2 || two.slots.company_revenue?.value_text != null) {
+    errors.push('two-periods did not show both periods');
+  }
+  if ((two.gaps || []).some((g) => g.includes('disagreeing tagged facts'))) {
+    errors.push('two-periods treated different periods as a conflict');
+  }
+  errors.push(...slotPropertyErrors(factsFor(api, 'two-periods').facts, two.slots));
+
+  const clash = latestFilingSlots(factsFor(api, 'same-period-disagree').facts);
+  if (clash.slots.company_revenue) errors.push('same-period-disagree filled company_revenue');
+  const clashText = (clash.gaps || []).join('\n');
+  if (!clashText.includes('disagreeing tagged facts') || !clashText.includes('us-gaap:Revenues')) {
+    errors.push(`same-period-disagree gap ${JSON.stringify(clash.gaps)}`);
   }
 
-  const q = factsFor(api, 'qtd');
-  const qslot = api.taggedSlots(q.facts).company_revenue;
-  if (qslot?.value_text !== '26539000000' || qslot?.ytd?.value_text !== '51982000000') {
-    errors.push(`qtd ${qslot?.value_text} ytd ${qslot?.ytd?.value_text}`);
+  const none = latestFilingSlots(factsFor(api, 'none').facts);
+  const accn = latestAccession(factsFor(api, 'none').facts);
+  if (none.slots.company_revenue) errors.push('none filled company_revenue');
+  if (!(none.gaps || []).includes(`company_revenue: not reported in latest filing ${accn}`)) {
+    errors.push(`none gap ${JSON.stringify(none.gaps)}`);
   }
 
   const gaps = [];
@@ -181,188 +232,34 @@ export function checkReviewerCases(api) {
     errors.push('impaired-by filled goodwill');
   }
 
-  const synthetic = {
-    cik: 1,
-    entityName: 'Fixture',
-    facts: {
-      'us-gaap': {
-        Revenues: {
-          units: {
-            USD: [
-              { start: '2025-07-01', end: '2025-09-30', val: 2200000000, accn: '0000000001-25-000002', fy: 2025, fp: 'Q3', form: '10-Q', filed: '2025-11-01' },
-              { start: '2025-01-01', end: '2025-09-30', val: 9100000000, accn: '0000000001-25-000002', fy: 2025, fp: 'Q3', form: '10-Q', filed: '2025-11-01' },
-            ],
-          },
-        },
-      },
-    },
-  };
-  const syn = api.parseCompanyfacts(synthetic).facts;
-  const synSlot = api.taggedSlots(syn).company_revenue;
-  if (synSlot?.value_text !== '2200000000' || synSlot?.ytd?.value_text !== '9100000000') {
-    errors.push(`synthetic 10-Q ${synSlot?.value_text} ytd ${synSlot?.ytd?.value_text}`);
-  }
-
-  const oldP = api.taggedSlots(factsFor(api, 'old-primary').facts).company_revenue;
-  if (oldP?.value_text !== '250000000' || oldP?.concept !== 'us-gaap:PremiumsEarnedNet') {
-    errors.push(`old-primary hid current fallback ${oldP?.concept}=${oldP?.value_text}`);
-  }
-  const q111 = api.taggedSlots(factsFor(api, 'q111').facts).company_revenue;
-  const q111r = api.taggedSlots(factsFor(api, 'q111-rev').facts).company_revenue;
-  if (q111?.value_text !== '111000000' || q111?.ytd?.value_text !== '333000000') {
-    errors.push(`q111 ${q111?.value_text} ytd ${q111?.ytd?.value_text}`);
-  }
-  if (q111r?.value_text !== q111?.value_text || q111r?.ytd?.value_text !== q111?.ytd?.value_text) {
-    errors.push('q111 array order changed the slot');
-  }
-  const pref = api.taggedSlots(factsFor(api, 'concept-priority').facts).company_revenue;
-  if (pref?.value_text !== '1000000000' || pref?.concept !== 'us-gaap:Revenues') {
-    errors.push(`concept-priority ${pref?.concept}=${pref?.value_text}`);
-  }
-
-  const sixk = api.taggedSlots(factsFor(api, 'sixk-q').facts).company_revenue;
-  if (sixk?.value_text !== '90000000' || sixk?.ytd?.value_text !== '190000000' || sixk?.form !== '6-K') {
-    errors.push(`sixk-q ${sixk?.value_text} ytd ${sixk?.ytd?.value_text} form ${sixk?.form}`);
-  }
-  const tenkt = api.taggedSlots(factsFor(api, 'tenkt').facts).company_revenue;
-  if (tenkt?.value_text !== '440000000' || tenkt?.form !== '10-KT') {
-    errors.push(`tenkt ${tenkt?.value_text} form ${tenkt?.form}`);
-  }
-  const sixkNo = api.taggedSlots(factsFor(api, 'sixk-nofp').facts).company_revenue;
-  if (sixkNo?.value_text !== '80000000' || sixkNo?.ytd?.value_text !== '170000000') {
-    errors.push(`sixk-nofp ${sixkNo?.value_text} ytd ${sixkNo?.ytd?.value_text}`);
-  }
-  const tenktQ = api.taggedSlots(factsFor(api, 'tenkt-q').facts).company_revenue;
-  if (tenktQ?.value_text !== '440000000' || tenktQ?.form !== '10-KT' || tenktQ?.ytd) {
-    errors.push(`tenkt-q ${tenktQ?.value_text} form ${tenktQ?.form} ytd ${tenktQ?.ytd?.value_text}`);
-  }
-  const kq4 = api.taggedSlots(factsFor(api, 'k-vs-q4').facts).company_revenue;
-  if (kq4?.value_text !== '1000000000' || kq4?.form !== '10-K' || kq4?.ytd) {
-    errors.push(`k-vs-q4 ${kq4?.value_text} form ${kq4?.form}`);
-  }
-  const pytd = api.taggedSlots(factsFor(api, 'primary-ytd').facts).company_revenue;
-  if (pytd?.value_text !== '80000000' || pytd?.concept !== 'us-gaap:SalesRevenueNet' || pytd?.ytd?.value_text !== '500000000') {
-    errors.push(`primary-ytd ${pytd?.concept}=${pytd?.value_text} ytd ${pytd?.ytd?.value_text}`);
-  }
-  const sixkFy = api.taggedSlots(factsFor(api, 'sixk-fy-q').facts).company_revenue;
-  if (sixkFy?.value_text !== '250000000' || sixkFy?.form !== '6-K' || sixkFy?.ytd) {
-    errors.push(`sixk-fy-q ${sixkFy?.value_text} form ${sixkFy?.form} ytd ${sixkFy?.ytd?.value_text}`);
-  }
-  const tenktShort = api.taggedSlots(factsFor(api, 'tenkt-short').facts).company_revenue;
-  if (tenktShort?.value_text !== '340000000' || tenktShort?.form !== '10-KT' || tenktShort?.ytd) {
-    errors.push(`tenkt-short ${tenktShort?.value_text} form ${tenktShort?.form}`);
-  }
-  const leaseFacts = factsFor(api, 'lease-only').facts;
-  const lease = api.taggedSlots(leaseFacts).company_revenue;
-  const leaseGaps = api.headlineGaps ? api.headlineGaps({ company_revenue: lease }, null, leaseFacts) : [];
-  if (lease?.value_text !== '1207000000' || lease?.concept !== 'us-gaap:OperatingLeaseLeaseIncome'
-    || !leaseGaps.includes('company_revenue: lease income only')) {
-    errors.push(`lease-only ${lease?.concept}=${lease?.value_text} gaps ${JSON.stringify(leaseGaps)}`);
-  }
-  const padFacts = factsFor(api, 'stale-pad').facts;
-  const pad = api.taggedSlots(padFacts);
-  const padGaps = api.headlineGaps ? api.headlineGaps(pad, null, padFacts) : [];
-  if (pad.total_debt?.value_text !== '500000000' || pad.interest_revenue
-    || !padGaps.includes('interest_revenue: stale: last reported 2024-05-30')) {
-    errors.push(`stale-pad debt=${pad.total_debt?.value_text} int=${pad.interest_revenue?.value_text} gaps ${JSON.stringify(padGaps)}`);
-  }
-  const span = api.taggedSlots(factsFor(api, 'span-tie').facts).company_revenue;
-  const spanR = api.taggedSlots(factsFor(api, 'span-tie-rev').facts).company_revenue;
-  if (span?.value_text !== '200000000' || spanR?.value_text !== span?.value_text) {
-    errors.push(`span-tie ${span?.value_text} rev ${spanR?.value_text}`);
-  }
-  const tot = api.taggedSlots(factsFor(api, 'true-total').facts).company_revenue;
-  if (tot?.value_text !== '182447000000' || tot?.concept !== 'us-gaap:Revenues') {
-    errors.push(`true-total ${tot?.concept}=${tot?.value_text}`);
-  }
-  const staleFacts = factsFor(api, 'stale-slot').facts;
-  const staleSlots = api.taggedSlots(staleFacts);
-  if (staleSlots.total_debt) errors.push(`stale-slot filled total_debt ${staleSlots.total_debt?.value_text}`);
-  const staleGaps = api.headlineGaps ? api.headlineGaps(staleSlots, null, staleFacts) : [];
-  if (!staleGaps.some((g) => g.includes('stale: last reported 2014-06-30'))) {
-    errors.push(`stale-slot gap ${JSON.stringify(staleGaps)}`);
-  }
-  const bank = api.taggedSlots(factsFor(api, 'bank').facts);
-  if (bank.company_revenue?.value_text !== '57347000000'
-    || bank.company_revenue?.concept !== 'us-gaap:RevenuesNetOfInterestExpense'
-    || bank.company_revenue?.ytd?.value_text !== '107183000000') {
-    errors.push(`bank revenue ${bank.company_revenue?.concept}=${bank.company_revenue?.value_text} ytd ${bank.company_revenue?.ytd?.value_text}`);
-  }
-  if (bank.total_debt || bank.interest_revenue) {
-    errors.push(`bank stale slots still filled debt=${bank.total_debt?.value_text} int=${bank.interest_revenue?.value_text}`);
-  }
-
   return errors;
 }
 
 export function checkCompanyfactsExact(api) {
   const errors = [];
-  const index = JSON.parse(readFileSync(path.join(CF_DIR, 'index.json'), 'utf8'));
-  if ((index.issuers || []).length < 12) errors.push(`companyfacts issuers ${index.issuers?.length}`);
-  for (const need of [
-    'old-primary', 'q111', 'q111-rev', 'concept-priority',
-    'sixk-q', 'tenkt', 'sixk-nofp', 'tenkt-q', 'k-vs-q4',
-    'primary-ytd', 'span-tie', 'span-tie-rev', 'true-total', 'stale-slot',
-    'sixk-fy-q', 'tenkt-short', 'lease-only', 'stale-pad',
-  ]) {
-    if (!(index.issuers || []).some((row) => row.id === need)) errors.push(`missing reviewer fixture ${need}`);
+  const index = loadIndex();
+  for (const need of CONSTRUCTED) {
+    if (!(index.issuers || []).some((row) => row.id === need)) errors.push(`missing constructed fixture ${need}`);
   }
-  for (const row of index.issuers || []) {
-    const parsed = factsFor(api, row.id);
-    const slots = api.taggedSlots(parsed.facts);
-    const expected = loadExpected(row.id);
-    for (const [mid, want] of Object.entries(expected.slots || {})) {
-      const got = slots[mid];
-      const ytd = got?.ytd ? got.ytd.value_text : null;
-      const wantYtd = want.ytd ? want.ytd.value_text : null;
-      if (!got
-        || got.value_text !== want.value_text
-        || got.concept !== want.concept
-        || got.period.end !== want.end
-        || got.unit !== want.unit
-        || got.form !== want.form
-        || got.filed !== want.filed
-        || ytd !== wantYtd) {
-        errors.push(`${row.id} ${mid} ${got ? got.value_text : 'missing'} != ${want.value_text}`);
-      }
-    }
-    for (const mid of expected.empty || []) {
-      if (slots[mid]) errors.push(`${row.id} ${mid} should be empty`);
-    }
-    if (api.headlineGaps && (expected.gaps_contain || []).length) {
-      const gaps = api.headlineGaps(slots, null, parsed.facts);
-      for (const msg of expected.gaps_contain) {
-        if (!gaps.includes(msg)) errors.push(`${row.id} missing gap ${msg}`);
-      }
+  const dirs = readdirSync(CF_DIR, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+  for (const id of dirs) {
+    if (!existsCompanyfacts(id)) continue;
+    const parsed = factsFor(api, id);
+    const { slots, gaps } = latestFilingSlots(parsed.facts);
+    errors.push(...slotPropertyErrors(parsed.facts, slots).map((e) => `${id} ${e}`));
+    if (api.headlineGaps) {
+      const fromApi = api.headlineGaps(slots, null, parsed.facts);
+      if (stable(fromApi) !== stable(gaps)) errors.push(`${id} headlineGaps drifted from latestFilingSlots`);
     }
   }
-  errors.push(...checkFullMappedExtracts());
   return errors;
 }
 
-export function checkFullMappedExtracts() {
-  const errors = [];
-  const dirs = readdirSync(CF_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
-  for (const dir of dirs) {
-    const srcPath = path.join(CF_DIR, dir.name, 'source-concepts.json');
-    if (!existsSync(srcPath)) continue;
-    const src = JSON.parse(readFileSync(srcPath, 'utf8'));
-    if (src.extract !== 'full-mapped') errors.push(`${dir.name} source-concepts missing extract:full-mapped`);
-    const doc = JSON.parse(readFileSync(path.join(CF_DIR, dir.name, 'companyfacts.json'), 'utf8'));
-    const missing = missingMappedFromSource(doc, src.concepts || {});
-    if (missing.length) errors.push(`${dir.name} trimmed mapped concepts: ${missing.join(', ')}`);
+function existsCompanyfacts(id) {
+  try {
+    readFileSync(path.join(CF_DIR, id, 'companyfacts.json'));
+    return true;
+  } catch {
+    return false;
   }
-  const bankSrc = JSON.parse(readFileSync(path.join(CF_DIR, 'bank', 'source-concepts.json'), 'utf8'));
-  if (bankSrc.concepts?.['us-gaap:RevenuesNetOfInterestExpense']?.USD !== 149) {
-    errors.push('bank source-concepts dropped RevenuesNetOfInterestExpense');
-  }
-  const trimmed = JSON.parse(readFileSync(path.join(CF_DIR, 'bank', 'companyfacts.json'), 'utf8'));
-  if (trimmed.facts?.['us-gaap']?.RevenuesNetOfInterestExpense) {
-    delete trimmed.facts['us-gaap'].RevenuesNetOfInterestExpense;
-  }
-  const trimmedMissing = missingMappedFromSource(trimmed, bankSrc.concepts || {});
-  if (!trimmedMissing.some((m) => m.includes('RevenuesNetOfInterestExpense'))) {
-    errors.push('completeness check did not fail after deleting RNIE from a bank copy');
-  }
-  return errors;
 }

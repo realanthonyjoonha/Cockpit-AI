@@ -1,6 +1,6 @@
 {
-  "version": "3",
-  "comment": "Companyfacts concept to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). Primary and fallback are one ordered list for selection: latest period end wins first across both; same end prefers quarter over YTD over annual (or annual when an annual-form annual exists), then this list order, then span length, then later filed/accn. A 6-K full-year stays annual; a same-end 6-K quarter stays the live quarter. Same-end cross-concept YTD attaches to the live quarter and does not become the 10-Q value. Fallback lists may contain only true-total synonyms (Revenues, RevenueFromContractWithCustomer*, SalesRevenueNet, RevenuesNetOfInterestExpense, PremiumsEarnedNet). OperatingLeaseLeaseIncome is not a fallback; it fills company_revenue only when the filer has no true-total concept, with gap 'lease income only'. Stale cutoff is 760 days (two missed annual periods plus leap/53-week pad; chosen instead of counting fy labels). Full-mapped fixtures must keep every mapped concept present in the live source. sentence_fill is always false for structured metrics. No ticker, product, geography, or sector column. An unmapped tag is not guessed.",
+  "version": "4",
+  "comment": "Companyfacts true-total tags to metric. Concepts are canonical prefix:local (us-gaap, ifrs-full). List order is unused. The parser groups the latest periodic filing by period start/end and shows each unique period. sentence_fill is always false for structured metrics. Totals only. No stale window, ticker, product, geography, or sector column. An unmapped tag is not guessed.",
   "namespaces": {
     "us-gaap": ["http://fasb.org/us-gaap/"],
     "ifrs-full": ["http://xbrl.ifrs.org/taxonomy/", "https://xbrl.ifrs.org/taxonomy/"],
@@ -18,9 +18,7 @@
         "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
         "us-gaap:RevenueFromContractWithCustomerIncludingAssessedTax",
         "ifrs-full:Revenue",
-        "ifrs-full:RevenueFromContractsWithCustomers"
-      ],
-      "fallback": [
+        "ifrs-full:RevenueFromContractsWithCustomers",
         "us-gaap:PremiumsEarnedNet",
         "us-gaap:RevenuesNetOfInterestExpense"
       ]

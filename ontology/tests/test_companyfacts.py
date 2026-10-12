@@ -1,7 +1,12 @@
-"""Companyfacts slots match trimmed SEC fixtures. Sentences never fill them."""
+"""V2 companyfacts: properties, constructed documents, sentences never fill.
+
+No frozen live issuer dollars. No ranking leftovers. Values in constructed
+documents stay local to those files.
+"""
 from __future__ import annotations
 
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -11,11 +16,11 @@ REPO = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
 from api.companyfacts import (  # noqa: E402
-    STALE_DAYS,
-    extract_mapped_document,
+    agree,
     headline_gaps,
+    latest_accession,
+    latest_filing_slots,
     load_taxonomy,
-    missing_mapped_from_source,
     parse_companyfacts,
     structured_metric,
     tagged_slots,
@@ -25,190 +30,150 @@ from api.contextpack import live_claims, load_rules  # noqa: E402
 
 FIXTURES = REPO / "harness-stress" / "fixtures" / "companyfacts"
 REVIEW = REPO / "harness-stress" / "fixtures" / "review-sentences.json"
+CONSTRUCTED = ("unique", "two-periods", "same-period-disagree", "none")
 
 
 def load_index():
     return json.loads((FIXTURES / "index.json").read_text(encoding="utf-8"))
 
 
-def load_pair(issuer_id: str):
-    folder = FIXTURES / issuer_id
-    doc = json.loads((folder / "companyfacts.json").read_text(encoding="utf-8"))
-    expected = json.loads((folder / "expected.json").read_text(encoding="utf-8"))
-    return doc, expected
+def load_doc(issuer_id: str):
+    return json.loads((FIXTURES / issuer_id / "companyfacts.json").read_text(encoding="utf-8"))
+
+
+def parse_id(issuer_id: str):
+    return parse_companyfacts(load_doc(issuer_id), source_id=f"companyfacts/{issuer_id}")
+
+
+def slot_properties(facts, slots, gaps):
+    errors = []
+    accn = latest_accession(facts)
+    for mid, slot in (slots or {}).items():
+        if slot.get("ytd") or slot.get("prior"):
+            errors.append(f"{mid} has ranking sidecar")
+        values = slot.get("values") or []
+        if slot.get("value_text") is not None and len(values) != 1:
+            errors.append(f"{mid} value_text set with {len(values)} periods")
+        if slot.get("value_text") is None and len(values) == 1:
+            errors.append(f"{mid} value_text null with one period")
+        if slot.get("accession") != accn:
+            errors.append(f"{mid} accession {slot.get('accession')} != latest {accn}")
+        for val in values:
+            if val.get("accession") != accn:
+                errors.append(f"{mid} shown period not latest filing")
+            matches = [
+                f for f in facts
+                if f.get("value_text") == val.get("value_text")
+                and f.get("unit") == val.get("unit")
+                and (f.get("period") or {}).get("start") == (val.get("period") or {}).get("start")
+                and (f.get("period") or {}).get("end") == (val.get("period") or {}).get("end")
+                and f.get("form") == val.get("form")
+                and f.get("filed") == val.get("filed")
+                and f.get("accession") == val.get("accession")
+                and (f.get("concept") == val.get("concept") or f.get("concept") in (val.get("tags") or []))
+            ]
+            if not matches:
+                errors.append(f"{mid} shown value is not a tagged fact")
+            for other in matches:
+                if not agree(val, other):
+                    errors.append(f"{mid} invented a value")
+    return errors
 
 
 class ValueText(unittest.TestCase):
-    def test_int_and_eps(self):
-        self.assertEqual(value_text(182447000000), "182447000000")
+    def test_canonical_decimal(self):
+        self.assertEqual(value_text(1), "1")
         self.assertEqual(value_text(20.02), "20.02")
         self.assertEqual(value_text(7.7), "7.7")
         self.assertEqual(value_text(-8.45), "-8.45")
-        self.assertEqual(value_text(1), "1")
         self.assertNotIn("e", value_text(1e-7) or "")
         self.assertNotIn("E", value_text(1e-7) or "")
 
 
-class FixturesMatchExpected(unittest.TestCase):
-    def test_every_issuer_matches_expected(self):
-        for row in load_index()["issuers"]:
-            iid = row["id"]
-            doc, expected = load_pair(iid)
-            parsed = parse_companyfacts(doc, source_id=f"companyfacts/{iid}")
-            slots = tagged_slots(parsed["facts"])
-            for mid, want in expected["slots"].items():
-                got = slots.get(mid)
-                self.assertIsNotNone(got, f"{iid} missing {mid}")
-                self.assertEqual(got["value_text"], want["value_text"], f"{iid} {mid} value")
-                self.assertEqual(got["period"]["end"], want["end"], f"{iid} {mid} end")
-                self.assertEqual(got["concept"], want["concept"], f"{iid} {mid} concept")
-                self.assertEqual(got.get("form"), want.get("form"), f"{iid} {mid} form")
-                self.assertEqual(got.get("filed"), want.get("filed"), f"{iid} {mid} filed")
-                self.assertEqual(got["unit"], want["unit"], f"{iid} {mid} unit")
-                if want.get("ytd"):
-                    self.assertIsNotNone(got.get("ytd"), f"{iid} {mid} ytd missing")
-                    self.assertEqual(got["ytd"]["value_text"], want["ytd"]["value_text"], f"{iid} {mid} ytd")
-                else:
-                    self.assertIsNone(got.get("ytd"), f"{iid} {mid} unexpected ytd")
-                if want.get("prior"):
-                    self.assertTrue(got.get("prior") and got["prior"].get("restated"), f"{iid} {mid} prior")
-                    self.assertEqual(got["prior"]["value_text"], want["prior"]["value_text"], f"{iid} {mid} prior val")
-            for mid in expected.get("empty") or []:
-                self.assertNotIn(mid, slots, f"{iid} {mid} should be empty")
-            gaps = headline_gaps(slots, facts=parsed["facts"])
-            for msg in expected.get("gaps_contain") or []:
-                self.assertIn(msg, gaps, f"{iid} missing gap {msg}")
+class TaxonomyTotalsOnly(unittest.TestCase):
+    def test_no_kind_fallback_stale_or_lease(self):
+        tax = load_taxonomy()
+        blob = json.dumps(tax)
+        self.assertNotIn('"kind"', blob)
+        self.assertNotIn("stale_days", blob)
+        for spec in (tax.get("metrics") or {}).values():
+            self.assertNotIn("fallback", spec)
+            self.assertNotIn("kind", spec)
+            self.assertNotIn("selection", spec)
+        listed = tax["metrics"]["company_revenue"].get("concepts") or []
+        self.assertNotIn("us-gaap:OperatingLeaseLeaseIncome", listed)
+        self.assertIn("true-total", (tax.get("comment") or "").lower())
 
-    def test_restatement_later_filed_wins(self):
-        doc, expected = load_pair("restate")
-        slot = tagged_slots(parse_companyfacts(doc)["facts"])["company_revenue"]
-        self.assertEqual(slot["value_text"], "29520000000")
-        self.assertEqual(slot["prior"]["value_text"], "30871000000")
-        self.assertTrue(slot["filed"] > slot["prior"]["filed"] or slot["filed"] >= "2024-02-29")
 
-    def test_qtd_prefers_quarter(self):
-        doc, expected = load_pair("qtd")
-        slot = tagged_slots(parse_companyfacts(doc)["facts"])["company_revenue"]
-        self.assertEqual(slot["value_text"], expected["slots"]["company_revenue"]["value_text"])
-        self.assertEqual(slot["ytd"]["value_text"], "51982000000")
-
-    def test_fpi_ifrs_eur(self):
-        doc, expected = load_pair("fpi")
-        slot = tagged_slots(parse_companyfacts(doc)["facts"])["company_revenue"]
-        self.assertEqual(slot["concept"], "ifrs-full:Revenue")
-        self.assertEqual(slot["unit"], "EUR")
-        self.assertEqual(slot["value_text"], "36800000000")
-
+class ParseOffline(unittest.TestCase):
     def test_parse_never_uses_https(self):
-        import api.companyfacts as mod
-        src = Path(mod.__file__).read_text(encoding="utf-8")
+        src = Path(__file__).resolve().parents[1].joinpath("api", "companyfacts.py").read_text(encoding="utf-8")
         self.assertNotIn("urllib", src)
         self.assertNotIn("http.client", src)
         self.assertNotIn("requests", src)
+        self.assertNotIn("companyfacts_fetch", src)
 
-    def test_true_total_fallbacks_exclude_components(self):
-        tax = load_taxonomy()
-        spec = tax["metrics"]["company_revenue"]
-        listed = list(spec.get("concepts") or []) + list(spec.get("fallback") or [])
-        for banned in (
-            "us-gaap:OperatingLeaseLeaseIncome",
-            "us-gaap:InterestAndDividendIncomeOperating",
-            "us-gaap:RevenueFromCollaborativeArrangementExcludingRevenueFromContractWithCustomer",
-        ):
-            self.assertNotIn(banned, listed)
-        self.assertIn("us-gaap:RevenuesNetOfInterestExpense", spec.get("fallback") or [])
-        comment = tax.get("comment") or ""
-        self.assertIn("true-total", comment)
+    def test_unreadable_doc(self):
+        parsed = parse_companyfacts("not-json")
+        self.assertEqual(parsed["facts"], [])
+        self.assertTrue(any("unreadable" in n for n in parsed["notes"]))
 
-    def test_reviewer_form_and_stale_cases(self):
-        sixk = tagged_slots(parse_companyfacts(load_pair("sixk-q")[0])["facts"])["company_revenue"]
-        self.assertEqual(sixk["value_text"], "90000000")
-        self.assertEqual(sixk["ytd"]["value_text"], "190000000")
-        nofp = tagged_slots(parse_companyfacts(load_pair("sixk-nofp")[0])["facts"])["company_revenue"]
-        self.assertEqual(nofp["value_text"], "80000000")
-        self.assertEqual(nofp["ytd"]["value_text"], "170000000")
-        tenkt = tagged_slots(parse_companyfacts(load_pair("tenkt")[0])["facts"])["company_revenue"]
-        self.assertEqual(tenkt["form"], "10-KT")
-        tenkt_q = tagged_slots(parse_companyfacts(load_pair("tenkt-q")[0])["facts"])["company_revenue"]
-        self.assertEqual(tenkt_q["value_text"], "440000000")
-        self.assertEqual(tenkt_q["form"], "10-KT")
-        self.assertIsNone(tenkt_q.get("ytd"))
-        kq4 = tagged_slots(parse_companyfacts(load_pair("k-vs-q4")[0])["facts"])["company_revenue"]
-        self.assertEqual(kq4["value_text"], "1000000000")
-        self.assertEqual(kq4["form"], "10-K")
-        pytd = tagged_slots(parse_companyfacts(load_pair("primary-ytd")[0])["facts"])["company_revenue"]
-        self.assertEqual(pytd["concept"], "us-gaap:SalesRevenueNet")
-        self.assertEqual(pytd["value_text"], "80000000")
-        self.assertEqual(pytd["ytd"]["value_text"], "500000000")
-        sixk_fy = tagged_slots(parse_companyfacts(load_pair("sixk-fy-q")[0])["facts"])["company_revenue"]
-        self.assertEqual(sixk_fy["value_text"], "250000000")
-        self.assertEqual(sixk_fy["form"], "6-K")
-        self.assertIsNone(sixk_fy.get("ytd"))
-        tenkt_short = tagged_slots(parse_companyfacts(load_pair("tenkt-short")[0])["facts"])["company_revenue"]
-        self.assertEqual(tenkt_short["value_text"], "340000000")
-        self.assertEqual(tenkt_short["form"], "10-KT")
-        lease_doc, _ = load_pair("lease-only")
-        lease_facts = parse_companyfacts(lease_doc)["facts"]
-        lease = tagged_slots(lease_facts)["company_revenue"]
-        self.assertEqual(lease["concept"], "us-gaap:OperatingLeaseLeaseIncome")
-        self.assertEqual(lease["value_text"], "1207000000")
-        self.assertIn("company_revenue: lease income only", headline_gaps(tagged_slots(lease_facts), facts=lease_facts))
-        pad_doc, _ = load_pair("stale-pad")
-        pad_facts = parse_companyfacts(pad_doc)["facts"]
-        pad = tagged_slots(pad_facts)
-        self.assertEqual(pad["total_debt"]["value_text"], "500000000")
-        self.assertNotIn("interest_revenue", pad)
-        self.assertIn("interest_revenue: stale: last reported 2024-05-30", headline_gaps(pad, facts=pad_facts))
-        self.assertEqual(STALE_DAYS, 760)
-        span = tagged_slots(parse_companyfacts(load_pair("span-tie")[0])["facts"])["company_revenue"]
-        span_r = tagged_slots(parse_companyfacts(load_pair("span-tie-rev")[0])["facts"])["company_revenue"]
-        self.assertEqual(span["value_text"], "200000000")
-        self.assertEqual(span_r["value_text"], span["value_text"])
-        tot = tagged_slots(parse_companyfacts(load_pair("true-total")[0])["facts"])["company_revenue"]
-        self.assertEqual(tot["concept"], "us-gaap:Revenues")
-        self.assertEqual(tot["value_text"], "182447000000")
-        stale_doc, stale_exp = load_pair("stale-slot")
-        stale_facts = parse_companyfacts(stale_doc)["facts"]
-        stale_slots = tagged_slots(stale_facts)
-        self.assertNotIn("total_debt", stale_slots)
-        gaps = headline_gaps(stale_slots, facts=stale_facts)
-        self.assertIn("total_debt: stale: last reported 2014-06-30", gaps)
-        bank_doc, _ = load_pair("bank")
-        bank = tagged_slots(parse_companyfacts(bank_doc)["facts"])
-        self.assertEqual(bank["company_revenue"]["concept"], "us-gaap:RevenuesNetOfInterestExpense")
-        self.assertEqual(bank["company_revenue"]["value_text"], "57347000000")
-        self.assertEqual(bank["company_revenue"]["ytd"]["value_text"], "107183000000")
-        self.assertNotIn("total_debt", bank)
-        self.assertNotIn("interest_revenue", bank)
 
-    def test_full_mapped_fixtures_keep_every_source_concept(self):
-        for folder in FIXTURES.iterdir():
-            src_path = folder / "source-concepts.json"
-            if not src_path.is_file():
-                continue
-            src = json.loads(src_path.read_text(encoding="utf-8"))
-            self.assertEqual(src.get("extract"), "full-mapped", folder.name)
-            doc = json.loads((folder / "companyfacts.json").read_text(encoding="utf-8"))
-            missing = missing_mapped_from_source(doc, src["concepts"])
-            self.assertEqual(missing, [], f"{folder.name} trimmed {missing}")
+class ConstructedDocuments(unittest.TestCase):
+    def test_unique(self):
+        parsed = parse_id("unique")
+        slots, gaps = latest_filing_slots(parsed["facts"])
+        rev = slots["company_revenue"]
+        self.assertEqual(len(rev["values"]), 1)
+        self.assertEqual(rev["value_text"], rev["values"][0]["value_text"])
+        self.assertIsNotNone(rev["value_text"])
+        self.assertIn("form", rev["text"])
+        self.assertFalse(any("disagreeing tagged facts" in g for g in gaps if g.startswith("company_revenue")))
+        self.assertEqual(slot_properties(parsed["facts"], slots, gaps), [])
 
-    def test_trimming_mapped_concept_fails_completeness(self):
-        src = json.loads((FIXTURES / "bank" / "source-concepts.json").read_text(encoding="utf-8"))
-        self.assertEqual(src["concepts"]["us-gaap:RevenuesNetOfInterestExpense"]["USD"], 149)
-        doc = json.loads((FIXTURES / "bank" / "companyfacts.json").read_text(encoding="utf-8"))
-        del doc["facts"]["us-gaap"]["RevenuesNetOfInterestExpense"]
-        missing = missing_mapped_from_source(doc, src["concepts"])
-        self.assertTrue(any("RevenuesNetOfInterestExpense" in m for m in missing))
+    def test_two_periods(self):
+        parsed = parse_id("two-periods")
+        slots, gaps = latest_filing_slots(parsed["facts"])
+        rev = slots["company_revenue"]
+        self.assertEqual(len(rev["values"]), 2)
+        self.assertIsNone(rev["value_text"])
+        starts = {(v["period"].get("start"), v["period"].get("end")) for v in rev["values"]}
+        self.assertEqual(len(starts), 2)
+        self.assertFalse(any("disagreeing tagged facts" in g for g in gaps))
+        self.assertEqual(slot_properties(parsed["facts"], slots, gaps), [])
 
-    def test_bank_matches_live_mapped_when_present(self):
-        live_path = Path("/tmp/jpm-live.json")
-        if not live_path.is_file():
-            self.skipTest("live JPM companyfacts not present")
-        live = json.loads(live_path.read_text(encoding="utf-8"))
-        fixture = json.loads((FIXTURES / "bank" / "companyfacts.json").read_text(encoding="utf-8"))
-        _, live_inv = extract_mapped_document(live)
-        missing = missing_mapped_from_source(fixture, live_inv)
-        self.assertEqual(missing, [], f"bank fixture missing live mapped {missing}")
+    def test_same_period_disagree(self):
+        parsed = parse_id("same-period-disagree")
+        slots, gaps = latest_filing_slots(parsed["facts"])
+        self.assertNotIn("company_revenue", slots)
+        joined = "\n".join(gaps)
+        self.assertIn("disagreeing tagged facts", joined)
+        self.assertIn("us-gaap:Revenues", joined)
+        self.assertIn("us-gaap:RevenuesNetOfInterestExpense", joined)
+        self.assertEqual(slot_properties(parsed["facts"], slots, gaps), [])
+
+    def test_none(self):
+        parsed = parse_id("none")
+        slots, gaps = latest_filing_slots(parsed["facts"])
+        accn = latest_accession(parsed["facts"])
+        self.assertNotIn("company_revenue", slots)
+        self.assertIn(f"company_revenue: not reported in latest filing {accn}", gaps)
+        self.assertIn("cash", slots)
+        self.assertEqual(slot_properties(parsed["facts"], slots, gaps), [])
+
+
+class PropertiesOnCachedExtracts(unittest.TestCase):
+    def test_every_issuer_obeys_properties(self):
+        for row in load_index()["issuers"]:
+            parsed = parse_id(row["id"])
+            slots, gaps = latest_filing_slots(parsed["facts"])
+            errs = slot_properties(parsed["facts"], slots, gaps)
+            self.assertEqual(errs, [], f"{row['id']}: {errs}")
+
+    def test_constructed_ids_present(self):
+        ids = {row["id"] for row in load_index()["issuers"]}
+        for name in CONSTRUCTED:
+            self.assertIn(name, ids)
 
 
 class ReviewSentencesNeverFill(unittest.TestCase):
@@ -223,8 +188,7 @@ class ReviewSentencesNeverFill(unittest.TestCase):
         ]
         cls.fact_sets = {}
         for iid in ("industrial", "fpi"):
-            doc, _ = load_pair(iid)
-            cls.fact_sets[iid] = parse_companyfacts(doc)["facts"]
+            cls.fact_sets[iid] = parse_id(iid)["facts"]
 
     def _check(self, tag, claims, facts):
         slots = tagged_slots(facts)
@@ -235,6 +199,7 @@ class ReviewSentencesNeverFill(unittest.TestCase):
             self.assertIsNotNone(row, f"{tag} lost {mid}")
             self.assertEqual(row.get("value_text"), slot["value_text"], f"{tag} {mid}")
             self.assertEqual(row.get("origin"), "companyfacts", f"{tag} {mid} origin")
+            self.assertEqual(len(row.get("values") or []), len(slot.get("values") or []))
         for row in by.values():
             if structured_metric(row["metric_id"], self.tax):
                 self.assertNotEqual(row.get("origin"), "sentence", f"{tag} sentence filled {row['metric_id']}")
@@ -250,17 +215,12 @@ class ReviewSentencesNeverFill(unittest.TestCase):
                 if structured_metric(row.get("metric_id") or "", self.tax):
                     self.fail(f"untagged {c['id']} filled {row['metric_id']}")
 
-    def test_unreadable_doc(self):
-        parsed = parse_companyfacts("not-json")
-        self.assertEqual(parsed["facts"], [])
-        self.assertTrue(any("unreadable" in n for n in parsed["notes"]))
-
     def test_long_term_debt_alias_uses_total_debt_gap(self):
-        from api.companyfacts import canonical_metric, headline_gaps
+        from api.companyfacts import canonical_metric
         self.assertEqual(canonical_metric("long_term_debt"), "total_debt")
         gaps = headline_gaps({})
-        self.assertIn("total_debt: not reported in structured data", gaps)
-        self.assertNotIn("long_term_debt: not reported in structured data", gaps)
+        self.assertTrue(any(g.startswith("total_debt: not reported in latest filing") for g in gaps))
+        self.assertFalse(any(g.startswith("long_term_debt:") for g in gaps))
         gout = []
         live, _ = live_claims(
             [{"id": "d", "text": "Long-term debt was $5 billion.", "as_of": "2025-12-31", "grade": "A"}],
@@ -270,6 +230,43 @@ class ReviewSentencesNeverFill(unittest.TestCase):
         )
         self.assertFalse(any(r.get("metric_id") == "long_term_debt" for r in live))
         self.assertIn("total_debt: not reported in structured data", gout)
+
+
+@unittest.skipUnless(
+    os.environ.get("COCKPIT_LIVE_COMPANYFACTS") == "1" and (os.environ.get("SEC_USER_AGENT") or os.environ.get("COCKPIT_SEC_UA")),
+    "opt-in live SEC refresh",
+)
+class LiveRefreshProperties(unittest.TestCase):
+    def test_live_bytes_are_deterministic_and_obey_properties(self):
+        from api.companyfacts_fetch import DEFAULT_URL, pad_cik, user_agent, _default_get, _rate_wait
+        import time
+
+        ciks = []
+        for row in load_index()["issuers"]:
+            if row.get("kind") != "extract":
+                continue
+            doc = load_doc(row["id"])
+            if doc.get("cik") is not None:
+                ciks.append(str(doc["cik"]))
+            if len(ciks) >= 2:
+                break
+        self.assertTrue(ciks)
+        ua = user_agent()
+        for cik in ciks:
+            _rate_wait(time.sleep)
+            status, body = _default_get(DEFAULT_URL.format(cik=pad_cik(cik)), {"User-Agent": ua, "Accept": "application/json"}, 30)
+            self.assertEqual(status, 200, f"live fetch {cik} HTTP {status}")
+            doc = json.loads(body.decode("utf-8"))
+            first = latest_filing_slots(parse_companyfacts(doc)["facts"])
+            second = latest_filing_slots(parse_companyfacts(doc)["facts"])
+            self.assertEqual(first[0].keys(), second[0].keys())
+            for mid in first[0]:
+                a = [(v["value_text"], v["period"], v["accession"], v["concept"]) for v in first[0][mid]["values"]]
+                b = [(v["value_text"], v["period"], v["accession"], v["concept"]) for v in second[0][mid]["values"]]
+                self.assertEqual(a, b, mid)
+            self.assertEqual(first[1], second[1])
+            facts = parse_companyfacts(doc)["facts"]
+            self.assertEqual(slot_properties(facts, first[0], first[1]), [])
 
 
 if __name__ == "__main__":
