@@ -937,6 +937,8 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
         lines.append("")
     claims = pack.get("claims") or []
     if claims:
+        from api.companyfacts import claim_period_lines
+
         lines.append("## Live claims (one per metric)")
         for c in claims:
             tag = ""
@@ -944,10 +946,14 @@ def to_agent_markdown(pack: dict[str, Any]) -> str:
                 tag = " · tagged"
             elif c.get("confidence") == "low":
                 tag = " · sentence, low confidence"
-            lines.append(
-                f"- `{c.get('metric_id')}`{tag} [{c.get('grade')}] ({c.get('as_of')}) {c.get('text')} "
-                f"← {c.get('source_id')}"
-            )
+            periods = claim_period_lines(c)
+            head = f"- `{c.get('metric_id')}`{tag} [{c.get('grade')}] ({c.get('as_of')})"
+            if periods:
+                lines.append(f"{head} {periods[0]} ← {c.get('source_id')}")
+                for extra in periods[1:]:
+                    lines.append(f"  {extra}")
+            else:
+                lines.append(f"{head} ← {c.get('source_id')}")
         lines.append("")
     context = pack.get("context_claims") or []
     if context:

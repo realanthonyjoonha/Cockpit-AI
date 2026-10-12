@@ -212,6 +212,7 @@ def parse_companyfacts(doc: Any, *, source_id: str | None = None) -> dict[str, A
         "notes": notes,
         "entity": doc.get("entityName"),
         "cik": doc.get("cik"),
+        "latest_accession": latest_accession_in_document(doc),
     }
 
 
@@ -220,8 +221,10 @@ def load_companyfacts_file(path: Path, *, source_id: str | None = None) -> dict[
         raw = path.read_text(encoding="utf-8")
         doc = json.loads(raw)
     except (OSError, json.JSONDecodeError):
-        return {"facts": [], "notes": [UNREADABLE], "entity": None, "cik": None}
-    return parse_companyfacts(doc, source_id=source_id or str(path))
+        return {"facts": [], "notes": [UNREADABLE], "entity": None, "cik": None, "latest_accession": None}
+    parsed = parse_companyfacts(doc, source_id=source_id or str(path))
+    parsed["latest_accession"] = latest_accession_in_document(doc)
+    return parsed
 
 
 def mapped_facts(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -300,17 +303,55 @@ def extract_mapped_document(doc: dict[str, Any], tax: dict[str, Any] | None = No
     return extracted, inventory
 
 
-def latest_filing_facts(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Facts whose accession is latest_accession(facts). Empty when none."""
-    accn = latest_accession(facts or [])
+def latest_accession_in_document(doc: Any) -> str | None:
+    """max (filed, accn) over every namespace and unit. Allowed periodic forms only."""
+    facts_root = doc.get("facts") if isinstance(doc, dict) else None
+    if not isinstance(facts_root, dict):
+        return None
+    best: tuple[tuple[str, str], str] | None = None
+    for group in facts_root.values():
+        if not isinstance(group, dict):
+            continue
+        for node in group.values():
+            units = node.get("units") if isinstance(node, dict) else None
+            if not isinstance(units, dict):
+                continue
+            for points in units.values():
+                if not isinstance(points, list):
+                    continue
+                for raw in points:
+                    if not isinstance(raw, dict):
+                        continue
+                    if form_family(str(raw.get("form") or "")) not in ALLOWED_FORMS:
+                        continue
+                    accn = raw.get("accn")
+                    filed = raw.get("filed")
+                    if not accn or not filed:
+                        continue
+                    key = (str(filed), str(accn))
+                    if best is None or key > best[0]:
+                        best = (key, str(accn))
+    return best[1] if best else None
+
+
+def latest_filing_facts(
+    facts: list[dict[str, Any]], *, accession: str | None = None
+) -> list[dict[str, Any]]:
+    """Facts whose accession is the chosen latest filing. Empty when none."""
+    accn = accession or latest_accession(facts or [])
     if not accn:
         return []
     return [f for f in facts or [] if f.get("accession") == accn]
 
 
-def mapped_latest_facts(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+def mapped_latest_facts(
+    facts: list[dict[str, Any]],
+    tax: dict[str, Any] | None = None,
+    *,
+    accession: str | None = None,
+) -> list[dict[str, Any]]:
     """Mapped true-totals from the chosen latest filing only. Never older filings."""
-    return mapped_facts(latest_filing_facts(facts), tax)
+    return mapped_facts(latest_filing_facts(facts, accession=accession), tax)
 
 
 def latest_accession(facts: list[dict[str, Any]]) -> str | None:
@@ -470,14 +511,42 @@ def _conflict_gap(mid: str, accn: str, start: str | None, end: str | None, rows:
     return lines
 
 
-def _sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def sort_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Newest period first so visible text leads with the current filing period."""
     return sorted(
         values,
         key=lambda v: (
             str((v.get("period") or {}).get("end") or ""),
             str((v.get("period") or {}).get("start") or ""),
         ),
+        reverse=True,
     )
+
+
+_sort_values = sort_values
+
+
+def labeled_period_line(lab: dict[str, Any]) -> str:
+    """One visible line for a kept labeled period. Works after hard slim."""
+    period = lab.get("period") if isinstance(lab.get("period"), dict) else {}
+    if lab.get("concept") and lab.get("value_text") is not None and lab.get("unit") is not None:
+        try:
+            return _value_block(lab)
+        except (KeyError, TypeError, AttributeError):
+            pass
+    start, end = period.get("start"), period.get("end")
+    when = f"{start} to {end}" if start else (str(end) if end else "")
+    bits = [lab.get("span"), lab.get("unit"), lab.get("value_text"), when]
+    return " ".join(str(b) for b in bits if b not in (None, ""))
+
+
+def claim_period_lines(claim: dict[str, Any]) -> list[str]:
+    """Every kept labeled period, newest first. Falls back to claim text."""
+    values = [v for v in (claim.get("values") or []) if isinstance(v, dict)]
+    if values:
+        return [labeled_period_line(v) for v in sort_values(values)]
+    text = claim.get("text")
+    return [text] if isinstance(text, str) and text else []
 
 
 def _slot(mid: str, accn: str, values: list[dict[str, Any]]) -> dict[str, Any]:
@@ -509,11 +578,14 @@ def _slot(mid: str, accn: str, values: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def latest_filing_slots(
-    facts: list[dict[str, Any]], tax: dict[str, Any] | None = None
+    facts: list[dict[str, Any]],
+    tax: dict[str, Any] | None = None,
+    *,
+    accession: str | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
     """Returns (slots, gaps). slots[mid] has values[] (unique periods) or is absent."""
     tax = tax or load_taxonomy()
-    accn = latest_accession(facts or [])
+    accn = accession or latest_accession(facts or [])
     slots: dict[str, dict[str, Any]] = {}
     gaps: list[str] = []
     for mid, spec in (tax.get("metrics") or {}).items():
@@ -540,20 +612,27 @@ def latest_filing_slots(
     return slots, gaps
 
 
-def tagged_slots(facts: list[dict[str, Any]], tax: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]:
+def tagged_slots(
+    facts: list[dict[str, Any]],
+    tax: dict[str, Any] | None = None,
+    *,
+    accession: str | None = None,
+) -> dict[str, dict[str, Any]]:
     """latest_filing_slots(...)[0]. Name kept so live_claims does not fork."""
-    return latest_filing_slots(facts, tax)[0]
+    return latest_filing_slots(facts, tax, accession=accession)[0]
 
 
 def headline_gaps(
     slots: dict[str, dict[str, Any]],
     tax: dict[str, Any] | None = None,
     facts: list[dict[str, Any]] | None = None,
+    *,
+    accession: str | None = None,
 ) -> list[str]:
     """latest_filing_slots(...)[1] when facts is provided."""
     if facts is None:
         facts = []
-    return latest_filing_slots(facts, tax)[1]
+    return latest_filing_slots(facts, tax, accession=accession)[1]
 
 
 def default_cache(wiki_root: Path, slug: str) -> Path:
@@ -587,8 +666,9 @@ def load_companyfacts(cfg: dict[str, Any], wiki_root: Path, slug: str) -> dict[s
         return {"facts": [], "notes": notes, "files": [], "slots": {}}
     source = str(path.relative_to(wiki)) if wiki in path.parents else str(path)
     parsed = load_companyfacts_file(path, source_id=source)
-    slots, gaps = latest_filing_slots(parsed["facts"])
-    kept = mapped_latest_facts(parsed["facts"])
+    accn = parsed.get("latest_accession")
+    slots, gaps = latest_filing_slots(parsed["facts"], accession=accn)
+    kept = mapped_latest_facts(parsed["facts"], accession=accn)
     notes = list(parsed.get("notes") or [])
     status_gap = cache_status_gap(path)
     if status_gap and status_gap not in notes:

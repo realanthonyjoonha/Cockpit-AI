@@ -14,6 +14,8 @@ import {
   liveClaims,
   loadContextpackRules,
   OVERVIEW_BUDGET_CHARS,
+  toAgentMarkdown,
+  toMarkdown,
 } from '../../memory-cockpit-v2/server/contextpack.js';
 import { capAssistClipboard, HOUSE_FILE_POINTER, assistToolTrailer } from '../../memory-cockpit-v2/server/assistContext.js';
 import { latestFilingSlots, mappedLatestFacts, parseCompanyfacts } from '../../memory-cockpit-v2/server/companyfacts.js';
@@ -428,6 +430,9 @@ export function assertP1() {
 
   errors.push(...sectorBudgetErrors());
   errors.push(...labeledPeriodsSurviveCap(rules));
+  errors.push(...quarterAndYtdDifferentEndsSurvive());
+  errors.push(...visibleTextLeadsWithCurrentFy(rules));
+  errors.push(...markdownPrintsEveryKeptPeriod(rules));
   return errors;
 }
 
@@ -449,14 +454,7 @@ function labeledPeriodsSurviveCap(rules) {
     const want = {};
     for (const [mid, slot] of Object.entries(slots)) {
       const values = slot.values || [];
-      let latestEnd = '';
-      for (const v of values) {
-        const end = String((v.period || {}).end || '');
-        if (end > latestEnd) latestEnd = end;
-      }
-      const periods = new Set(
-        values.filter((v) => String((v.period || {}).end || '') === latestEnd).map(periodKeyOf),
-      );
+      const periods = new Set(values.map(periodKeyOf));
       if (periods.size) want[mid] = periods;
     }
     if (!Object.keys(want).length) continue;
@@ -490,29 +488,162 @@ function labeledPeriodsSurviveCap(rules) {
       })),
       gaps: [],
     };
-    enforceCharBudget(snapshot, OVERVIEW_BUDGET_CHARS, (row) => JSON.stringify(row, null, 2).length);
+    enforceCharBudget(snapshot, OVERVIEW_BUDGET_CHARS, (measureRow) => JSON.stringify(measureRow, null, 2).length);
     if (JSON.stringify(snapshot, null, 2).length > OVERVIEW_BUDGET_CHARS) {
       errors.push(`${row.id} pretty snapshot over cap`);
     }
-    for (const pack of [assembled, snapshot]) {
-      const byMid = {};
-      for (const c of pack.claims || []) {
-        if (c.origin === 'companyfacts' || c.origin === 'xbrl') byMid[c.metric_id] = c;
+    const byMid = {};
+    for (const c of assembled.claims || []) {
+      if (c.origin === 'companyfacts' || c.origin === 'xbrl') byMid[c.metric_id] = c;
+    }
+    for (const [mid, periods] of Object.entries(want)) {
+      const claimRow = byMid[mid];
+      if (!claimRow) {
+        errors.push(`${row.id} lost ${mid} under the cap`);
+        continue;
       }
-      for (const [mid, periods] of Object.entries(want)) {
-        const claimRow = byMid[mid];
-        if (!claimRow) {
-          errors.push(`${row.id} lost ${mid} under the cap`);
-          continue;
-        }
-        const got = new Set((claimRow.values || []).map(periodKeyOf));
-        for (const key of periods) {
-          if (!got.has(key)) errors.push(`${row.id} ${mid} lost labeled period ${key}`);
-        }
+      const got = new Set((claimRow.values || []).map(periodKeyOf));
+      for (const key of periods) {
+        if (!got.has(key)) errors.push(`${row.id} ${mid} lost labeled period ${key}`);
       }
     }
     checked += 1;
   }
   if (checked < 1) errors.push('no live-shaped extracts to check labeled periods');
+  return errors;
+}
+
+function quarterAndYtdDifferentEndsSurvive() {
+  const errors = [];
+  const accn = '0000000001-26-000001';
+  const quarter = {
+    value_text: '1',
+    unit: 'USD',
+    span: 'quarter',
+    period: { start: '2026-04-01', end: '2026-06-30' },
+    accession: accn,
+  };
+  const ytd = {
+    value_text: '2',
+    unit: 'USD',
+    span: 'ytd',
+    period: { start: '2026-01-01', end: '2026-03-31' },
+    accession: accn,
+  };
+  const pack = {
+    focus: { ticker: 'DEMO', id: 'demo' },
+    intent: 'overview',
+    house_prior: { status: 'CONFIRMED', date: '2026-01-15', view_excerpt: 'E'.repeat(5000) },
+    claims: [{
+      id: 'xbrl:rev',
+      metric_id: 'company_revenue',
+      origin: 'companyfacts',
+      confidence: 'tagged',
+      accession: accn,
+      text: 'prior-period lead '.repeat(40),
+      values: [ytd, quarter],
+      grade: 'A',
+      as_of: '2026-06-30',
+      source_id: 'companyfacts',
+    }].concat(Array.from({ length: 12 }, (_, i) => claim(
+      `sent-${i}`,
+      `Gross margin was ${40 + i} percent. ${'WORD '.repeat(80)}`,
+      `2026-01-${String(i + 1).padStart(2, '0')}`,
+    ))),
+    gaps: [],
+  };
+  enforceCharBudget(pack, OVERVIEW_BUDGET_CHARS);
+  if (JSON.stringify(pack).length > OVERVIEW_BUDGET_CHARS) {
+    errors.push('constructed Q+YTD pack over cap');
+  }
+  const tagged = (pack.claims || []).find((c) => c.origin === 'companyfacts');
+  const ends = new Set((tagged?.values || []).map(periodKeyOf));
+  if (!ends.has('2026-04-01|2026-06-30')) errors.push('quarter with a later end was dropped');
+  if (!ends.has('2026-01-01|2026-03-31')) errors.push('ytd with a different end was dropped');
+  return errors;
+}
+
+function visibleTextLeadsWithCurrentFy(rules) {
+  const errors = [];
+  const index = loadIndex();
+  const cfDir = path.join(REPO, 'harness-stress/fixtures/companyfacts');
+  let checked = 0;
+  for (const row of index.issuers || []) {
+    if (row.kind !== 'extract') continue;
+    const doc = JSON.parse(readFileSync(path.join(cfDir, row.id, 'companyfacts.json'), 'utf8'));
+    const allFacts = parseCompanyfacts(doc, { sourceId: `companyfacts/${row.id}` }).facts;
+    const { slots } = latestFilingSlots(allFacts);
+    const annuals = {};
+    for (const [mid, slot] of Object.entries(slots)) {
+      const ends = new Set();
+      for (const v of slot.values || []) {
+        if (v.span === 'annual' && v.period && v.period.end) ends.add(String(v.period.end));
+      }
+      if (ends.size >= 2) annuals[mid] = ends;
+    }
+    if (!Object.keys(annuals).length) continue;
+    const store = baseStore([], {
+      ticker: row.id.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12),
+      id: row.id,
+      gaps: [],
+    });
+    store.facts = mappedLatestFacts(allFacts);
+    const assembled = assembleAgentPack(store, rules);
+    const visible = toAgentMarkdown(assembled);
+    const byMid = {};
+    for (const c of assembled.claims || []) {
+      if (c.origin === 'companyfacts' || c.origin === 'xbrl') byMid[c.metric_id] = c;
+    }
+    for (const [mid, ends] of Object.entries(annuals)) {
+      const current = [...ends].sort().at(-1);
+      const claimRow = byMid[mid];
+      if (!claimRow) {
+        errors.push(`${row.id} lost ${mid} for current-FY text`);
+        continue;
+      }
+      const firstEnd = String(((claimRow.values || [])[0] || {}).period?.end || '');
+      if (firstEnd !== current) errors.push(`${row.id} ${mid} values did not lead with the current FY`);
+      const posCurrent = visible.indexOf(current);
+      if (posCurrent < 0) errors.push(`${row.id} ${mid} current FY missing from visible text`);
+      for (const end of ends) {
+        if (end === current) continue;
+        const pos = visible.indexOf(end);
+        if (pos >= 0 && posCurrent >= 0 && pos < posCurrent) {
+          errors.push(`${row.id} ${mid} visible text led with an older period`);
+        }
+      }
+    }
+    checked += 1;
+  }
+  if (checked < 1) errors.push('no live-shaped extract with two annual periods');
+  return errors;
+}
+
+function markdownPrintsEveryKeptPeriod(rules) {
+  const errors = [];
+  const cfDir = path.join(REPO, 'harness-stress/fixtures/companyfacts');
+  const doc = JSON.parse(readFileSync(path.join(cfDir, 'two-periods', 'companyfacts.json'), 'utf8'));
+  const allFacts = parseCompanyfacts(doc, { sourceId: 'companyfacts/two-periods' }).facts;
+  const { slots } = latestFilingSlots(allFacts);
+  const values = slots.company_revenue?.values || [];
+  if (values.length < 2) errors.push('two-periods lost labeled periods');
+  const store = baseStore([], { ticker: 'TWOP', id: 'two-periods', gaps: [] });
+  store.facts = mappedLatestFacts(allFacts);
+  const assembled = assembleAgentPack(store, rules);
+  const agentMd = toAgentMarkdown(assembled);
+  const overviewMd = toMarkdown({
+    ...assembled,
+    focus: store.focus,
+    intent: 'overview',
+    object: store.object,
+  });
+  for (const [name, visible] of [['agent', agentMd], ['overview', overviewMd]]) {
+    for (const val of values) {
+      const end = String((val.period || {}).end || '');
+      const start = (val.period || {}).start;
+      if (end && !visible.includes(end)) errors.push(`${name} markdown omitted period end ${end}`);
+      if (start && !visible.includes(String(start))) errors.push(`${name} markdown omitted period start ${start}`);
+    }
+  }
   return errors;
 }
