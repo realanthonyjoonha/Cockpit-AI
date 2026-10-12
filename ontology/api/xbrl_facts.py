@@ -10,6 +10,7 @@ from api.companyfacts import (  # noqa: F401
     group_digits,
     headline_gaps,
     latest_accession,
+    latest_accession_in_document,
     latest_filing_facts,
     latest_filing_slots,
     mapped_latest_facts,

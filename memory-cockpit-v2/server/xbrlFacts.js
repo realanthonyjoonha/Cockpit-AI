@@ -10,6 +10,7 @@ export {
   taggedSlots,
   headlineGaps,
   latestAccession,
+  latestAccessionInDocument,
   latestFilingFacts,
   latestFilingSlots,
   mappedLatestFacts,
