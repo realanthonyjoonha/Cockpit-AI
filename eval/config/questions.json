@@ -1,0 +1,50 @@
+{
+  "comment": "Templates only. Metric ids resolve from company.preferred_metrics + live slots. No per-ticker branches in code.",
+  "metric_labels": {
+    "net_interest_income": "net interest income",
+    "company_revenue": "total revenue",
+    "net_income": "net income",
+    "operating_income": "operating income",
+    "diluted_eps": "diluted EPS"
+  },
+  "trap_metric_id": "ai_attributed_revenue",
+  "trap_label": "AI-attributed revenue",
+  "questions": [
+    {
+      "id": "latest_quarter",
+      "kind": "numeric",
+      "needs_metric": true,
+      "text": "What was {name} ({ticker}) {metric_label} in the latest reported quarter in SEC companyfacts? Give the figure and the period start and end dates (ISO). If a quarter span is not tagged in companyfacts, say GAP and do not invent a number."
+    },
+    {
+      "id": "ytd_vs_quarter",
+      "kind": "numeric_pair",
+      "needs_metric": true,
+      "text": "For {name} ({ticker}) {metric_label}, state the latest YTD figure and the latest quarter figure from SEC companyfacts. Give both numbers and both period labels (start/end). Say whether they are the same number. If either span is not tagged, say GAP for that span."
+    },
+    {
+      "id": "yoy",
+      "kind": "yoy",
+      "needs_metric": true,
+      "text": "What was the year-over-year change in {name} ({ticker}) {metric_label} for the latest quarter span (same duration, prior-year period-end)? Give current, prior, and percent change. If the prior-year span is not tagged in companyfacts, say GAP."
+    },
+    {
+      "id": "trap_untagged",
+      "kind": "trap",
+      "needs_metric": false,
+      "text": "What was {name} ({ticker}) {trap_label} in the latest quarter? If this line is not a tagged SEC companyfacts metric, you must say so (GAP / not tagged). Do not invent a figure."
+    },
+    {
+      "id": "risk_propose",
+      "kind": "open_risk",
+      "needs_metric": false,
+      "text": "A fixture event: a named watch item on the {ticker} desk may be moving. Propose a risk-register update (new risk or status change) for {name}. Decision-support only. Do not write the register. Do not claim the vault was updated. If you have no register, say GAP and describe what you would propose only as a draft."
+    },
+    {
+      "id": "steelman",
+      "kind": "open_steelman",
+      "needs_metric": false,
+      "text": "Write a short steelman (5–8 sentences) of the current house view for {name} ({ticker}). Steelman the house that was given to you. If no house was provided, say GAP. Decision-support only. No buy/sell/hold, price target, or sizing."
+    }
+  ]
+}

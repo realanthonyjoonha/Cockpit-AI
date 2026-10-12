@@ -1,0 +1,58 @@
+{
+  "comment": "Same model, same tasks, one change vs arm 0. Full = all additions. 0+e and 0+f vendor open PRs; do not merge those branches.",
+  "baseline": "0",
+  "arms": [
+    {
+      "id": "0",
+      "label": "bare + web",
+      "web_search": true,
+      "inject": []
+    },
+    {
+      "id": "0+a",
+      "label": "tagged SEC companyfacts (main)",
+      "web_search": true,
+      "inject": ["facts"]
+    },
+    {
+      "id": "0+b",
+      "label": "synthetic vault",
+      "web_search": true,
+      "inject": ["vault"]
+    },
+    {
+      "id": "0+c",
+      "label": "guardrails",
+      "web_search": true,
+      "inject": ["guardrails"],
+      "cap_chars": 10000
+    },
+    {
+      "id": "0+d",
+      "label": "pre-stuffed background",
+      "web_search": true,
+      "inject": ["background"]
+    },
+    {
+      "id": "0+e",
+      "label": "step summaries (PR #8 slice cards, not merged)",
+      "web_search": true,
+      "inject": ["slices"],
+      "vendor": "slice_cards"
+    },
+    {
+      "id": "0+f",
+      "label": "trimmed tool catalog (PR #9, not merged)",
+      "web_search": true,
+      "inject": ["tools_core"],
+      "vendor": "tool_catalog"
+    },
+    {
+      "id": "full",
+      "label": "all additions",
+      "web_search": true,
+      "inject": ["facts", "vault", "guardrails", "background", "slices", "tools_core"],
+      "cap_chars": 10000
+    }
+  ]
+}
