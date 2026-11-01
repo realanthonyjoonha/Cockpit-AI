@@ -60,6 +60,13 @@ cockpit-kernel-fresh/
 harness-stress/results/
 harness-stress/REPORT.md
 
+# Eval traces, live companyfacts, and answer keys (never commit).
+# The runner, REPORT.md, and REPORT-large.md stay tracked. Keys must not reach the model arm.
+eval/results/
+eval/results-offline/
+eval/traces/
+eval/node_modules/
+
 # Logs & local runtime
 *.log
 logs/
