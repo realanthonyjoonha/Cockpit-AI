@@ -5,14 +5,11 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { VAULT_DIR, isInsideVault, canonicalize } from './vault.js';
+import { VAULT_DIR } from './vault.js';
 
 const TICKER = 'NBIS';
 const PROPOSALS_DIR = path.join(VAULT_DIR, 'cockpit', 'proposals');
 const STORE_FILE = path.join(PROPOSALS_DIR, 'nbis-pending.json');
-const ENTITY = path.join(VAULT_DIR, 'wiki', 'entities', 'nebius.md');
-const RISKS_SOURCE = path.join(VAULT_DIR, 'raw', 'nebius-research', '08-risks-catalysts.md');
-const FACTS_HDR = '## Key facts (timestamped · graded · sourced)';
 
 const CLAIM_LINE_RE = /^-\s+.+\s+\(\d{4}-\d{2}-\d{2}(?:[^)]*)?\)\s+\[[ABC]\]\s+\[\[[^\]]+\]\]\s*$/;
 
@@ -40,14 +37,6 @@ function writeStore(store) {
   fs.renameSync(tmp, STORE_FILE);
 }
 
-function assertVaultWrite(target) {
-  const abs = path.resolve(target);
-  if (!isInsideVault(abs)) throw new Error('refusing write outside vault');
-  // only allow entity or risks source
-  const allowed = [path.resolve(ENTITY), path.resolve(RISKS_SOURCE)];
-  if (!allowed.includes(abs)) throw new Error('path not on allowlist for accept');
-}
-
 function buildClaimLine({ text, as_of, grade, source_id }) {
   const t = String(text || '').replace(/\s+/g, ' ').trim();
   const d = String(as_of || '').trim();
@@ -60,33 +49,6 @@ function buildClaimLine({ text, as_of, grade, source_id }) {
   const line = `- ${t} (${d}) [${g}] [[${s}]]`;
   if (!CLAIM_LINE_RE.test(line)) throw new Error('claim line failed format check');
   return line + '\n';
-}
-
-function insertClaimIntoEntity(line) {
-  assertVaultWrite(ENTITY);
-  if (!fs.existsSync(ENTITY)) throw new Error('entity file missing');
-  const before = fs.readFileSync(ENTITY, 'utf8');
-  const fi = before.indexOf(FACTS_HDR);
-  if (fi < 0) throw new Error('entity missing Key facts heading');
-  const afterHdr = before.indexOf('\n', fi) + 1;
-  const rest = before.slice(afterHdr);
-  const firstBullet = rest.search(/^- /m);
-  if (firstBullet < 0) throw new Error('no claim bullets under Key facts');
-  const insertAt = afterHdr + firstBullet;
-  const next = before.slice(0, insertAt) + line + before.slice(insertAt);
-  fs.writeFileSync(ENTITY, next, 'utf8');
-  return { path: ENTITY, bytes: next.length };
-}
-
-function appendRiskNote(text, proposalId) {
-  assertVaultWrite(RISKS_SOURCE);
-  if (!fs.existsSync(RISKS_SOURCE)) throw new Error('risks source missing');
-  const note = String(text || '').trim();
-  if (!note) throw new Error('risk_note text required');
-  const stamp = new Date().toISOString().slice(0, 10);
-  const block = `\n\n## Accepted proposal note (${stamp}) · \`${proposalId}\`\n\n${note}\n`;
-  fs.appendFileSync(RISKS_SOURCE, block, 'utf8');
-  return { path: RISKS_SOURCE };
 }
 
 /**
@@ -173,36 +135,9 @@ export function rejectProposal(id) {
   return { available: true, proposal: p };
 }
 
-export function acceptProposal(id) {
-  const store = readStore();
-  const p = store.proposals.find((x) => x.id === id);
-  if (!p) return null;
-  if (p.status !== 'pending') throw new Error(`proposal is ${p.status}, not pending`);
-
-  let written;
-  if (p.kind === 'claim') {
-    const line = buildClaimLine(p.claim);
-    written = insertClaimIntoEntity(line);
-  } else if (p.kind === 'risk_note') {
-    written = appendRiskNote(p.risk_note?.text, p.id);
-  } else {
-    throw new Error(`unknown kind ${p.kind}`);
-  }
-
-  p.status = 'accepted';
-  p.accepted_at = new Date().toISOString();
-  p.file_written = written.path;
-  writeStore(store);
-
-  return {
-    available: true,
-    proposal: p,
-    file_written: written.path,
-    next_steps: [
-      'cd ~/Trading/ontology && ./ont compile NBIS',
-      'On glass: REFRESH BOOK',
-      'Verify Overview / Ask (claims) or Risks (risk notes)',
-    ],
-    note: 'Files pinned. Compile is still CLI — browser does not compile.',
-  };
+export function acceptProposal(_id) {
+  const err = new Error('This accept route does not write the book. Use the company proposal on the desk.');
+  err.status = 410;
+  err.code = 'nbis_accept_retired';
+  throw err;
 }

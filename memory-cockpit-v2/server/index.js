@@ -11,6 +11,9 @@ import { VAULT_DIR, canonicalize, syncState, STATE_PATH, LOCK_PATH, houseView, s
 import * as model from './model.js';
 import * as proposals from './nbisProposals.js';
 import { mountThinDesks } from './thinDeskMount.js';
+import { resumeUnfinishedDeletes } from './deleteDesk.js';
+import { resolveOntRoot, resolveStoreDir } from './monorepoPaths.js';
+import { REG_PATH } from './thinDeskProfiles.js';
 import { operateGlance } from './operateGlance.js';
 import { gate, handleLogin, handleLogout, authEnabled } from './auth.js';
 import { openGrokBuild, isLoopbackRequest, listGrokAgents } from './openGrok.js';
@@ -244,6 +247,17 @@ const PORT = Number(process.env.PORT || 4681);
 // network can read the research readout. Never set HOST on an untrusted network.
 const HOST = process.env.HOST || '127.0.0.1';
 scanVault(true);
+try {
+  const finished = resumeUnfinishedDeletes({
+    registryPath: REG_PATH,
+    vaultRoot: VAULT_DIR,
+    ontRoot: resolveOntRoot(),
+    storeDir: resolveStoreDir(),
+  });
+  if (finished.length) console.log(`finished interrupted removals: ${finished.join(', ')}`);
+} catch (e) {
+  console.error(`interrupted removal was not finished: ${e.message}`);
+}
 app.listen(PORT, HOST, () => {
   console.log(`memory-cockpit v2  http://${HOST}:${PORT}`);
   console.log(`vault: ${VAULT_DIR} · pages: ${scanVault().pages.length} · pure viewer`);

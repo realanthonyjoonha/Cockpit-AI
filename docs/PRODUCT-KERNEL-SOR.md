@@ -103,6 +103,14 @@ memory-cockpit-v2/scripts/mcp-name-isolation-test.mjs
 scripts/lab-feature-hooks/98-dogfood-mode.sh
 scripts/lab-feature-hooks/96-filing-map.sh
 scripts/lab-feature-hooks/97-closeout-pack.sh
+memory-cockpit-v2/src/pages/thin/DeleteCompany.jsx
+memory-cockpit-v2/server/deskBundle.js
+memory-cockpit-v2/server/deleteDesk.js
+memory-cockpit-v2/server/nbisProposals.js
+memory-cockpit-v2/scripts/desk-bundle-test.mjs
+memory-cockpit-v2/scripts/desk-delete-census-test.mjs
+memory-cockpit-v2/scripts/desk-delete-http-test.mjs
+scripts/lab-feature-hooks/100-desk-delete.sh
 memory-cockpit-v2/server/thinWorkingModel.js
 memory-cockpit-v2/server/workingModelAgentSeed.js
 memory-cockpit-v2/server/workingModelSchema.js

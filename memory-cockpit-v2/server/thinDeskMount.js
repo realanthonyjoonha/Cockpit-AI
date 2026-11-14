@@ -8,6 +8,9 @@ import { createThinAsk } from './thinAsk.js';
 import { createThinCompile } from './thinCompile.js';
 import { loadThinDeskProfiles, REG_PATH } from './thinDeskProfiles.js';
 import { pipelineSnapshot } from './secEdgar.js';
+import { deleteDeskBundle, previewDeskBundle } from './deleteDesk.js';
+import { resolveVaultDir, resolveOntRoot, resolveStoreDir } from './monorepoPaths.js';
+import { clearPackCache } from './pack.js';
 
 /**
  * First path segments reserved by Memory / global APIs — never treat as thin slug.
@@ -211,12 +214,34 @@ export function mountThinDesks(app, { j, ja }) {
   // Live desk catalog for glass shell (not frozen at vite build)
   app.get('/api/thin-desks', j(() => listThinDesksPublic()));
 
+  const bundleRoots = () => ({
+    vaultRoot: resolveVaultDir(),
+    ontRoot: resolveOntRoot(),
+    storeDir: resolveStoreDir(),
+  });
+
   const withDesk = (fn) => (req) => {
     const rt = resolveThinDesk(req.params.slug);
     if (!rt) deskNotFound(req.params.slug);
     return fn(rt, req);
   };
 
+  app.get('/api/:slug/desk-bundle', j(withDesk((rt) => previewDeskBundle({
+    registry: JSON.parse(fs.readFileSync(REG_PATH, 'utf8')),
+    slug: rt.slug,
+    ...bundleRoots(),
+  }))));
+  app.post('/api/:slug/desk/delete', j(withDesk((rt, req) => {
+    const out = deleteDeskBundle({
+      registryPath: REG_PATH,
+      slug: rt.slug,
+      confirm: (req.body || {}).confirm,
+      ...bundleRoots(),
+    });
+    invalidateThinRegistryCache();
+    clearPackCache(rt.desk.ticker);
+    return out;
+  })));
   app.get('/api/:slug/meta', j(withDesk((rt) => rt.model.meta())));
   app.get('/api/:slug/overview', j(withDesk((rt) => rt.model.overview())));
   app.get('/api/:slug/risks', j(withDesk((rt) => rt.model.risks())));

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../../api.js';
 import { shownCompanyName } from '../../deskTitle.js';
 import BookStrip from './BookStrip.jsx';
+import DeleteCompany from './DeleteCompany.jsx';
 import { filingDocLabel, inBookChip } from './filingLink.js';
 import { filingsStripMode, filingsLedgerExtras } from './filingMapPaint.js';
 
@@ -52,6 +53,7 @@ export default function ThinOverview({ desk }) {
             We do not invent claims or risks.
           </p>
         </div>
+        <DeleteCompany slug={slug} ticker={ticker} />
       </div>
     );
   }
@@ -209,6 +211,7 @@ export default function ThinOverview({ desk }) {
         <div className="shd"><span className="no">∿</span><h2>SERIES</h2><span className="m">phase 1</span></div>
         <div className="emptyD">{d.series_note || `${d.series_count} series in snapshot`}</div>
       </div>
+      <DeleteCompany slug={slug} ticker={ticker} />
     </div>
   );
 }
