@@ -1,0 +1,50 @@
+{
+  "comment": "Pilot issuers are a data list. Extraction and scoring are ticker-agnostic. Avoid Anthony desk tickers (MSFT, MU, NBIS, NVDA, LLY, AVGO).",
+  "companies": [
+    {
+      "id": "jpm",
+      "ticker": "JPM",
+      "cik": "0000019617",
+      "name": "JPMorgan Chase & Co.",
+      "sector": "bank",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["net_interest_income", "company_revenue", "net_income"]
+    },
+    {
+      "id": "aapl",
+      "ticker": "AAPL",
+      "cik": "0000320193",
+      "name": "Apple Inc.",
+      "sector": "mega_cap_tech",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
+    },
+    {
+      "id": "asml",
+      "ticker": "ASML",
+      "cik": "0000937966",
+      "name": "ASML Holding N.V.",
+      "sector": "semi_equipment",
+      "form_family": "20-F",
+      "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
+    },
+    {
+      "id": "xom",
+      "ticker": "XOM",
+      "cik": "0000034088",
+      "name": "Exxon Mobil Corporation",
+      "sector": "energy",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "operating_income", "net_income"]
+    },
+    {
+      "id": "jnj",
+      "ticker": "JNJ",
+      "cik": "0000200406",
+      "name": "Johnson & Johnson",
+      "sector": "healthcare",
+      "form_family": "10-K/10-Q",
+      "preferred_metrics": ["company_revenue", "net_income", "diluted_eps"]
+    }
+  ]
+}

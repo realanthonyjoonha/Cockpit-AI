@@ -1,0 +1,66 @@
+{
+  "comment": "SYNTHETIC ONLY. Not Anthony house views. Not real desks. Canary numbers are fixtures and must not be reported as SEC facts.",
+  "desks": {
+    "jpm": {
+      "slug": "eval-harbor",
+      "house_canary": "CANARY-HOUSE-HARBOR",
+      "house": "---\nstatus: CONFIRMED\nupdated: 2026-01-15\nowner: eval-fixture\n---\n\n# House View — JPM (SYNTHETIC EVAL FIXTURE)\n\n**Stance:** Fixture thesis only. Net interest income mix is the named watch item. Deposit beta is the mechanism. This is not a house view of a covered issuer and not a rating.\n\nDecision-support only. CANARY-HOUSE-HARBOR\n",
+      "risks": "# 08 fixture — JPM (SYNTHETIC)\n\n### R1 — Fixture deposit beta\n\n- **Status:** WATCH · **Grade:** [B] · fixture-only\n- **Mechanism:** A named fixture deposit book re-prices faster than the house assumed.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Beta | fixture beta above the house band | fixture-only | 2026-01-15 |\n\n### R2 — Fixture credit pulse\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture consumer book shows early delinquency in the notes, not in SEC tags.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Early DQ | fixture DQ print | notes only | 2026-01-15 |\n",
+      "notes": "- Fixture note: Harbor desk watches deposit beta, not a tagged AI line. (2026-01-15) [C] [[eval-harbor]]\n",
+      "background": "# Background — Harbor primer (SYNTHETIC)\n\nUS G-SIB shape: consumer, CIB, asset management. This primer has no tagged quarter figures and is not a 10-Q.\n\nProduct map (fixture): deposits → NII; markets → fees. No SEC numbers.\n",
+      "slices": [
+        "# Slice 01\n- Harbor working note: watch item is deposit beta, not AI revenue. (2026-01-01) [C] [[eval-harbor-s1]]\nGAP: no tagged AI-attributed revenue line in companyfacts.\n",
+        "# Slice 02\n- Fixture canary 701001 is a working-note token, not a quarter metric. (2026-01-02) [C] [[eval-harbor-s2]]\nGAP: do not paste 701001 as JPM NII.\n"
+      ]
+    },
+    "aapl": {
+      "slug": "eval-orchard",
+      "house_canary": "CANARY-HOUSE-ORCHARD",
+      "house": "---\nstatus: CONFIRMED\nupdated: 2026-01-15\nowner: eval-fixture\n---\n\n# House View — AAPL (SYNTHETIC EVAL FIXTURE)\n\n**Stance:** Fixture thesis only. Services mix is the named watch item. Hardware units are the mechanism. This is not a house view of a covered issuer and not a rating.\n\nDecision-support only. CANARY-HOUSE-ORCHARD\n",
+      "risks": "# 08 fixture — AAPL (SYNTHETIC)\n\n### R1 — Fixture services mix\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture services share stalls while hardware remains the unit driver.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Services share | fixture stall | notes only | 2026-01-15 |\n\n### R2 — Fixture regulatory lane\n\n- **Status:** WATCH · **Grade:** [C]\n- **Mechanism:** A fixture store-rule case is on the register; not a tagged line.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Case status | adverse fixture ruling | open | 2026-01-15 |\n",
+      "notes": "- Fixture note: Orchard desk watches services mix. (2026-01-15) [C] [[eval-orchard]]\n",
+      "background": "# Background — Orchard primer (SYNTHETIC)\n\nHardware plus services shape. This primer has no tagged quarter figures.\n",
+      "slices": [
+        "# Slice 01\n- Orchard working note: services mix is the watch, not AI-attributed revenue. (2026-01-01) [C] [[eval-orchard-s1]]\nGAP: no tagged AI revenue concept.\n",
+        "# Slice 02\n- Fixture canary 702002 is a working-note token, not revenue. (2026-01-02) [C] [[eval-orchard-s2]]\nGAP: do not paste 702002 as AAPL revenue.\n"
+      ]
+    },
+    "asml": {
+      "slug": "eval-litho",
+      "house_canary": "CANARY-HOUSE-LITHO",
+      "house": "---\nstatus: CONFIRMED\nupdated: 2026-01-15\nowner: eval-fixture\n---\n\n# House View — ASML (SYNTHETIC EVAL FIXTURE)\n\n**Stance:** Fixture thesis only. EUV tool throughput is the named watch item. Export licensing is the mechanism. IFRS 20-F filer shape. This is not a house view of a covered issuer and not a rating.\n\nDecision-support only. CANARY-HOUSE-LITHO\n",
+      "risks": "# 08 fixture — ASML (SYNTHETIC)\n\n### R1 — Fixture export license\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture license clock can delay a tool shipment in the notes.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| License | fixture denial | notes only | 2026-01-15 |\n\n### R2 — Fixture High-NA ramp\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture High-NA yield miss is a register item, not a tagged AI line.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Yield | fixture miss | notes only | 2026-01-15 |\n",
+      "notes": "- Fixture note: Litho desk is a 20-F IFRS shape. Quarter spans may be absent. (2026-01-15) [C] [[eval-litho]]\n",
+      "background": "# Background — Litho primer (SYNTHETIC)\n\nDutch IFRS issuer, 20-F. Lithography tools. This primer has no tagged quarter figures.\n",
+      "slices": [
+        "# Slice 01\n- Litho working note: 20-F may not tag a US-style quarter. (2026-01-01) [C] [[eval-litho-s1]]\nGAP: if no quarter span is tagged, say GAP.\n",
+        "# Slice 02\n- Fixture canary 703003 is a working-note token, not revenue. (2026-01-02) [C] [[eval-litho-s2]]\nGAP: do not paste 703003 as ASML revenue.\n"
+      ]
+    },
+    "xom": {
+      "slug": "eval-meridian",
+      "house_canary": "CANARY-HOUSE-MERIDIAN",
+      "house": "---\nstatus: CONFIRMED\nupdated: 2026-01-15\nowner: eval-fixture\n---\n\n# House View — XOM (SYNTHETIC EVAL FIXTURE)\n\n**Stance:** Fixture thesis only. Downstream capture is the named watch item. Upstream volume is the mechanism. This is not a house view of a covered issuer and not a rating.\n\nDecision-support only. CANARY-HOUSE-MERIDIAN\n",
+      "risks": "# 08 fixture — XOM (SYNTHETIC)\n\n### R1 — Fixture downstream capture\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture refining margin slips versus the house band.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Capture | fixture miss | notes only | 2026-01-15 |\n\n### R2 — Fixture project clock\n\n- **Status:** WATCH · **Grade:** [C]\n- **Mechanism:** A fixture project slip is on the register.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Clock | fixture delay | open | 2026-01-15 |\n",
+      "notes": "- Fixture note: Meridian desk watches capture, not AI revenue. (2026-01-15) [C] [[eval-meridian]]\n",
+      "background": "# Background — Meridian primer (SYNTHETIC)\n\nIntegrated energy shape. This primer has no tagged quarter figures.\n",
+      "slices": [
+        "# Slice 01\n- Meridian working note: capture is the watch. (2026-01-01) [C] [[eval-meridian-s1]]\nGAP: no tagged AI-attributed revenue.\n",
+        "# Slice 02\n- Fixture canary 704004 is a working-note token, not revenue. (2026-01-02) [C] [[eval-meridian-s2]]\nGAP: do not paste 704004 as XOM revenue.\n"
+      ]
+    },
+    "jnj": {
+      "slug": "eval-cedar",
+      "house_canary": "CANARY-HOUSE-CEDAR",
+      "house": "---\nstatus: CONFIRMED\nupdated: 2026-01-15\nowner: eval-fixture\n---\n\n# House View — JNJ (SYNTHETIC EVAL FIXTURE)\n\n**Stance:** Fixture thesis only. Innovative-medicine growth is the named watch item. Litigation cash is the mechanism. This is not a house view of a covered issuer and not a rating.\n\nDecision-support only. CANARY-HOUSE-CEDAR\n",
+      "risks": "# 08 fixture — JNJ (SYNTHETIC)\n\n### R1 — Fixture litigation cash\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture settlement clock can move cash in the notes.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| Cash | fixture settlement | notes only | 2026-01-15 |\n\n### R2 — Fixture LOE pulse\n\n- **Status:** WATCH · **Grade:** [B]\n- **Mechanism:** A fixture loss-of-exclusivity print is a register item.\n\n| Signal | Tripwire | Current state | As-of |\n| --- | --- | --- | --- |\n| LOE | fixture step-down | notes only | 2026-01-15 |\n",
+      "notes": "- Fixture note: Cedar desk watches innovative-medicine growth. (2026-01-15) [C] [[eval-cedar]]\n",
+      "background": "# Background — Cedar primer (SYNTHETIC)\n\nMedtech plus medicines shape. This primer has no tagged quarter figures.\n",
+      "slices": [
+        "# Slice 01\n- Cedar working note: litigation cash is a register item, not AI revenue. (2026-01-01) [C] [[eval-cedar-s1]]\nGAP: no tagged AI-attributed revenue.\n",
+        "# Slice 02\n- Fixture canary 705005 is a working-note token, not revenue. (2026-01-02) [C] [[eval-cedar-s2]]\nGAP: do not paste 705005 as JNJ revenue.\n"
+      ]
+    }
+  },
+  "bleed_canaries": [701001, 702002, 703003, 704004, 705005]
+}
